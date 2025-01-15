@@ -1,0 +1,11 @@
+[submodule "sing-vmess"]
+	path = sing-vmess
+	url = https://github.com/sadeepa24/sing-vmess/
+	branch = connected_bot
+[submodule "sing-box"]
+	path = sing-box
+	url = https://github.com/sadeepa24/sing-box
+	branch = connected_bot
+[submodule "sing"]
+	path = sing
+	url = https://github.com/SagerNet/sing.git
