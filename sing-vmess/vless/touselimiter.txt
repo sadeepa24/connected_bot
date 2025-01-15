@@ -1,3 +1,0 @@
-update add conn.Close() to outbound/default.go NewConnection()'s ReportHandshakeFailure function return err
-
-update Userupdate method's in inbound/vless.go
