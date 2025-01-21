@@ -772,8 +772,6 @@ func (a *Adminsrv) overview(upx *update.Updatectx) error {
 		TemplateName: "overview",
 		Template: struct{
 			BandwidthAvailable string
-			DownLoad string
-			Upload string
 			MonthTotal string
 			AllTime string
 			VerifiedUserCount int64
@@ -785,8 +783,6 @@ func (a *Adminsrv) overview(upx *update.Updatectx) error {
 			LastRefresh time.Time
 		}{
 			BandwidthAvailable: overview.BandwidthAvailable.BToString(),
-			DownLoad: overview.DownLoad.BToString(),
-			Upload: overview.Upload.BToString(),
 			AllTime: overview.AllTime.BToString(),
 			QuotaForEach: overview.QuotaForEach.BToString(),
 			MonthTotal: overview.MonthTotal.BToString(),
