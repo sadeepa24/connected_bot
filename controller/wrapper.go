@@ -474,14 +474,18 @@ func (c *Controller) GetUserList(in *[]int64) error {
 	}
 	return nil
 }
-func (c *Controller) GetVerifiedUserList(in *[]int64) error {
-	if c.db.Model(&db.User{}).Where("is_in_group = ? AND is_in_channel", true, true, ) .Pluck("tg_id", in).Error != nil {
+func (c *Controller) GetVerifiedUserList(in *[]int64) error { 
+	if err := c.db.Model(&db.User{}).
+		Where("is_in_group = ? AND is_in_channel = ?", true, true).
+		Pluck("tg_id", in).Error; err != nil {
 		return C.ErrDbopration
 	}
 	return nil
 }
 func (c *Controller) GetUnVerifiedUserList(in *[]int64) error {
-	if c.db.Model(&db.User{}).Where("is_in_group = ? OR is_in_channel", false, false, ) .Pluck("tg_id", in).Error != nil {
+	if err := c.db.Model(&db.User{}).
+		Where("is_in_group = ? AND is_in_channel = ?", false, false).
+		Pluck("tg_id", in).Error; err != nil {
 		return C.ErrDbopration
 	}
 	return nil

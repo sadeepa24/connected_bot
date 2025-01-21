@@ -234,8 +234,8 @@ type Overview struct {
 	Mu *sync.RWMutex
 
 	BandwidthAvailable C.Bwidth
-	DownLoad C.Bwidth
-	Upload C.Bwidth
+	//DownLoad C.Bwidth
+	//Upload C.Bwidth
 	MonthTotal C.Bwidth
 	AllTime C.Bwidth
 
