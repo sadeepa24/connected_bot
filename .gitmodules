@@ -1,0 +1,8 @@
+[submodule "sbox/singapi/singbox/sing-box"]
+	path = sbox/singapi/singbox/sing-box
+	url = https://github.com/sadeepa24/sing-box/
+	branch = connected_bot
+[submodule "sbox/singapi/singbox/sing-vmess"]
+	path = sbox/singapi/singbox/sing-vmess
+	url = https://github.com/sadeepa24/sing-vmess/
+	branch = connected_bot
