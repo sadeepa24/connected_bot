@@ -20,45 +20,13 @@ var Mainctx context.Context
 func main() {
 
 	Mainctx = context.Background()
-	logconfig := zap.Config{
-		Level: zap.NewAtomicLevelAt(zap.DebugLevel),
-		Development: false,
-		DisableCaller: true,
-		DisableStacktrace: true,
-		Sampling: &zap.SamplingConfig{
-			Initial:    100,
-			Thereafter: 100,
-		},
-		Encoding: "console",
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:        "ts",
-			LevelKey:       "level",
-			NameKey:        "logger",
-			CallerKey:      "caller",
-			FunctionKey:    zapcore.OmitKey,
-			MessageKey:     "msg",
-			// StacktraceKey:  "stacktrace",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    zapcore.CapitalLevelEncoder,
-			EncodeTime:     zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
-			
-			EncodeDuration: zapcore.StringDurationEncoder,
-			EncodeCaller:   zapcore.ShortCallerEncoder,
-		},
-		OutputPaths: []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-	logger, err := logconfig.Build()
-	if err != nil {
-		log.Fatal("logger Building err - "+ err.Error() )
-	}
-	botoption, err := getBotOption(logger)
-	if err != nil {
-		logger.Fatal(err.Error())
-	}
 
+	botoption, err := getBotOption()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 	if err = runConnected(botoption); err != nil {
-		logger.Error("bot exit with err ",  zap.Error(err))
+		log.Fatal("bot exit with err ",  zap.Error(err))
 	}
 }
 
@@ -86,7 +54,7 @@ func runConnected(botoptions connected.Botoptions) error {
 			}
 			cancel()
 			runtime.GC() // to make fresh restart
-			if botoptions, err = getBotOption(botoptions.Logger); err != nil {
+			if botoptions, err = getBotOption(); err != nil {
 				return errors.New("error while restarting, when option building " + err.Error())
 			}
 			continue
@@ -101,18 +69,57 @@ func runConnected(botoptions connected.Botoptions) error {
 }
 
 
-func getBotOption(logger *zap.Logger) (connected.Botoptions, error) {
+func getBotOption() (connected.Botoptions, error) {
 	botoption, err := readBotConfig()
 	if err != nil {
 		return botoption, err
 	}
 	botoption.Ctx = Mainctx
-	botoption.Logger = logger
 	opt, err := readsboxconfigAT(botoption.SboxConfPath)
 	if err != nil {
 		return botoption, err
 	}
 	botoption.Sboxoption = opt.options
+
+	if botoption.LoggerOption.Encoding == "" {
+		botoption.LoggerOption.Encoding = "console"
+	}
+	if len(botoption.LoggerOption.Paths) == 0 {
+		botoption.LoggerOption.Paths = append(botoption.LoggerOption.Paths, "stdout")
+	}
+	logconfig := zap.Config{
+		Level: zap.NewAtomicLevelAt(zap.DebugLevel),
+		Development: false,
+		DisableCaller: true,
+		DisableStacktrace: true,
+		Sampling: &zap.SamplingConfig{
+			Initial:    100,
+			Thereafter: 100,
+		},
+		Encoding: botoption.LoggerOption.Encoding,
+		EncoderConfig: zapcore.EncoderConfig{
+			TimeKey:        "ts",
+			LevelKey:       botoption.LoggerOption.Level,
+			NameKey:        "logger",
+			CallerKey:      "caller",
+			FunctionKey:    zapcore.OmitKey,
+			MessageKey:     "msg",
+			// StacktraceKey:  "stacktrace",
+			LineEnding:     zapcore.DefaultLineEnding,
+			EncodeLevel:    zapcore.CapitalLevelEncoder,
+			EncodeTime:     zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
+			
+			EncodeDuration: zapcore.StringDurationEncoder,
+			EncodeCaller:   zapcore.ShortCallerEncoder,
+		},
+		OutputPaths: botoption.LoggerOption.Paths,
+		// ErrorOutputPaths: []string{"stderr"},
+	}
+	logger, err := logconfig.Build()
+	if err != nil {
+		log.Fatal("logger Building err - "+ err.Error() )
+	}
+	botoption.Logger = logger
 	
 	// if botoption.Templates, err = readTmpl(botoption.TemplatesPath); err != nil {
 	// 	return botoption, err

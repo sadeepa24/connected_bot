@@ -19,9 +19,9 @@ require (
 )
 
 replace (
-	github.com/sagernet/sing-box => ../sing-box
+	github.com/sagernet/sing-box => ./sbox/singapi/singbox/sing-box
 	//github.com/sagernet/sing => ./sing
-	github.com/sagernet/sing-vmess => ../sing-vmess
+	github.com/sagernet/sing-vmess => ./sbox/singapi/singbox/sing-vmess
 )
 
 require (

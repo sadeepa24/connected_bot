@@ -21,10 +21,17 @@ type Botoptions struct {
 	WebHookServerOption *server.ServerOption    `json:"webhook_server,omitempty"`
 	MGdelBuffer         int                     `json:"delete_buffer,omitempty"`
 	SboxConfPath        string                  `json:"sbox_path,omitempty"`
+	LoggerOption 		LoggerOptions   		`json:"log,omitempty"`
 	//MessageTempPath string                   `json:"template_path,omitempty"`
 
 	Logger     *zap.Logger                         `json:"-"`
 	Ctx        context.Context                     `json:"-"`
 	//Templates  map[string]map[string]botapi.MgItem `json:"-"`
 	Sboxoption option.Options                      `json:"-"`
+}
+
+type LoggerOptions struct {
+	Paths []string `json:"path,omitempty"`
+	Level string `json:"level,omitempty"`
+	Encoding string `json:"encoding,omitempty"`
 }

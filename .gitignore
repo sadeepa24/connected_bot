@@ -23,3 +23,5 @@ cmd/tls
 cmd/configs
 cmd/bot
 cmd/help_paragraph.txt
+
+dist/
