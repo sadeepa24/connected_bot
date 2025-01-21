@@ -517,7 +517,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool) error
 			userVerifycity := user.IsInChannel && user.IsInGroup
 
 			if user.IsCapped && !(user.CappedQuota >= user.CalculatedQuota) {
-				w.logger.Debug("user sestted to capped quota")
 				user.CalculatedQuota = user.CappedQuota
 
 			}
@@ -592,15 +591,17 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool) error
 						user.Configs[i].Download += status.Download
 						user.Configs[i].Upload += status.Upload
 						
-						tx.Create(&db.UsageHistory{
-							Usage:    status.Download + status.Upload,
-							Download: status.Download,
-							Upload:   status.Upload,
-							Date:     time.Now(),
-							UserID:   user.TgID,
-							ConfigID: user.Configs[i].Id,
-						})
-						
+						if status.Download + status.Upload > 0 {
+							tx.Create(&db.UsageHistory{
+								Usage:    status.Download + status.Upload,
+								Download: status.Download,
+								Upload:   status.Upload,
+								Date:     time.Now(),
+								UserID:   user.TgID,
+								ConfigID: user.Configs[i].Id,
+							})
+						}
+
 					}
 				} else if user.Configs[i].Active {
 					if (user.Configs[i].Quota - user.Configs[i].Usage) <= 0 {
@@ -884,25 +885,19 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context) (*preprosessd, e
 	overview := w.ctrl.Overview
 
 	var (
-		download = C.Bwidth(0)
-		upload = C.Bwidth(0)
+		month_usage = C.Bwidth(0)
 		alltime = C.Bwidth(0)
 		oerr error
 	)
 
-	if err := w.db.Model(&db.Config{}).Select("COALESCE(SUM(download), 0)").Scan(&download).Error; err != nil {
-		overview.Mu.RLock()
-		download = overview.DownLoad
-		overview.Mu.RUnlock()
-		oerr = err
-	}
-	if err := w.db.Model(&db.Config{}).Select("COALESCE(SUM(upload), 0)").Scan(&upload).Error; err != nil {
-		overview.Mu.RLock()
-		upload = overview.Upload
-		overview.Mu.RUnlock()
-		oerr = err
-	}
+
 	if err := w.db.Model(&db.User{}).Select("COALESCE(SUM(all_time_usage), 0)").Scan(&alltime).Error; err != nil {
+		overview.Mu.RLock()
+		alltime = overview.AllTime
+		overview.Mu.RUnlock()
+		oerr = err
+	}
+	if err := w.db.Model(&db.User{}).Select("COALESCE(SUM(month_usage), 0)").Scan(&month_usage).Error; err != nil {
 		overview.Mu.RLock()
 		alltime = overview.AllTime
 		overview.Mu.RUnlock()
@@ -914,10 +909,8 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context) (*preprosessd, e
 	overview.DistributedUser = predata.distributeduser
 	overview.VerifiedUserCount = predata.verifiedusercount
 	overview.TotalUser = w.ctrl.Dbusercount.Load()
-	overview.Upload = upload
-	overview.DownLoad = download
-	overview.MonthTotal = download + upload
-	overview.AllTime = alltime + download + upload
+	overview.MonthTotal = month_usage
+	overview.AllTime = alltime
 	overview.BandwidthAvailable = w.ctrl.BandwidthAvelable
 	overview.Restricted = predata.restricted
 	overview.Error = oerr
@@ -933,6 +926,7 @@ func (w *Watchman) sendDbBackup() {
 	dbraw, err := os.Open(w.db.DatabasePath())
 	if err != nil {
 		w.logger.Error("errored when reading database for backup create", zap.Error(err))
+		return
 	}
 	defer dbraw.Close()
 
@@ -950,12 +944,14 @@ func (w *Watchman) sendDbBackup() {
 	})
 	if err != nil {
 		w.logger.Error("request making failed" +  err.Error())
+		return
 	}
 	
 	apires, err := w.botapi.SendRawReq(req)
 	
 	if err != nil {
 		w.logger.Error("request send failed when uploading backup database ", zap.Error(err))
+		return
 	}
 	if !apires.Ok {
 		w.logger.Error("Bad Response From Telegram " + apires.Description)

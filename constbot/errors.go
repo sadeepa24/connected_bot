@@ -20,7 +20,7 @@ var ErrDbnotfound = errors.New("user cannot find in db")
 var ErrDbopration = errors.New("database opration or transaction failed")
 
 var ErrRequest = errors.New("request errored")
-var ErrClientRequestFail = errors.New("requests send failed")
+var ErrClientRequestFail = errors.New("requests send failed on client side")
 var ErrResponseMissmatch = errors.New("telegram responsed diffrent status code")
 
 var ErrRead = errors.New("body reading error")
