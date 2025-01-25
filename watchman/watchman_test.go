@@ -263,7 +263,7 @@ func TestWatchman(t *testing.T) {
 
 	predata := preconfigure(testctx)
 
-	watchman := watchman.New(testctx, predata.ctrl, predata.botapi, predata.db, predata.watchmaconfig, zLogger, predata.msgstore)
+	watchman, _ := watchman.New(testctx, predata.ctrl, predata.botapi, predata.db, predata.watchmaconfig, zLogger, predata.msgstore)
 
 	defer watchman.Close()
 	if err := watchman.Start(); err != nil {

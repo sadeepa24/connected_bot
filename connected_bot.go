@@ -51,8 +51,13 @@ func New(options Botoptions) (*ConnectedBot, error) {
 	if err != nil {
 		return nil, err
 	}
-	watchman := watchman.New(options.Ctx, ctrl, newbotapi, newdb, options.Watchman, options.Logger, msgstore)
+	watchman, err := watchman.New(options.Ctx, ctrl, newbotapi, newdb, options.Watchman, options.Logger, msgstore)
+	if err != nil {
+		return nil, err
+	}
+
 	srvs, err := service.GetallService(options.Ctx, options.Logger, ctrl, newbotapi, msgstore)
+
 	if err != nil {
 		return nil, err
 	}

@@ -60,7 +60,11 @@ func New(ctx context.Context,
 	logger *zap.Logger,
 	mgstore *botapi.MessageStore,
 
-) *Watchman {
+) (*Watchman, error) {
+
+	if config == nil {
+		config = &Watchmanconfig{}
+	}
 
 	if config.Delbuffer <= 0 {
 		config.Delbuffer = 10
@@ -77,7 +81,7 @@ func New(ctx context.Context,
 		DeleteQue: make(chan int64, config.Delbuffer),
 		mgstore:   mgstore,
 		//msgque: make(chan *botapi.Msgcommon, config.Msgbuf),
-	}
+	}, nil
 }
 
 func (w *Watchman) Start() error {
