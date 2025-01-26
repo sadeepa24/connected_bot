@@ -893,7 +893,6 @@ func (u *Usersrv) commandCap(upx *update.Updatectx) error {
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		return nil
 
 	}

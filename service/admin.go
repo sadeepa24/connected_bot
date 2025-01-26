@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -38,8 +39,7 @@ type Adminsrv struct {
 	xraywiz *Xraywiz
 	msgstore *botapi.MessageStore
 
-	
-
+	templateEditin *atomic.Bool
 
 
 	adminuser db.User
@@ -65,6 +65,7 @@ func NewAdminsrv(
 		defaultsrv: defaulsrv,
 		logger:   logger,
 		msgstore: msgstore,
+		templateEditin: new(atomic.Bool),
 	}
 
 }
@@ -184,7 +185,7 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx) error {
 
 	switch upx.Update.Message.Command() {
 	case C.CmdUserInfo:
-		return a.getuserinfo(upx)
+		return a.getuserinfo(upx, Messagesession, calls)
 	case C.CmdBrodcast:
 		return a.broadcast(upx)
 	case C.CmdServerInfo:
@@ -198,7 +199,7 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx) error {
 		upx.Cancle()
 		return nil
 	case "manage":
-		return a.manage(upx, Messagesession, calls)
+		return a.manage(Messagesession, calls)
 	case "template":
 		return a.editTemplate(upx, Messagesession, calls)
 	default:
@@ -265,41 +266,11 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx) error {
 	return nil
 }
 
-func (a *Adminsrv) getuserinfo(upx *update.Updatectx) error {
+func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msgsession, calls common.Tgcalls) error {
 	
-	
-	
-	
-	Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
-	
-	//TODO: Create Function That construct below three function
-	alertsender := func(msg string) {
-		Messagesession.SendAlert(msg, nil)
-	}
-	sendreciver := func(msg any) (*tgbotapi.Message, error) {
-		_, err := Messagesession.Edit(msg, nil, "")
-		if err != nil {
-			return nil, err
-		}
-		mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin)
-		if err == nil {
-			Messagesession.Addreply(mg.MessageID)
-		}
-		return mg, err
-	}
-	callbackreciver := func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
-		_, err := Messagesession.Edit(msg, btns, "")
-		if err != nil {
-			return nil, err
-		}
-		return a.callback.GetcallbackContext(upx.Ctx, btns.ID())
-	}
-
-
-
-
-
-
+	alertsender := calls.Alertsender
+	sendreciver := calls.Sendreciver
+	callbackreciver := calls.Callbackreciver
 
 	message, err := sendreciver("send user id or username")
 	if err != nil {
@@ -320,15 +291,11 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx) error {
 		enduserupx.User.User, err = a.ctrl.GetUserById(int64(id))
 	}
 
-	
-
 	if err != nil {
 		Messagesession.SendAlert(fmt.Sprintf("failed fetching target user from db - %s", err.Error()), nil)
 		return nil
 	}
 
-
-	
 	endusersession, err := controller.NewctrlSession(a.ctrl, &enduserupx, false)
 
 	if err != nil {
@@ -849,9 +816,20 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 	// Admin need to restart after editig
 	// I don't add realtime changes due to syncing overhead for small feture, it does not worth
 	
+	
+
+	if a.templateEditin.Swap(true) {
+		calls.Alertsender("Already opend template editor")
+		upx.Cancle()
+		return nil
+	}
+
+	defer a.templateEditin.Swap(false)
+
+	
 
 
-	path := "templates.yaml" //TODO: GetPath Later
+	path := a.msgstore.GetPath() //TODO: GetPath Later
 
 
 	file, err := os.ReadFile(path)
@@ -996,6 +974,9 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 
 			switch callback.Data {
 			case "Add Help Pages":
+
+				//TODO: add later
+				calls.Alertsender("not avbl yet")
 
 
 			case "Add Inline Post":
@@ -1240,7 +1221,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 
 		}
 	}
-
+	Messagesession.DeleteAllMsg()
 	return nil
 
 }
@@ -1255,9 +1236,7 @@ func (a *Adminsrv) RefreshMsgsession() error {
 }
 
 
-func (a *Adminsrv) manage(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
-
-	
+func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
 
 
 	// Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
@@ -1317,6 +1296,19 @@ func (a *Adminsrv) manage(upx *update.Updatectx, Messagesession *botapi.Msgsessi
 
 			switch callback.Data {
 			case "Reset Usage":
+
+				calls.Alertsender("warning: If you Reset Usages New 30Days Cycle Begin From Here")
+				reply, err := calls.Sendreciver("if you want to continue send ok")
+				if err != nil {
+					return err
+				}
+				if reply.Text != "ok" {
+					calls.Alertsender("canceld usage reset")
+					continue mainloop
+				}
+				calls.Alertsender("Usage Reset Added, If you want to undo this You have backups DB")
+				a.ctrl.Addquemg(a.ctx, controller.ForceResetUsage(1))
+				break mainloop
 
 			case "Change Config Settings":
 				alertsender("very carefull when you changing the config, if you make something wrong program will not restart correctly")

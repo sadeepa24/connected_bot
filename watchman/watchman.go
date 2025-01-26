@@ -119,7 +119,7 @@ func (w *Watchman) Start() error {
 	refreshdone := make(chan struct{})
 	go func(ctx context.Context) {
 		//w.ctrl.RefreshUrlTest()
-		err = w.RefreshDb(startrefresh, false)
+		err = w.RefreshDb(startrefresh, false, false)
 		if err != nil {
 			w.logger.Fatal("fatal error db start refresh " + err.Error())
 		}
@@ -141,7 +141,7 @@ func (w *Watchman) Start() error {
 func (w *Watchman) Close() error {
 
 	w.close <- struct{}{} //close chan is not a buffred chan so this opration wait for w.close recive
-	w.RefreshDb(w.ctx, false)
+	w.RefreshDb(w.ctx, false, false)
 	<-w.close
 	w.logger.Debug("watchman closing done")
 	return nil
@@ -184,7 +184,7 @@ update:
 
 			refreshctx, cancle := context.WithCancel(w.ctx)
 
-			err := w.RefreshDb(refreshctx, true)
+			err := w.RefreshDb(refreshctx, true, false)
 			cancle()
 
 			if err != nil {
@@ -205,7 +205,7 @@ update:
 					continue	
 				}
 				refreshctx, cancle := context.WithCancel(w.ctx)
-				err := w.RefreshDb(refreshctx, false)
+				err := w.RefreshDb(refreshctx, false, false)
 				cancle()
 				if err != nil {
 					w.ctrl.DirectMg("refresh failed", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
@@ -215,6 +215,17 @@ update:
 				}
 			case controller.BroadcastSig:
 				//TODO: create broadcaster
+			case controller.ForceResetUsage:
+				refreshctx, cancle := context.WithCancel(w.ctx)
+
+					
+				err := w.RefreshDb(refreshctx, false, true)
+				cancle()
+				if err != nil {
+					w.logger.Error("Usercount Db Refresh Failed Due to: ", zap.Error(err))
+					continue
+				}
+				w.logger.Info("db refresh done")
 			case controller.UserCount:
 				if w.ctrl.CheckLock() {
 					continue	
@@ -223,7 +234,7 @@ update:
 					refreshctx, cancle := context.WithCancel(w.ctx)
 
 					
-					err := w.RefreshDb(refreshctx, false)
+					err := w.RefreshDb(refreshctx, false, false)
 					cancle()
 
 					if err != nil {
@@ -410,7 +421,8 @@ func (w *Watchman) Delmg(delmg int) {
 // refresh member verificity
 // refresh usage to database
 // if docount true CheckkCount will increase by one
-func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool) error {
+// if forceReset true All Usage Will Resets And Checkcount will be zero
+func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, forceReset bool) error {
 	w.ctrl.WatchmanLock() //locking for dbrefresh, all new upx will be paused
 	defer w.ctrl.WatchmanUnlock()
 
@@ -420,7 +432,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool) error
 	var (
 		checkcount = w.ctrl.CheckCount.Load()
 		condcheck  = func() bool {
-			return (checkcount == w.ctrl.ResetCount) && docount
+			return ((checkcount == w.ctrl.ResetCount) && docount) || forceReset
 		}
 		err error
 	)
@@ -461,11 +473,14 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool) error
 	// oldQuota := C.Bwidth(w.ctrl.UserQuota.Swap(newQuota.Int64())) // Old quota which is used to calculate userquota lasttime
 	//w.ctrl.Metadata.Unlock()
 
+	var count int
+
 	w.db.Model(&db.User{}).FindInBatches(&[]db.User{}, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
 		// Retrieve the current batch of records
+		count++
 		var users []db.User
 		tx.Find(&users) // Fetch the current batch of records from tx
-		w.logger.Debug(" start to prosess a batch")
+		w.logger.Debug("start to prosess a batch", zap.Int("from", C.Dbbatchsize * count))
 
 		for _, user := range users {
 			if refreshcontext.Err() != nil {
@@ -731,7 +746,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool) error
 			}
 
 		}
-		w.logger.Debug(" batch prosess done")
+		w.logger.Debug("batch prosess done", zap.Int("from", C.Dbbatchsize * count))
 
 		return nil // Return nil to continue to the next batch
 	},
@@ -772,6 +787,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool) error
 
 	w.lastUserCount = w.ctrl.Dbusercount.Load()
 
+	// it's okay copy db manually here 
+	// all other goroutines won't make db calls while watchman RefreshDb running, it's guranteed 
 	w.sendDbBackup()
 
 

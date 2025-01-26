@@ -326,7 +326,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx) error {
 				PublicDomain: sboxin.Domain,
 				
 				InPort:         sboxin.Port(),
-				InAddr:         sboxin.Laddr(),
+				InAddr:         u.ctrl.DefaultPubip,
 				InInfo:         sboxin.Custom_info,
 				TranstPortType: sboxin.TransortType(),
 				TlsEnabled:     sboxin.TlsIsEnabled(),

@@ -281,7 +281,7 @@ func TestWatchman(t *testing.T) {
 	fmt.Println(datadb.String())
 	fmt.Println(predata.ctrl.CheckCount.Load())
 
-	watchman.RefreshDb(testctx, true)
+	watchman.RefreshDb(testctx, true, false)
 	//inserGiftcoupleV2(predata.ctrl, 1, 3)
 
 	return
@@ -302,7 +302,7 @@ func TestWatchman(t *testing.T) {
 		start++
 		insertVerfied2config(predata.db, int64(start), predata.ctrl, int64(start))
 	}
-	watchman.RefreshDb(testctx, true)
+	watchman.RefreshDb(testctx, true, false)
 
 	//adding 3 unveirifed user
 	tval = start
@@ -326,7 +326,7 @@ func TestWatchman(t *testing.T) {
 	}
 
 	time.Sleep(2 * time.Minute)
-	watchman.RefreshDb(testctx, true)
+	watchman.RefreshDb(testctx, true, false)
 
 }
 

@@ -107,6 +107,7 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 	return cn, nil
 }
 
+type ForceResetUsage uint16
 type UserCount int
 type RefreshSignal uint16
 type BroadcastSig string

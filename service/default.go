@@ -112,6 +112,7 @@ func (d *Defaultsrv) FromserviceExec(upx *update.Updatectx) error {
 }
 
 func (d *Defaultsrv) Droper(upx *update.Updatectx) error {
+	upx.Cancle()
 	if upx.User == nil {
 		return nil
 	}

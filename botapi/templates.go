@@ -137,6 +137,7 @@ func(m *MgItem) ChangeField(field, value string) error {
 
 type MessageStore struct {
 	Templates map[string]*MgItem
+	path string
 }
 
 func NewMessageStore(path string) (*MessageStore, error) {
@@ -185,6 +186,7 @@ func NewMessageStore(path string) (*MessageStore, error) {
 
 	return &MessageStore{
 		Templates: mgmap,
+		path: path,
 	}, nil
 }
 
@@ -466,6 +468,7 @@ func TemplateInit(sender BotAPI, sudoadminID int64, logger *zap.Logger, template
 }
 
 
+func (m *MessageStore) GetPath() string { return m.path }
 
 func (m *MessageStore) GetMessage(name, lang string, obj any) (*Message, error) {
 	if obj == nil {
