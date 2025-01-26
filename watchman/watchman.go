@@ -214,7 +214,19 @@ update:
 					w.ctrl.DirectMg("refresh done", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
 				}
 			case controller.BroadcastSig:
-				//TODO: create broadcaster
+
+				go func ()  {
+					userlist := []int64{}
+					if w.ctrl.GetUserList(&userlist) != nil {
+						w.logger.Error("error while feteching userlist to broadcast msg " + string(unwrapedmg) )
+						return
+					}
+					for _, user := range userlist {
+						w.ctrl.DirectMg(string(unwrapedmg), user, user)
+					}
+				}()
+
+	
 			case controller.ForceResetUsage:
 				refreshctx, cancle := context.WithCancel(w.ctx)
 
