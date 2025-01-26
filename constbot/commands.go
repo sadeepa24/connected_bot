@@ -4,7 +4,7 @@ const (
 	//user service
 	CmdStart      = "start"
 	CmdHelp       = "help"
-	CmdSugess     = "sugess"
+	CmdSugess     = "suggest"
 	CmdContact    = "contact"
 	CmdEvents     = "events"
 	CmdRefer      = "refer"

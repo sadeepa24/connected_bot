@@ -64,6 +64,77 @@ type MgItem struct {
 
 }
 
+func(m *MgItem) ChangeField(field, value string) error {
+	var err error
+	switch field {
+	case "parse_mode":
+		m.ParseMode = value
+	case "include_media":
+		vall, err := strconv.ParseBool(value)
+		if err != nil {
+			return errors.New("value for " + field + " should be bool err - "+ err.Error())
+		}
+		m.Includemed = vall
+	case "skip_text":
+		vall, err := strconv.ParseBool(value)
+		if err != nil {
+			return errors.New("value for " + field + " should be bool err - "+ err.Error())
+		}
+		m.Includemed = vall
+	case "contin_skip_text":
+		vall, err := strconv.ParseBool(value)
+		if err != nil {
+			return errors.New("value for " + field + " should be bool err - "+ err.Error())
+		}
+		m.Includemed = vall
+	case "supercontinue":
+		vall, err := strconv.ParseBool(value)
+		if err != nil {
+			return errors.New("value for " + field + " should be bool err - "+ err.Error())
+		}
+		m.Includemed = vall
+	case "media_skip":
+		vall, err := strconv.ParseBool(value)
+		if err != nil {
+			return errors.New("value for " + field + " should be bool err - "+ err.Error())
+		}
+		m.Includemed = vall
+
+	case "media_type":
+		switch value {
+		case "photo":
+			m.Mediatype = "photo"
+			m.Includemed = true
+		case "video":
+			m.Mediatype = "photo"
+			m.Includemed = true
+		
+		default:
+			return errors.New("only support photos and videos other media does not support, send photo or video keyword")
+		}
+		if m.MediaId == "" && m.AltMediaPath == "" && m.AltMediaUrl == "" {
+			m.Includemed = false
+			return errors.New("to set media type you should set value at least one of thease -  media_id, alt_med_path,alt_med_url ")
+		}
+	case "media_id":
+		m.MediaId = value
+	
+	// TODO: should verify bellow two
+	case "alt_med_path":
+		m.AltMediaPath = value
+	case "alt_med_url":
+		m.AltMediaUrl = value
+
+
+
+	case "msg_template" :
+		m.Msgtmpl = value 
+		
+	}
+	return err
+}
+
+
 type MessageStore struct {
 	Templates map[string]*MgItem
 }
@@ -119,8 +190,10 @@ func NewMessageStore(path string) (*MessageStore, error) {
 
 // this verify that all media can sendble
 func (m *MessageStore) Init(sender BotAPI, sudoadminID int64, logger *zap.Logger) error {
+	/*
 	cacheMap :=  map[string]tgbotapi.Message{}
 	tmplLoop:
+
 	for key, template := range m.Templates {
 		if template.Includemed {
 			//var filecontent []byte
@@ -245,13 +318,154 @@ func (m *MessageStore) Init(sender BotAPI, sudoadminID int64, logger *zap.Logger
 					template.MediaId = message.Video.FileID
 				}
 			}
-
-
 		}
 	}
+	*/
+
+
+	// TODO: uncomment this before push
+	//return TemplateInit(sender, sudoadminID, logger, C.MapPtrToSlicePtr(m.Templates))
+
+
+
+
 
 	return nil
 }
+
+func TemplateInit(sender BotAPI, sudoadminID int64, logger *zap.Logger, templates []*MgItem) error {
+	cacheMap :=  map[string]tgbotapi.Message{}
+	tmplLoop:
+	for key, template := range templates {
+		if template.Includemed {
+			//var filecontent []byte
+			var ( 
+			 	//err error
+			 	toreq io.Reader
+			 	endpoint string	
+			)
+
+			ContentType := "application/json"
+
+			var forcheck string
+
+			if template.AltMediaPath != "" {
+
+				rawfile, err := os.ReadFile(template.AltMediaPath) 
+				if err != nil {
+					logger.Error(err.Error())
+					continue tmplLoop
+				}
+				var (
+					body bytes.Buffer
+				)
+				forcheck = template.AltMediaPath
+				
+				multiparwriter := multipart.NewWriter(&body)
+
+				var (
+					filepart io.Writer
+				)
+
+				switch template.Mediatype {
+				case C.MedPhoto:
+					filepart, err = multiparwriter.CreateFormFile("photo",  strconv.Itoa(key)+".jpg")
+					endpoint = C.ApiMethodSendPhoto
+				case C.MedVideo:
+					filepart, err = multiparwriter.CreateFormFile("video",  strconv.Itoa(key)+".mp4")
+					endpoint = C.ApiMethodSendVid
+				default:
+					continue tmplLoop
+				}
+
+				if err != nil {
+					logger.Error(err.Error())
+					continue tmplLoop
+				}
+				if _, err = filepart.Write(rawfile); err != nil {
+					logger.Error(err.Error())
+					continue tmplLoop
+				}
+
+				err = multiparwriter.WriteField("chat_id", strconv.Itoa(int(sudoadminID)))
+				if err != nil {
+					logger.Error(err.Error())
+					continue tmplLoop
+				}
+
+				multiparwriter.Close()
+				toreq = &body
+				ContentType = multiparwriter.FormDataContentType()
+
+			} else if template.AltMediaUrl != "" {
+				mg := &Msgcommon{
+					Infocontext: &Infocontext{
+						ChatId: sudoadminID,
+					},
+					Meadiacommon: &Meadiacommon{},
+				}
+				
+				switch template.Mediatype {
+				case C.MedPhoto:
+					mg.Photo = template.AltMediaUrl
+					endpoint = C.ApiMethodSendPhoto
+				case C.MedVideo:
+					mg.Video = template.AltMediaUrl
+					endpoint = C.ApiMethodSendVid
+				}
+				forcheck = template.AltMediaUrl
+				toreq = mg
+
+			} else {
+				continue tmplLoop
+			}
+
+			var message tgbotapi.Message
+
+			if mg, ok := cacheMap[forcheck]; ok {
+				message = mg
+			} else {
+
+				ctx, canc := context.WithTimeout(context.Background(), 10  * time.Second)
+				req, err := http.NewRequestWithContext(ctx, http.MethodPost, sender.CreateFullUrl(endpoint), toreq)
+				if err != nil {
+					canc()
+					logger.Error(err.Error())
+					continue tmplLoop
+				}
+				
+				req.Header.Set("Content-Type", ContentType)
+				
+				res, err := sender.SendRawReq(req)
+				canc()
+				if err != nil {
+					logger.Error(err.Error())
+					continue tmplLoop
+				}
+				if err = json.Unmarshal(res.Result, &message); err != nil {
+					
+					logger.Error("marshell error - "+ err.Error())
+					continue tmplLoop
+				}
+				cacheMap[forcheck] = message
+
+			}
+			switch template.Mediatype {
+			case C.MedPhoto:
+				if len(message.Photo) > 0 {
+					template.MediaId = message.Photo[len(message.Photo)-1].FileID
+				}
+			case C.MedVideo:
+				if message.Video != nil {
+					template.MediaId = message.Video.FileID
+				}
+			}
+		}
+	}
+	return nil
+}
+
+
 
 func (m *MessageStore) GetMessage(name, lang string, obj any) (*Message, error) {
 	if obj == nil {

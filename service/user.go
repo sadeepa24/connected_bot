@@ -697,6 +697,10 @@ func (u *Usersrv) commandGift(upx *update.Updatectx) error {
 
 		break
 	}
+
+	//usersend, err := common.ReciveInt(common.Tgcalls{}, max, )
+
+
 	btns := botapi.NewButtons([]int16{1})
 	btns.Addcancle()
 
@@ -723,12 +727,14 @@ func (u *Usersrv) commandGift(upx *update.Updatectx) error {
 			Messagesession.SendAlert("Lol, You can't send Gift You'r self", nil)
 			return nil
 		}
+	} else {
+		if reciver.(int) == int(upx.User.TgID) {
+			Messagesession.SendAlert("Lol, You can't send Gift You'r self", nil)
+			return nil
+		} 
 	}
 
-	if reciver.(int) == int(upx.User.TgID) {
-		Messagesession.SendAlert("Lol, You can't send Gift You'r self", nil)
-		return nil
-	} 
+
 
 
 

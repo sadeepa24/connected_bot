@@ -31,8 +31,8 @@ const (
 
 // CommandStatus
 const (
-	TmpStTotal    string = "tmsttota"
-	TmpStcallback string = "clbackst"
+	TmpStTotal    string = "status"
+	TmpStcallback string = "callback_status"
 )
 
 // cap
@@ -67,11 +67,11 @@ const (
 
 // help
 const (
-	TmpHelpHome         string = "helphome"
-	TmpHelpCmPage       string = "heppage"     // this does not use directly istead TmpPage + pagenum
-	TmpHelpInfoPage     string = "helpinfoage" // this does not use directly istead TmpPage + pagenum
-	TmplHelpBuilderHelp string = "helpbuilderhelp"
-	TmplHelpTuto        string = "helptutorial"
+	TmpHelpHome         string = "help_home"
+	TmpHelpCmPage       string = "help_cmd"     // this does not use directly istead TmpPage + pagenum
+	TmpHelpInfoPage     string = "help_info" // this does not use directly istead TmpPage + pagenum
+	TmplHelpBuilderHelp string = "help_builder"
+	TmplHelpTuto        string = "help_tutorial"
 	TmpAbout            string = "botabout"
 )
 

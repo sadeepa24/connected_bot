@@ -22,6 +22,13 @@ func MapToSlicePtr[T comparable, Y any](in map[T]*Y) []Y {
 	}
 	return ot
 }
+func MapPtrToSlicePtr[T comparable, Y any](in map[T]*Y) []*Y {
+	ot := []*Y{}
+	for _, val := range in {
+		ot = append(ot, val)
+	}
+	return ot
+}
 
 func SliceToMap[T comparable, Y any](in []Y, getkey func(Y) T) map[T]Y {
 	sendmap := make(map[T]Y, len(in))

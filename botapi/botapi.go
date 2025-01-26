@@ -32,6 +32,7 @@ type BotAPI interface {
 	GetMgStore() *MessageStore
 	SetWebhook(webhookurl, secret, ip_addr string, allowd_ob []string) error
 	CreateFullUrl(endpoint string) string
+	GetFile(file_Id string) (io.ReadCloser, error)
 }
 
 type Botapi struct {
@@ -58,6 +59,38 @@ func NewBot(ctx context.Context, token, mainurl string, mgstore *MessageStore) *
 		mgstore: mgstore,
 	}
 }
+func (b *Botapi) GetFile(filed_id string) (io.ReadCloser, error) {
+	res, err := b.Makerequest(b.ctx, "POST", "getFile", CreateReder(struct{
+		File_id string `json:"file_id,omitempty"`
+	}{
+		File_id: filed_id,
+	}))
+	if err != nil {
+		return nil, err
+	}
+
+	if res.Ok {
+		var file = &tgbotapi.File{}
+		err = json.Unmarshal(res.Result, file)
+		if err != nil {
+			return nil, err
+		}
+		if file.FilePath == "" {
+			return nil, errors.New("file path does not avbl")
+		}
+		res, err := b.Client.Get("https://api.telegram.org/file/bot" + b.token + "/" + file.FilePath)
+		if err != nil {
+			return nil, err
+		}
+		if res.StatusCode != http.StatusOK {
+			return nil, errors.New("request diffrent status code - " + res.Status)
+		}
+		return res.Body, nil
+	}
+
+	return nil, errors.New("tg response err " + res.Description)
+}
+
 
 func (b *Botapi) SetWebhook(webhookurl, secret, ip_addr string, allo_updates []string) error {
 	setwebhook := tgbotapi.WebhookInfo{
@@ -82,7 +115,7 @@ func (b *Botapi) CreateFullUrl(endpoint string) string {
 	return  b.mainurl+b.token+"/"+endpoint
 }
 
-// Endpoint should be with out slash "/"
+// Endpoint should be without slash "/"
 func (b *Botapi) Makerequest(reqctx context.Context, method, endpoint string, body io.ReadCloser) (*tgbotapi.APIResponse, error) {
 	if reqctx == nil {
 		reqctx = b.ctx
@@ -433,15 +466,21 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 			name = upmg.TemplateName
 
 		}
-		message, err := m.msgstore.GetMessage(name, m.lang, msg)
 		
-		if err != nil {
-			if errors.Is(err, C.ErrMsgDisabled) {
-				return nil, err
+		var (
+			message *Message
+			err error
+			ok bool
+		)
+		if message, ok = msg.(*Message); !ok {
+			if message, err = m.msgstore.GetMessage(name, m.lang, msg); err != nil {
+				if errors.Is(err, C.ErrMsgDisabled) {
+					return nil, err
+				}
+				return nil, C.ErrTmplRender
 			}
-			return nil, C.ErrTmplRender
 		}
-
+		
 		if message.Includemed {
 			if m.lastsendmeadia && !(m.alertsent || m.replyrecived) {
 				sendmsg.Meadiacommon = &Meadiacommon{

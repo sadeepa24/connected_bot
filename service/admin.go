@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/netip"
 	"os"
 	"runtime"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sadeepa24/connected_bot/botapi"
+	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
@@ -22,6 +25,7 @@ import (
 	"github.com/sadeepa24/connected_bot/update/bottype"
 	"github.com/sagernet/sing-vmess/vless"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 type Adminsrv struct {
@@ -143,8 +147,41 @@ func (a *Adminsrv) Canhandle(upx *update.Updatectx) (bool, error) {
 func (a *Adminsrv) Commandhandler(upx *update.Updatectx) error {
 	if upx.Update.Message == nil {
 		return nil
-	} 
+	}
+
+	upx.Ctx, upx.Cancle = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
+
+	Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
+
+	calls := common.Tgcalls{
+		//TODO: Create Function That construct below three function
+		Alertsender: func(msg string) {
+			Messagesession.SendAlert(msg, nil)
+		},
+		Sendreciver: func(msg any) (*tgbotapi.Message, error) {
+			_, err := Messagesession.Edit(msg, nil, "")
+			if err != nil {
+				return nil, err
+			}
+			mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin)
+			if err == nil {
+				Messagesession.Addreply(mg.MessageID)
+			}
+			return mg, err
+		},
+		Callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
+			_, err := Messagesession.Edit(msg, btns, "")
+			if err != nil {
+				return nil, err
+			}
+			return a.callback.GetcallbackContext(upx.Ctx, btns.ID())
+		},
+	}
+
 	
+	
+	
+
 	switch upx.Update.Message.Command() {
 	case C.CmdUserInfo:
 		return a.getuserinfo(upx)
@@ -160,8 +197,12 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx) error {
 		a.ctrl.Addquemg(upx.Ctx, controller.RefreshSignal(1))
 		upx.Cancle()
 		return nil
-	case "meanage":
-		return a.meanage(upx)
+	case "manage":
+		return a.manage(upx, Messagesession, calls)
+	case "template":
+		return a.editTemplate(upx, Messagesession, calls)
+	default:
+		upx.Cancle()
 	}
 
 	return nil
@@ -227,7 +268,7 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx) error {
 func (a *Adminsrv) getuserinfo(upx *update.Updatectx) error {
 	
 	
-
+	
 	
 	Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
 	
@@ -587,9 +628,11 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx) error {
 				Usersession:    endusersession,
 				wiz:            a.xraywiz,
 				Messagesession: Messagesession,
-				alertsender: alertsender,
-				sendreciver: sendreciver,
-				callbackreciver: callbackreciver,
+				Tgcalls: common.Tgcalls{
+					Alertsender: alertsender,
+					Sendreciver: sendreciver,
+					Callbackreciver: callbackreciver,
+				},
 			}
 
 			conformbtns := botapi.NewButtons([]int16{1, 1})
@@ -801,6 +844,409 @@ func (a *Adminsrv) overview(upx *update.Updatectx) error {
 	return nil
 }
 
+func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	// This Editing Does Not Affect Running Templates Due Running Template is in memory, only loads at start up 
+	// Admin need to restart after editig
+	// I don't add realtime changes due to syncing overhead for small feture, it does not worth
+	
+
+
+	path := "templates.yaml" //TODO: GetPath Later
+
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		calls.Alertsender("template file opening err - " + err.Error())
+		return nil
+	}
+	
+	var Templates map[string]map[string]*botapi.MgItem
+
+	switch {
+	case strings.Contains(path, ".yaml"):
+		err = yaml.Unmarshal(file, &Templates)
+	case strings.Contains(path, ".json"):
+		err = json.Unmarshal(file, &Templates)
+	}
+	if err != nil {
+		calls.Alertsender("Unmarshaling err - " + err.Error())
+		return nil
+	}
+	nameslice := C.MapToSliceKey(Templates)
+	btnpereach := 16
+	maxpages := len(nameslice)/btnpereach
+	currentpage := 0
+	btns := botapi.NewButtons([]int16{2})
+	var (
+		callback *tgbotapi.CallbackQuery
+		replymg *tgbotapi.Message
+		state int16
+	)
+
+	defer func ()  {
+		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			calls.Alertsender("file opening err - " + err.Error())
+		}
+
+		output, err := yaml.Marshal(Templates)
+		if err != nil {
+			calls.Alertsender("yaml marshling err - " + err.Error())
+		}
+
+		_, err = file.Write(output)
+		if err != nil {
+			calls.Alertsender("file writing err - " + err.Error())
+		}
+		if err = file.Close(); err != nil {
+			calls.Alertsender("file closing err - " + err.Error())
+		}
+		calls.Alertsender("succesfully save new template, you need to restart program to take effect new template")
+	}()
+
+
+	selecttmpl:
+	for {
+		btns.Reset([]int16{2})
+
+		switch state {
+		case 0:
+			btns.AddBtcommon("Upload Media")
+			btns.AddBtcommon("Create New Template")
+			btns.AddBtcommon("Edit Templates")
+			btns.AddClose(false)
+	
+			if callback, err = calls.Callbackreciver("select option", btns); err != nil {
+				return err
+			}
+	
+			switch callback.Data {
+			case "Upload Media":
+				state = 1
+			case "Create New Template":
+				state = 2
+			case "Edit Templates":
+				state = 3
+			case C.BtnClose:
+				break selecttmpl
+			}
+
+		case 1: //Upload Img
+			
+			replymg, err = calls.Sendreciver("send you'r media (only support photo or video),  media should below 20MB")
+			if err != nil {
+				return err
+			}
+			var fileid string
+		
+			switch {
+			case replymg.Document != nil:
+				fileid = replymg.Document.FileID
+			case replymg.Video != nil:
+				fileid = replymg.Video.FileID
+			case replymg.Photo != nil:
+				if len(replymg.Photo) == 0 {
+					continue selecttmpl
+				} 
+				fileid = replymg.Photo[len(replymg.Photo)-1].FileID
+
+			}
+
+			replymg, err = calls.Sendreciver("send new file name for the file name with extetion ex - example.mp4")
+
+			filename := replymg.Text
+
+			file, err := a.botapi.GetFile(fileid)
+				
+			if err != nil {
+				calls.Alertsender("file reciving err - " + err.Error())
+				continue selecttmpl
+			}
+			endfile, err := os.OpenFile("./res/" + filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+			
+			if err != nil {
+				calls.Alertsender("opening new file err" + err.Error())
+				endfile.Close()
+				file.Close()
+				continue selecttmpl
+			}
+
+			_, err = io.Copy(endfile, file)
+
+			if err != nil {
+				endfile.Close()
+				file.Close()
+				calls.Alertsender("file saving err" + err.Error())
+				continue selecttmpl
+			}
+			endfile.Close()
+			file.Close()
+			state = 0
+
+
+		case 2:
+			btns.AddBtcommon("Add Help Pages")
+			btns.AddBtcommon("Add Inline Post")
+			btns.AddCloseBack()
+
+			callback, err  = calls.Callbackreciver("select option", btns)
+			if err != nil {
+				return err
+			}
+
+			switch callback.Data {
+			case "Add Help Pages":
+
+
+			case "Add Inline Post":
+				replymg, err = calls.Sendreciver("Send Name for New template")
+				if err != nil {
+					return err
+				}
+				if _, ok := Templates[replymg.Text]; ok {
+					calls.Alertsender("their is alredy template with this name try again")
+					continue selecttmpl
+				}
+				Templates[replymg.Text] = map[string]*botapi.MgItem{
+					"en": {
+
+					},
+				}
+				calls.Alertsender("New Template Created, Now You can Edit It, Also You have to Add this Template Name Into config.json's metadata.inline_post inorder to recive")
+
+			case C.BtnClose:
+				return nil
+			case C.BtnBack:
+				state = 0
+
+
+			}
+
+
+		case 3:
+			btns.Reset([]int16{2})
+			if currentpage < maxpages {
+				for _, name := range  nameslice[(btnpereach*currentpage): (btnpereach*currentpage)+btnpereach] {
+					btns.AddBtcommon(name)
+				}
+			} else {
+				for _, name := range  nameslice[(btnpereach*currentpage): (len(nameslice) - (btnpereach*currentpage))  + (btnpereach*currentpage)] {
+					btns.AddBtcommon(name)
+				}
+			}
+			if currentpage+1 < maxpages || (currentpage+1 == maxpages &&  (len(nameslice)%btnpereach > 0)){
+				btns.AddBtcommon("next")
+			}
+			btns.AddCloseBack()
+	
+			if callback, err = calls.Callbackreciver("select template", btns); err != nil {
+				return err
+			}
+	
+			switch callback.Data {
+			case "next":
+				currentpage++
+				continue selecttmpl
+			case "back":
+				if currentpage == 0 {
+					state = 0
+					continue selecttmpl
+				}
+				currentpage--
+				continue selecttmpl
+			case C.BtnClose:
+				
+				rep, err := calls.Sendreciver("you'r current template will save,  do you want to continue, then send ok")
+				if err != nil {
+					return err
+				}
+			
+				if rep.Text != "ok" {
+					calls.Alertsender("Closing Canceld Continue Editing")
+				}
+				calls.Alertsender("Editor Closed, Saving Template..")
+	
+				break selecttmpl
+			}
+	
+	
+			btns.Reset([]int16{2})
+	
+			selectedtemplate := Templates[callback.Data]
+	
+			for langcode := range selectedtemplate {
+				btns.AddBtcommon(langcode)
+			}
+	
+			btns.Addbutton("create lang template","crtt", "")
+	
+			if callback, err = calls.Callbackreciver("select langcode or create template using new langcode", btns); err != nil {
+				return err
+			}
+	
+	
+			var replymg *tgbotapi.Message
+	
+			if callback.Data == "crtt" {
+				replymg, err = calls.Sendreciver("send new langcode, if you send exting code current item will replace with new template boilerplate")
+				if err != nil {
+					return err
+				}
+				selectedtemplate[replymg.Text] = &botapi.MgItem{}
+				callback.Data = replymg.Text
+			}
+	
+			selectedItem := selectedtemplate[callback.Data]
+	
+	
+			editable := []string{
+				"msg_template", 
+				"alt_med_url", 
+				"parse_mode", 
+				"include_media", 
+				"media_type", 
+				"media_id", 
+				"continue_media", 
+				"disabled", 
+				"skip_text", 
+				"contin_skip_text", 
+				"alt_med_path",  
+				"supercontinue", 
+	
+			}
+	
+			var mode = "prv"
+			
+	
+			var msghook = func (original *botapi.MgItem) any {
+				switch mode {
+				case "dt":
+					kk, err := json.MarshalIndent(original, "", " ")
+					if err != nil {
+						return "Errpr"		
+					}
+					return botapi.Htmlstring("<pre>" + string(kk) + "</pre>")
+				default:
+					return &botapi.Message{
+						Msg: original.Msgtmpl            ,
+						MediaId: original.MediaId,
+						MedType: original.Mediatype,
+						ParseMode: original.ParseMode,
+						Includemed: original.Includemed,
+						ContinueMed: false,
+						SuperContinue: false,
+					}
+				}
+	
+				
+			}
+	
+			itemchange:
+			for {
+				
+				
+				btns.Reset([]int16{2})
+	
+				switch mode {
+				case "prv":
+					btns.Addbutton("As Detail 💠", "modebt", "")
+				case "dt":
+					btns.Addbutton("As Preview 💠", "modebt", "")
+				}
+				for _, editname := range editable {
+					btns.AddBtcommon(editname)
+				}
+				btns.AddBtcommon("Done")
+
+	
+				if callback, err  = calls.Callbackreciver(msghook(selectedItem), btns); err != nil {
+					if errors.Is(err, C.ErrContextDead) {
+						return err
+					}
+					mode = "dt"
+					calls.Alertsender("tg rendering error template check you'r template again err " + err.Error())
+					continue itemchange
+					
+				}
+	
+				switch callback.Data {
+				case "modebt":
+					switch mode {
+					case "prv":
+						mode = "dt"
+					case "dt":
+						mode = "prv"	
+					}
+				case "Done":
+					break itemchange
+				case "parse_mode":	
+					btns.Reset([]int16{2})
+					btns.AddBtcommon("html")
+					btns.AddBtcommon("markdown")
+					btns.AddBtcommon("markdown2")
+					btns.AddBtcommon("none")
+	
+	
+					callback, err = calls.Callbackreciver("Select parse mode", btns)
+					if err != nil {
+						return err
+					}
+					switch callback.Data {
+					case "html":
+						selectedItem.ChangeField("parse_mode", "HTML")
+					case "markdown":
+						selectedItem.ChangeField("parse_mode", "Markdown")
+					case "markdown2":
+						selectedItem.ChangeField("parse_mode", "MarkdownV2")
+					default:
+						selectedItem.ChangeField("parse_mode", "")
+					}
+				case "alt_med_path":
+					dirs, err := os.ReadDir("./res")
+					if err != nil {
+						continue itemchange
+					}
+
+					s := " Select Name From Below (All Files In res Folder) \n\n"
+
+					for _, dir := range dirs {
+						s = s + dir.Name() + "\n"
+					}
+
+					replymg, err = calls.Sendreciver(s)
+
+					if err != nil {
+						return err
+					}
+					if err = selectedItem.ChangeField("alt_med_path", "./res/"+replymg.Text); err != nil {
+						calls.Alertsender(" field changing failed err - "+ err.Error())
+					}
+
+				default:
+					value, err := calls.Sendreciver("send you'r new value for, send /cancel to cancel " + callback.Data)
+					if err != nil {
+						return err
+					}
+					if value.Text == "/cancel" {
+						continue itemchange
+					}
+					if err = selectedItem.ChangeField(callback.Data, value.Text); err != nil {
+						calls.Alertsender(" field changing failed err - "+ err.Error())
+					}
+	
+				}
+	
+			}
+
+		}
+	}
+
+	return nil
+
+}
+
+
+
 //TODO: edit templates. edit configs, edit usermsgs, make restarts
 // after change of config, it should restart program
 
@@ -809,42 +1255,40 @@ func (a *Adminsrv) RefreshMsgsession() error {
 }
 
 
-func (a *Adminsrv) meanage(upx *update.Updatectx) error {
+func (a *Adminsrv) manage(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
 
-	upx.Ctx, upx.Cancle = context.WithTimeout(a.ctx, 30 * time.Minute)
-	defer upx.Cancle() // user should cancel session
-
-
-	Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
 	
-	//TODO: Create Function That construct below three function
-	alertsender := func(msg string) {
-		Messagesession.SendAlert(msg, nil)
-	}
-	sendreciver := func(msg any) (*tgbotapi.Message, error) {
-		_, err := Messagesession.Edit(msg, nil, "")
-		if err != nil {
-			return nil, err
-		}
-		mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin)
-		if err == nil {
-			Messagesession.Addreply(mg.MessageID)
-		}
-		return mg, err
-	}
-	callbackreciver := func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
-		_, err := Messagesession.Edit(msg, btns, "")
-		if err != nil {
-			return nil, err
-		}
-		return a.callback.GetcallbackContext(upx.Ctx, btns.ID())
-	}
 
 
-	_ = sendreciver
-
-
-
+	// Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
+	
+	// //TODO: Create Function That construct below three function
+	// alertsender := func(msg string) {
+	// 	Messagesession.SendAlert(msg, nil)
+	// }
+	// sendreciver := func(msg any) (*tgbotapi.Message, error) {
+	// 	_, err := Messagesession.Edit(msg, nil, "")
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin)
+	// 	if err == nil {
+	// 		Messagesession.Addreply(mg.MessageID)
+	// 	}
+	// 	return mg, err
+	// }
+	// callbackreciver := func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
+	// 	_, err := Messagesession.Edit(msg, btns, "")
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	return a.callback.GetcallbackContext(upx.Ctx, btns.ID())
+	// }
+	callbackreciver := calls.Callbackreciver
+	sendreciver := calls.Sendreciver
+	alertsender := calls.Alertsender
+	
+	
 	btns := botapi.NewButtons([]int16{2})
 
 
@@ -862,10 +1306,7 @@ func (a *Adminsrv) meanage(upx *update.Updatectx) error {
 		switch state {
 		case 0:
 			btns.AddBtcommon("Change Config Settings")
-			btns.AddBtcommon("Singbox Config Change")
-			btns.AddBtcommon("edit templates")
-			btns.AddBtcommon("edit usermsg")
-			
+			btns.AddBtcommon("Reset Usage")
 			btns.Addbutton("🔴 Restart", "Restart", "")
 			btns.AddClose(true)
 			
@@ -875,13 +1316,11 @@ func (a *Adminsrv) meanage(upx *update.Updatectx) error {
 			}
 
 			switch callback.Data {
+			case "Reset Usage":
+
 			case "Change Config Settings":
 				alertsender("very carefull when you changing the config, if you make something wrong program will not restart correctly")
 				state = 1
-			// case "edit templates":
-			// 	state = 2
-			// case "edit usermsg":
-			// 	state = 3
 			case "Restart":
 				Messagesession.DeleteAllMsg()
 				err = sendSIGHUP()
@@ -922,7 +1361,7 @@ func (a *Adminsrv) meanage(upx *update.Updatectx) error {
 				continue
 			case "Replace":
 				//TODO:ADD warning
-				newcont, err := sendreciver("warning: you must send correct config if program will not restart correctly, also you have to restart program to take effect new config  send new config")
+				newcont, err := sendreciver("warning: you must send correct config, if not program will not restart correctly, also you have to restart program to take effect new config,  send new config")
 				if err != nil {
 					break mainloop
 
@@ -941,15 +1380,9 @@ func (a *Adminsrv) meanage(upx *update.Updatectx) error {
 				state = 0
 
 			}
-			
-			
-
 
 		case 2:
-			//a.msgstore.
 
-
-		case 3:
 
 		default:
 			Messagesession.DeleteAllMsg()

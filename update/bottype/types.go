@@ -71,8 +71,8 @@ type UsageHistory struct {
 
 // Upload and Download should include today values
 type FullUsage struct {
-	Uploadtd   C.Bwidth
-	Downloadtd C.Bwidth
+	Uploadtd   C.Bwidth // Upload Until Last Refresh
+	Downloadtd C.Bwidth 
 	Download   C.Bwidth
 	Upload     C.Bwidth
 }

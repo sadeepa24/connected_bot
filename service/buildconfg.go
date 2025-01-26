@@ -998,9 +998,11 @@ func (b *BuildState) dnsrules() error {
 			return err
 		}
 		rule, err := CreateRule(common.OptionExcutors{
-			Callbackreciver: b.callbackreciver,
+			Tgcalls: common.Tgcalls{
+				Callbackreciver: b.callbackreciver,
 			Sendreciver:     b.sendreciver,
 			Alertsender:     b.alertsender,
+			},
 			// Upx:             b.upx, //does not reqire upx
 			MessageSession:  b.Messagesession,
 			Ctrl:            b.wiz.ctrl,
@@ -1210,10 +1212,12 @@ func (b *BuildState) ruleSetAdd() error {
 		return nil
 	case "create rule set":
 		ruleset, err := CreateRuleSet(common.OptionExcutors{
-			Callbackreciver: b.callbackreciver,
 			MessageSession: b.Messagesession,
-			Sendreciver: b.sendreciver,
-			Alertsender: b.alertsender,
+			Tgcalls: common.Tgcalls{
+				Callbackreciver: b.callbackreciver,
+				Sendreciver:     b.sendreciver,
+				Alertsender:     b.alertsender,
+			},
 			Btns: b.btns,
 			Ctrl: b.wiz.ctrl,
 
@@ -1465,9 +1469,11 @@ func (b *BuildState) ruleAdd() error {
 		}
 
 		rule, err := CreateRule(common.OptionExcutors{
-			Callbackreciver: b.callbackreciver,
-			Sendreciver:     b.sendreciver,
-			Alertsender:     b.alertsender,
+			Tgcalls: common.Tgcalls{
+				Callbackreciver: b.callbackreciver,
+				Sendreciver:     b.sendreciver,
+				Alertsender:     b.alertsender,
+			},
 			// Upx:             b.upx, does not require upx
 			MessageSession:  b.Messagesession,
 			Ctrl:            b.wiz.ctrl,

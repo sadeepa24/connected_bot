@@ -115,7 +115,8 @@ func (u *Xraywiz) Commandhandler(cmd string, upx *update.Updatectx) error {
 	case C.CmdBuild:
 		return u.commandBuildV2(upx)
 	default:
-		u.logger.Warn("unknown CMD Recived")
+		u.logger.Warn("unknown CMD Recived" + upx.Update.Info())
+		upx.Cancle()
 		upx = nil //drop
 		return nil
 	}
@@ -146,27 +147,33 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx) error {
 		Usersession:    Usersession,
 		MessageSession: Messagesession,
 		Btns:           botapi.NewButtons([]int16{2}),
-		Sendreciver: func(msg any) (*tgbotapi.Message, error) {
-			if msg != nil {
-				if _, err := Messagesession.Edit(msg, nil, ""); err != nil {
+		Tgcalls: common.Tgcalls{
+			
+			Callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
+				_, err := Messagesession.Edit(msg, btns, "")
+				if err != nil {
 					return nil, err
 				}
-			}
-			mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
-			if err == nil {
-				Messagesession.Addreply(mg.MessageID)
-			}
-			return mg, err
-		},
-		Callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
-			_, err := Messagesession.Edit(msg, btns, "")
-			if err != nil {
-				return nil, err
-			}
-			return u.callback.GetcallbackContext(upx.Ctx, btns.ID())
+				return u.callback.GetcallbackContext(upx.Ctx, btns.ID())
+			},
+			Alertsender: func(msg string) { Messagesession.SendAlert(msg, nil) },
+			Sendreciver: func(msg any) (*tgbotapi.Message, error) {
+				if msg != nil {
+					if _, err := Messagesession.Edit(msg, nil, ""); err != nil {
+						return nil, err
+					}
+				}
+				mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
+				if err == nil {
+					Messagesession.Addreply(mg.MessageID)
+				}
+				return mg, err
+			},
 		},
 		Logger: u.logger,
-		Alertsender: func(msg string) { Messagesession.SendAlert(msg, nil) },
+		
+	
+
 	}
 
 	opts.Btns.Reset([]int16{2})

@@ -163,11 +163,19 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 		return nil
 	}
 
-	fusage := Usersession.GetFullUsage()
+	fusage := Usersession.GetFullUsage() 
 	var reduce C.Bwidth
+
+	// checks whether user has usage of deleted configs
+	// reduce will be that deleted config's usage
 	if upx.User.MonthUsage+fusage.Downloadtd+fusage.Uploadtd != fusage.Download+fusage.Upload {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCrQuotaNote), nil)
 		reduce = upx.User.MonthUsage + fusage.Downloadtd + fusage.Uploadtd - fusage.Download + fusage.Upload
+	}
+
+	if Usersession.LeftQuota() - reduce <= 0 {
+		Messagesession.SendAlert(C.GetMsg(C.MsgNoQuota), nil)
+		return nil
 	}
 
 	if _, err = Messagesession.Edit(struct {
@@ -180,49 +188,8 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 		return err
 	}
 
-	var (
-		quotacalc      func() error
-		quotafroconfig int
-		retry          int16
-		replymeassage  *tgbotapi.Message
-	)
-
-	quotacalc = func() error {
-		retry++
-		if upx.Ctx.Err() != nil {
-			Messagesession.SendAlert(C.GetMsg(C.MsgContextDead), nil)
-			return C.ErrContextDead
-		}
-
-		if retry > 5 {
-			Messagesession.EditText(C.GetMsg(C.Msgretryfail), nil)
-			return nil
-		}
-
-		if replymeassage, err = opts.Sendreciver(nil); err != nil {
-			return err
-		}
-		Messagesession.Addreply(replymeassage.MessageID)
-
-		quotafroconfig, err = strconv.Atoi(replymeassage.Text)
-		if err != nil {
-			Messagesession.SendNew(C.GetMsg(C.MsgValidInt), nil, "")
-			return quotacalc()
-		}
-
-		if quotafroconfig <= 0 {
-			Messagesession.SendAlert("cannot be 0 or minus ", nil)
-			return quotacalc()
-		}
-
-		if C.Bwidth(quotafroconfig).GbtoByte() > (Usersession.LeftQuota() - reduce) {
-			Messagesession.SendAlert("you can't add more quota than your limit "+(Usersession.LeftQuota()-reduce).BToString(), nil)
-			return quotacalc()
-		}
-		return nil
-	}
-
-	if err = quotacalc(); err != nil {
+	quotafroconfig, err := common.ReciveBandwidth(opts.Tgcalls, (Usersession.LeftQuota() - reduce), 0 )
+	if err != nil {
 		return err
 	}
 
@@ -230,74 +197,21 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 		return err
 	}
 
-	var getName func() error
-	var confName string
-
-	getName = func() error {
-		if replymeassage, err = opts.Sendreciver(nil); err != nil {
-			return err
-		}
-		Messagesession.Addreply(replymeassage.MessageID)
-		if replymeassage.IsCommand() {
-			Messagesession.SendNew(C.GetMsg(C.MsgValidName), nil, "")
-			return getName()
-		}
-		confName = replymeassage.Text
-		if replymeassage.Text == "" {
-			confName = "noname"
-		}
-		return nil
-
-	}
-
-	if err = getName(); err != nil {
-		Messagesession.DeleteAllMsg()
-		if !errors.Is(err, C.ErrContextDead) {
-			Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-		}
+	confName, err := common.ReciveString(opts.Tgcalls)
+	if err != nil {
 		return err
 	}
-
-	var LoginLimit int
-	retry = 0
+	
 	if _, err := Messagesession.EditText(C.GetMsg(C.MsgCrLogin), nil); err != nil {
 		Messagesession.DeleteAllMsg()
 		Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
 		return err
 	}
 
-	for {
-		if upx.Ctx.Err() != nil {
-			return C.ErrContextDead
-		}
+	LoginLimit, err := common.ReciveInt(opts.Tgcalls, C.MaxLoginLimit, 0)
 
-		if retry > 5 {
-			Messagesession.SendAlert(C.GetMsg(C.Msgretryfail), nil)
-			return nil
-		}
-
-		if replymeassage, err = opts.Sendreciver(nil); err != nil {
-			return err
-		}
-
-		Messagesession.Addreply(replymeassage.MessageID)
-
-		if replymeassage == nil {
-			continue
-		}
-
-		if LoginLimit, err = strconv.Atoi(replymeassage.Text); err != nil {
-			Messagesession.SendAlert(C.GetMsg(C.MsgValidInt), nil)
-			continue
-		}
-
-		if LoginLimit > C.MaxLoginLimit || LoginLimit <= 0 {
-			Messagesession.SendAlert(C.GetMsg(C.MsgCrLoginwarn), nil)
-			continue
-		}
-
-		break
-
+	if err != nil {
+		return err
 	}
 
 	config, err := Usersession.AddNewConfig(int16(inID), int16(outID), C.Bwidth(quotafroconfig).GbtoByte(), int16(LoginLimit), confName)

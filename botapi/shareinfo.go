@@ -155,3 +155,37 @@ type UpMessage struct {
 
 
 type Filesend io.Reader
+
+type BotReader struct {
+	RealOb any
+	called bool
+	content []byte
+}
+
+func (m *BotReader) Read(p []byte) (int, error) {
+	var err error
+	if !m.called {
+		m.content, err = json.Marshal(m.RealOb)
+		if err != nil {
+			return 0, err
+		}
+		m.called = true
+	}
+	n := copy(p, m.content)
+	m.content = m.content[n:]
+	if len(m.content) == 0 {
+		return n, io.EOF
+	}
+	return n, nil
+}
+
+func (m *BotReader) Close() error {
+	return nil
+}
+
+func CreateReder(botob any) io.ReadCloser {
+	return &BotReader{
+		RealOb: botob,
+	}
+}
+

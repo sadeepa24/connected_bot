@@ -97,6 +97,8 @@ var (
 	MsgCrOuterr string = "❌ The selected outbound configuration has a fatal error."
 
 	MsgCrQuotaNote string = "⚠️ Your current quota may be higher than what you can add to this configuration. This happens because your total usage for the month doesn't match the usage of existing configurations, which could be due to the deletion of a configuration."
+
+	MsgNoQuota = "You Don't Have Available Quota To create a new config, if you want to create a new config, you can change the quota of the existing config or delete"
 )
 
 // Command Status
@@ -381,5 +383,6 @@ func overide() {
 
 	MsgQuotawarnlow = "MsgQuotawarnlow"
 	MsgQuotawarnzero = "MsgQuotawarnzero"
+	MsgNoQuota = "MsgNoQuota"
 
 }

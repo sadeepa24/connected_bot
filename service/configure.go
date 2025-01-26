@@ -28,9 +28,7 @@ type configState struct {
 
 	Usersession *controller.CtrlSession
 
-	sendreciver     common.Sendreciver
-	callbackreciver common.Callbackreciver
-	alertsender     common.Alertsender
+	common.Tgcalls
 
 	lastconfig *db.Config
 
@@ -82,7 +80,7 @@ func (c *configState) home() error {
 	}
 	c.btns.AddClose(true)
 
-	if callback, err = c.callbackreciver(botapi.UpMessage{
+	if callback, err = c.Callbackreciver(botapi.UpMessage{
 		Template: struct {
 			*botapi.CommonUser
 			ConfCount int16
@@ -111,7 +109,7 @@ func (c *configState) home() error {
 	}
 	if c.lastconfig, err = c.Usersession.GetConfig(int64(confID)); err != nil {
 		if errors.Is(err, C.ErrConfigNotFound) {
-			c.alertsender(C.GetMsg(C.MsgConfUnfoun))
+			c.Alertsender(C.GetMsg(C.MsgConfUnfoun))
 		}
 		return nil
 	}
@@ -158,36 +156,8 @@ func (c *configState) action() error {
 		if _, err = c.Messagesession.EditText(C.GetMsg(C.MsgNewName), nil); err != nil {
 			return nil
 		}
-		var getName func() (string, error)
-
-		getName = func() (string, error) {
-
-			var (
-				replymeassage *tgbotapi.Message
-				confName      string
-			)
-			if replymeassage, err = c.wiz.defaultsrv.ExcpectMsgContext(c.ctx, c.userId, c.userId); err != nil {
-				if errors.Is(err, C.ErrContextDead) {
-					return "", C.ErrContextDead
-				}
-				return getName()
-			}
-			c.Messagesession.Addreply(replymeassage.MessageID)
-			if replymeassage.IsCommand() {
-				_, err = c.Messagesession.EditText(C.GetMsg(C.MsgValidName), nil)
-				return getName()
-			}
-			confName = replymeassage.Text
-
-			if replymeassage.Text == "" {
-				confName = "noname"
-			}
-
-			return confName, nil
-
-		}
-
-		name, err := getName()
+		
+		name, err := common.ReciveString(c.Tgcalls)
 		if err != nil {
 			return err
 		}
@@ -211,9 +181,9 @@ func (c *configState) action() error {
 			c.lastconfig.Name = name
 			err = c.Usersession.Save()
 			if err != nil {
-				c.alertsender(C.GetMsg(C.MsgNameChangeFailed))
+				c.Alertsender(C.GetMsg(C.MsgNameChangeFailed))
 			}
-			c.alertsender(C.GetMsg(C.MsgNamechangeSuc))
+			c.Alertsender(C.GetMsg(C.MsgNamechangeSuc))
 		}
 
 		return nil
@@ -226,7 +196,7 @@ func (c *configState) action() error {
 		if ok {
 			err = c.Usersession.DeleteConfig(c.lastconfig.Id)
 			if err != nil {
-				c.alertsender(C.GetMsg(C.MsgdelFail))
+				c.Alertsender(C.GetMsg(C.MsgdelFail))
 				if errors.Is(err, C.ErrOnDeactivation) || errors.Is(err, C.ErrOnDb) {
 					c.Usersession.ActivateConfig(c.lastconfig.Id)
 					return err
@@ -241,10 +211,6 @@ func (c *configState) action() error {
 		return nil
 
 	case C.BtnChangeQuota:
-		var newquota int
-		var retry = 0
-		
-		
 		c.Messagesession.Edit(struct {
 			AvblQuota string
 			ConfName string
@@ -254,44 +220,13 @@ func (c *configState) action() error {
 			ConfName: c.lastconfig.Name,
 		}, nil, C.TmpConQuota)
 
+		newquota, err := common.ReciveBandwidth(c.Tgcalls, c.Usersession.GetconfigUsageTotal(c.lastconfig.Id), (c.lastconfig.Quota + c.Usersession.LeftQuota())  )
 
-		for {
-			if retry > 5 {
-				c.alertsender(C.GetMsg(C.Msgretryfail))
-				c.State = stconfaction
-				return nil
-			}
-			replaymg, err := c.wiz.defaultsrv.ExcpectMsgContext(c.ctx, c.userId, c.userId)
-			if err != nil {
-				return err
-			}
-			if replaymg == nil {
-				continue
-			}
-			retry++
-			c.Messagesession.Addreply(replaymg.MessageID)
-
-			if newquota, err = strconv.Atoi(replaymg.Text); err != nil {
-				c.alertsender(C.GetMsg(C.MsgValidInt))
-				continue
-			}
-			if newquota <= 0 {
-				c.alertsender(C.GetMsg(C.MsgQuotawarnzero))
-				continue
-			}
-			if C.Bwidth(newquota).GbtoByte() > (c.lastconfig.Quota + c.Usersession.LeftQuota()) {
-				c.alertsender(C.GetMsg(C.MsgQuotawarn))
-				continue
-			}
-
-			if C.Bwidth(newquota).GbtoByte() < c.Usersession.GetconfigUsageTotal(c.lastconfig.Id) {
-				c.alertsender(C.GetMsg(C.MsgQuotawarn))
-				continue
-			}
-			break
+		if err != nil {
+			return err
 		}
 
-		c.lastconfig.Quota = C.Bwidth(newquota).GbtoByte()
+		c.lastconfig.Quota = newquota.GbtoByte()
 		c.Usersession.DeactivateConfig(c.lastconfig.Id)
 		c.Usersession.ActivateConfig(c.lastconfig.Id)
 
@@ -299,34 +234,34 @@ func (c *configState) action() error {
 			if errors.Is(err, C.ErrContextDead) {
 				return err
 			}
-			c.alertsender(C.GetMsg(C.Msgwrong))
+			c.Alertsender(C.GetMsg(C.Msgwrong))
 			return nil
 		}
 
-		c.alertsender(C.GetMsg(C.MsgCoQuota))
+		c.Alertsender(C.GetMsg(C.MsgCoQuota))
 		return nil
 	
 	case C.BtnChangeLogin:
 
-		limitstr, err := c.sendreciver("send new login limit count (0 < x <= 5)") 
+		limitstr, err := c.Sendreciver("send new login limit count (0 < x <= 5)") 
 		if err != nil {
 			return nil
 		}
 
 		limit, err := strconv.Atoi(limitstr.Text)
 		if err != nil {
-			c.alertsender("please send valid intiger")
+			c.Alertsender("please send valid intiger")
 			return nil
 		}
 
 		if limit <= 0 || limit > 5 {
-			c.alertsender("login should be between 0 and 5")
+			c.Alertsender("login should be between 0 and 5")
 			return nil
 		}
 
 		_, err = c.Usersession.ChangeLoginLimit(c.lastconfig.Id, int32(limit))
 		if err != nil {
-			c.alertsender("failed")
+			c.Alertsender("failed")
 		}
 
 	}
@@ -349,7 +284,7 @@ func (c *configState) changeIn() error {
 	}
 	c.btns.AddCloseBack()
 
-	callback, err = c.callbackreciver(C.GetMsg(C.MsgInsel), c.btns)
+	callback, err = c.Callbackreciver(C.GetMsg(C.MsgInsel), c.btns)
 	if err != nil {
 		return err
 	}
@@ -434,7 +369,7 @@ func (c *configState) changeOut() error {
 	}
 	c.btns.AddCloseBack()
 
-	callback, err = c.callbackreciver(C.GetMsg(C.Msgoutsel), c.btns)
+	callback, err = c.Callbackreciver(C.GetMsg(C.Msgoutsel), c.btns)
 	if err != nil {
 		return err
 	}
@@ -539,27 +474,31 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx) error {
 		wiz:            u,
 		Messagesession: Messagesession,
 
-		alertsender: func(msg string) {
-			Messagesession.SendAlert(msg, nil)
+		Tgcalls: common.Tgcalls{
+			Alertsender: func(msg string) {
+				Messagesession.SendAlert(msg, nil)
+			},
+			Sendreciver: func(msg any) (*tgbotapi.Message, error) {
+				_, err := Messagesession.Edit(msg, nil, "")
+				if err != nil {
+					return nil, err
+				}
+				mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
+				if err == nil {
+					Messagesession.Addreply(mg.MessageID)
+				}
+				return mg, err
+			},
+			Callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
+				_, err := Messagesession.Edit(msg, btns, "")
+				if err != nil {
+					return nil, err
+				}
+				return u.callback.GetcallbackContext(upx.Ctx, btns.ID())
+			},
 		},
-		sendreciver: func(msg any) (*tgbotapi.Message, error) {
-			_, err := Messagesession.Edit(msg, nil, "")
-			if err != nil {
-				return nil, err
-			}
-			mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
-			if err == nil {
-				Messagesession.Addreply(mg.MessageID)
-			}
-			return mg, err
-		},
-		callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
-			_, err := Messagesession.Edit(msg, btns, "")
-			if err != nil {
-				return nil, err
-			}
-			return u.callback.GetcallbackContext(upx.Ctx, btns.ID())
-		},
+
+
 	}
 
 	conformbtns := botapi.NewButtons([]int16{1, 1})
