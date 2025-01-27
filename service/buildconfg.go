@@ -1660,7 +1660,7 @@ func (b *BuildState) createConfig() error {
 		return nil
 	}
 
-	b.Messagesession.SendAlert("config creatin sucsess", nil)
+	b.Messagesession.SendAlert("config Created sucsessfully", nil)
 	b.State = initiate
 	return nil
 }

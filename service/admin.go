@@ -398,6 +398,15 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				state = 0
 			case C.BtnClose:
 				break main
+			case "Distribute":
+				if enduserupx.User.IsCapped || enduserupx.User.IsDistributedUser {
+					alertsender("can't distribute, either user capped or already distributed")
+				}
+				
+				endusersession.GetUser().IsDistributedUser = true
+				endusersession.DeactivateAll()
+				endusermsg.SendAlert("you'r quota has being Distributed By Admin ", nil)
+			
 			case "res":
 				if endusersession.GetUser().Restricted {
 					endusersession.RemoveRestrict()
