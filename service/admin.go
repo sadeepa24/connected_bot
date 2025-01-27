@@ -870,6 +870,17 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 		state int16
 	)
 
+	t := []*botapi.MgItem{}
+
+	for _, v := range Templates {
+		for _, s := range v {
+			t = append(t, s)
+		}
+	}
+
+	botapi.TemplateInit(a.botapi, a.adminuser.TgID, a.logger, t)
+	t = nil
+
 	defer func ()  {
 		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
@@ -1211,6 +1222,8 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					if err = selectedItem.ChangeField("alt_med_path", "./res/"+replymg.Text); err != nil {
 						calls.Alertsender(" field changing failed err - "+ err.Error())
 					}
+
+					calls.Alertsender("If this Newly Uploded Media You will Need to Restart Editor to See it In preview Mode")
 
 				default:
 					value, err := calls.Sendreciver("send you'r new value for, send /cancel to cancel " + callback.Data)

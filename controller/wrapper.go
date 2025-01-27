@@ -405,6 +405,23 @@ func (c *Controller) Init() error {
 		}).Save(dbMeta)
 	}
 
+	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
+		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.Metaconfig.DefaultDomain)
+		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
+		c.db.Model(&db.Metadata{
+			Id: 1,
+		}).Save(dbMeta)
+	}
+
+	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
+		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
+		dbMeta.PublicDomain = c.Metaconfig.DefaultPublicIp
+		c.db.Model(&db.Metadata{
+			Id: 1,
+		}).Save(dbMeta)
+	}
+
+
 	if c.Metaconfig.GroupID == 0 || c.Metaconfig.ChannelID == 0 {
 		return errors.New("channel or group id not found ")
 	}
@@ -419,14 +436,6 @@ func (c *Controller) Init() error {
 		c.Metadata.BandwidthAvelable = Bandwidth
 	} else {
 		c.Metadata.BandwidthAvelable = dbMeta.BandwidthAvelable
-	}
-
-	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
-		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.Metaconfig.DefaultDomain)
-	}
-
-	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
-		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
 	}
 
 	c.Metadata.LoginLimit = dbMeta.LoginLimit
