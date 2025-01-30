@@ -406,7 +406,7 @@ func (c *Controller) Init() error {
 	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
 		c.logger.Info("Defaul Public Ip Changed")
 		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
-		dbMeta.PublicDomain = c.Metaconfig.DefaultPublicIp
+		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
 		c.db.Save(dbMeta)
 	}
 
