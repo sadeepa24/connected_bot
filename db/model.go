@@ -13,7 +13,6 @@ type User struct {
 	TgID     int64          `gorm:"primaryKey;column:tg_id"`
 	Name     string         `gorm:"type:varchar(100)"`
 	Username sql.NullString `gorm:"type:varchar(100);column:username"`
-	DeviceID sql.NullString `gorm:"type:varchar(300);column:device_id"`
 	Lang     string         `gorm:"type:varchar(50);column:lang"`
 
 	IsTgPremium       bool `gorm:"column:is_tg_premium"`

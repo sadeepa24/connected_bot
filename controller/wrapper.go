@@ -100,17 +100,17 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 	var err error
 	cn.sbox, err = singapi.NewsingAPI(ctx, sboxopt.SagerNetOpt(), logger)
 	if err != nil {
-		logger.Fatal(err.Error())
-		return nil, err
+		return nil, errors.Join(err, errors.New("sing api creation failed"))
 	}
 
 	return cn, nil
 }
 
-type ForceResetUsage uint16
-type UserCount int
-type RefreshSignal uint16
-type BroadcastSig string
+type ForceResetUsage uint16 //use to send Newrefresh signal wit force reset all usage database checkcount will reset
+type UserCount int //sending usercount updates
+type RefreshSignal uint16 //use to send Newrefresh signal 
+type BroadcastSig string //use to send Broadcast signal with broadcast msg 
+
 // returning channel can be used many things, user update count, que sending msg to user
 // when buffring usercount update type should be UserCount
 func (c *Controller) Getmgque() chan any {
@@ -370,18 +370,10 @@ func (c *Controller) Init() error {
 		dbMeta.GroupID = c.Metaconfig.GroupID
 		dbMeta.LoginLimit = int32(c.Metaconfig.LoginLimit)
 		dbMeta.CommonQuota = dbMeta.BandwidthAvelable
-		dbMeta.CheckCount = c.Metaconfig.CheckCount //should be 0
 		dbMeta.ResetCount = (30 * 24) / c.Metaconfig.RefreshRate
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
-
-
-		if C.Bwidth(c.Metaconfig.Verifiedcount) > 0 {
-			dbMeta.CommonQuota = dbMeta.BandwidthAvelable / C.Bwidth(c.Metaconfig.Verifiedcount)
-		}
-
-		dbMeta.VerifiedUserCount = int64(c.Metaconfig.Verifiedcount)
 		dbMeta.Maxconfigcount = c.Metaconfig.Maxconfigcount
 
 		var userct int64
@@ -396,29 +388,26 @@ func (c *Controller) Init() error {
 	}
 
 	if c.Metaconfig.RefreshRate != dbMeta.RefreshRate {
+		c.logger.Info("Refresh Rate Change Detected. Recalculating Refresh Rates.")
 		oldRefreshRate := dbMeta.RefreshRate
 		dbMeta.CheckCount = (dbMeta.CheckCount * oldRefreshRate) / c.Metaconfig.RefreshRate //Recalculating ResetCount according to new refresh rate
 		dbMeta.ResetCount = (30 * 24) / c.Metaconfig.RefreshRate
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
-		c.db.Model(&db.Metadata{
-			Id: 1,
-		}).Save(dbMeta)
+		c.db.Save(dbMeta)
 	}
 
 	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
+		c.logger.Info("Defaul Domain Changed")
 		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.Metaconfig.DefaultDomain)
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
-		c.db.Model(&db.Metadata{
-			Id: 1,
-		}).Save(dbMeta)
+		c.db.Save(dbMeta)
 	}
 
 	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
+		c.logger.Info("Defaul Public Ip Changed")
 		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
 		dbMeta.PublicDomain = c.Metaconfig.DefaultPublicIp
-		c.db.Model(&db.Metadata{
-			Id: 1,
-		}).Save(dbMeta)
+		c.db.Save(dbMeta)
 	}
 
 
@@ -767,10 +756,6 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		DeletedConfCount:  0,
 		AddtionalConfig:   0,
 		RecheckVerificity: recheck,
-		DeviceID: sql.NullString{
-			String: "",
-			Valid:  false,
-		},
 		Lang:        "en",
 		Points:      C.DefaultPoint,
 		IsTgPremium: false,
@@ -790,12 +775,10 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 	}
 
 	dbUser, err := c.db.AddUser(newuser)
-
 	if err != nil {
 		return nil, C.ErrDatabaseCreate
 	}
 	c.Metadata.Dbusercount.Add(1)
-	//c.msgque <- UserCount(1)
 	gotuser := bottype.Newuser(user, dbUser)
 	gotuser.Newuser = true
 

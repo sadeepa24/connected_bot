@@ -41,20 +41,16 @@ func NewsingAPI(ctx context.Context, opt option.Options, logger *zap.Logger) (*S
 		Context: ctx,
 		Options: opt,
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, errors.New( "sing box insrance creation failed "))
 	}
-
+	logger.Debug("sing box instance created successfully")
 	outmap := []string{}
-
 	for _, out := range opt.Outbounds {
 		outmap = append(outmap, out.Tag)
 	}
-
 	return &SingAPI{
 		box:      instance,
-
 		urltests: &sync.Map{},
 		logger:   logger,
 		outtags:  outmap,
@@ -71,10 +67,6 @@ func (s *SingAPI) Close() error {
 }
 
 func (s *SingAPI) AddUser(suser *sbox.Userconfig) (sbox.Sboxstatus, error) {
-
-	//fmt.Println(suser.GetuniqName())
-
-
 	return s.common(suser, func(botuser connectedbot.BotUser, intag string) (connectedbot.StatusOutput, error) {
 		s.box.RemoveAllRule(suser.GetuniqName())
 		s.box.Addoutbounduser(suser.GetuniqName(), suser.Outboundtag)
@@ -93,7 +85,6 @@ func (s *SingAPI) GetstatusUser(suser *sbox.Userconfig) (sbox.Sboxstatus, error)
 }
 
 func (s *SingAPI) AddUserReset(suser *sbox.Userconfig) (sbox.Sboxstatus, error) {
-	//fmt.Println(suser.GetuniqName())
 	return s.common(suser, func(botuser connectedbot.BotUser, intag string) (connectedbot.StatusOutput, error) {
 		s.box.RemoveAllRule(suser.GetuniqName())
 		s.box.Addoutbounduser(suser.GetuniqName(), suser.Outboundtag)
@@ -104,8 +95,6 @@ func (s *SingAPI) AddUserReset(suser *sbox.Userconfig) (sbox.Sboxstatus, error) 
 
 func (s *SingAPI) RemoveAllRuleForuser(user string) {
 	s.box.RemoveAllRule(user)
-
-	//s.box.Addoutbounduser()
 }
 
 func (s *SingAPI) CloseConns(suser *sbox.Userconfig) error {

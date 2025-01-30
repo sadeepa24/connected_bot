@@ -236,7 +236,6 @@ func testingfirst() connected.Botoptions {
 			GroupID:           -1002325676823,
 			ChannelID:         -1002400437670,
 			Maxconfigcount:    10,
-			Verifiedcount:     0, //only for intlize
 			LoginLimit:        1,
 			BandwidthAvelable: "2000GB",
 			RefreshRate:       2,

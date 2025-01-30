@@ -19,9 +19,9 @@ type MetadataConf struct {
 	BandwidthAvelable string `json:"bandwidthAvelable,omitempty"`
 	LoginLimit        int16  `json:"loginLimit,omitempty"`
 	Userquota         int32  `json:"userquota,omitempty"`
-	Verifiedcount     int32  `json:"verifiedcount,omitempty"`
+	//Verifiedcount     int32  `json:"verifiedcount,omitempty"`
 	Maxconfigcount    int16  `json:"maxconfigcount,omitempty"`
-	CheckCount        int32  `json:"checkcount,omitempty"`  // database checked count for exting period
+	//CheckCount        int32  `json:"checkcount,omitempty"`  // database checked count for exting period
 	RefreshRate       int32  `json:"refreshrate,omitempty"` //rate of db refresh in hours
 
 	GroupLink  string `json:"grouplink,omitempty"`

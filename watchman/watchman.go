@@ -87,7 +87,7 @@ func New(ctx context.Context,
 func (w *Watchman) Start() error {
 	var err error
 	if w.ctrl.Metaconfig.RefreshRate <= 0 {
-		return errors.New("refresh rate cannot be loower than 0")
+		return errors.New("refresh rate cannot be lower than 0")
 	}
 
 	// if w.simplelog, err = simplelog.Newsimpllogger(w.ctx, w.config.Simlogpath); err != nil {
@@ -121,7 +121,9 @@ func (w *Watchman) Start() error {
 		//w.ctrl.RefreshUrlTest()
 		err = w.RefreshDb(startrefresh, false, false)
 		if err != nil {
-			w.logger.Fatal("fatal error db start refresh " + err.Error())
+			w.logger.Error("fatal error db start refresh " + err.Error())
+			cancle()
+			return
 		}
 		refreshdone <- struct{}{}
 
@@ -133,7 +135,7 @@ func (w *Watchman) Start() error {
 		break
 	case <-startrefresh.Done():
 		cancle()
-		return errors.New("intlize db refresh failed context timeout")
+		return errors.New("watchman: intlize db refresh failed context timeout or canceled")
 	}
 	return nil
 }
@@ -148,7 +150,7 @@ func (w *Watchman) Close() error {
 }
 
 func (w *Watchman) startAutoupdater() {
-	w.logger.Info("started watch mand Autoupdater")
+	w.logger.Info("started watch mand autoupdater")
 	w.lastUserCount = w.ctrl.Dbusercount.Load()
 update:
 	for {
@@ -157,7 +159,7 @@ update:
 
 		case <-w.ctx.Done():
 
-			w.logger.Warn("context Cancled Autoupdater closing")
+			w.logger.Warn("context Cancled autoupdater closing")
 			w.logger.Warn("Force Closing DB")
 			break update
 
@@ -169,8 +171,7 @@ update:
 			break update
 
 		case tick := <-w.ticker.C:
-			w.logger.Info("db refresh started", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
-
+			w.logger.Info("db refresh starting", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
 			go func () {
 				for _, out := range w.ctrl.Outbounds {
 					t, err := w.ctrl.UrlTestOut(out.Tag)
@@ -181,18 +182,15 @@ update:
 					out.Latency.Swap(int32(t))
 				}
 			}()
-
 			refreshctx, cancle := context.WithCancel(w.ctx)
-
 			err := w.RefreshDb(refreshctx, true, false)
 			cancle()
-
 			if err != nil {
 				w.logger.Error("Db Refresh Failed Due to: ", zap.Error(err))
+				w.ctrl.DirectMg("Db refresh Failed; You may need to check what happend", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
 				continue
 			}
-
-			w.logger.Info("db refresh done")
+			w.logger.Info("db refresh done", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
 
 		case mg := <-w.ctrl.Getmgque():
 
@@ -453,7 +451,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 	predata, err := w.PreprosessDb(refreshcontext)
 	if err != nil {
-		w.ctrl.DirectMg("Predata prosseing error := " + err.Error(), w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
+		w.ctrl.DirectMg("Predata prosseing error Please Make Manual Refresh := " + err.Error(), w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
 		return errors.Join(errors.New("predata prosseing failed"), err)
 	}
 
@@ -497,7 +495,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		for _, user := range users {
 			if refreshcontext.Err() != nil {
 				w.ctrl.WatchmanUnlock()
-				w.logger.Warn("Force stopping DB updating, Db update stops from record " + user.Name)
+				w.logger.Warn("Force stopping DB updating, Db update stops from record Db may malformed " + user.Name)
+				w.ctrl.DirectMg("force stopped db refresh you may need to start bot with last backup see logs to more info", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
 				return fmt.Errorf("context cancled db refresh stops from record id %v, err %v ", user.TgID, refreshcontext.Err())
 			}
 
@@ -953,7 +952,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context) (*preprosessd, e
 func (w *Watchman) sendDbBackup() {
 	dbraw, err := os.Open(w.db.DatabasePath())
 	if err != nil {
-		w.logger.Error("errored when reading database for backup create", zap.Error(err))
+		w.logger.Error("Db Backup Send Failed: errored when reading database for backup create", zap.Error(err))
 		return
 	}
 	defer dbraw.Close()
@@ -971,18 +970,18 @@ func (w *Watchman) sendDbBackup() {
 		},
 	})
 	if err != nil {
-		w.logger.Error("request making failed" +  err.Error())
+		w.logger.Error("Db Backup Send Failed: request making failed" +  err.Error())
 		return
 	}
 	
 	apires, err := w.botapi.SendRawReq(req)
 	
 	if err != nil {
-		w.logger.Error("request send failed when uploading backup database ", zap.Error(err))
+		w.logger.Error("Db Backup Send Failed: request send failed when uploading backup database ", zap.Error(err))
 		return
 	}
 	if !apires.Ok {
-		w.logger.Error("Bad Response From Telegram " + apires.Description)
+		w.logger.Error("Db Backup Send Failed: Bad Response From Telegram: " + apires.Description)
 	}
 
 

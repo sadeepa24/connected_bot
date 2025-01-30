@@ -82,21 +82,21 @@ func (c *ConnectedBot) Start() error {
 	if err = c.db.InitDb(); err != nil { // initing db so that other can intract with it (create, update, quary )
 		return err
 	}
-	c.logger.Debug("database inited")
+	c.logger.Debug("database initialized")
 	if err = c.Ctrl.Init(); err != nil {
 		return err
 	}
-	c.logger.Debug("controller inited")
+	c.logger.Debug("controller initialized")
 
 	if err = c.Watchman.Start(); err != nil {
 		return err
 	}
-	c.logger.Debug("watchman started")
+	c.logger.Debug("watchman initialized")
 
 	if err = c.msgstore.Init(c.Botapi, c.Ctrl.SudoAdmin, c.logger); err != nil {
 		return err
 	}
-	c.logger.Debug("messagestore inited")
+	c.logger.Debug("messagestore initialized")
 	
 	for _, service := range c.Services {
 		c.logger.Info("service started " + service.Name())
@@ -131,7 +131,7 @@ func (c *ConnectedBot) Close() error {
 	if err != nil {
 		c.logger.Error("closing error detected ", zap.Error(err))
 	} else {
-		c.logger.Info("Everything Closed Successfully. Program WIll exit Safaly")
+		c.logger.Info("everything closed successfully. program will exit safaly")
 	}
 
 	return err
