@@ -9,9 +9,7 @@ import (
 	"github.com/sadeepa24/connected_bot/update"
 )
 
-func (u *Usersrv) commandEvents(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
-
+func (u *Usersrv) commandEvents(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	allevent, err := u.ctrl.LoadEvents(upx.User.TgID)
 	if err != nil {
 		Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)

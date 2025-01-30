@@ -103,17 +103,18 @@ func (u *Xraywiz) Commandhandler(cmd string, upx *update.Updatectx) error {
 	//upx.Configs, _ = u.ctrl.Getconfigs(upx.User.Id)
 	//upx.User.Dbuser.Configs = upx.Configs
 
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
 	switch cmd {
 	case C.CmdCreate:
-		return u.commandCreateV2(upx)
+		return u.commandCreateV2(upx, Messagesession)
 	case C.CmdStatus:
-		return u.commandStatus(upx)
+		return u.commandStatus(upx, Messagesession)
 	case C.CmdConfigure:
-		return u.commandConfigureV2(upx)
+		return u.commandConfigureV2(upx, Messagesession)
 	case C.CmdInfo:
-		return u.commandInfoV2(upx)
+		return u.commandInfoV2(upx, Messagesession)
 	case C.CmdBuild:
-		return u.commandBuildV2(upx)
+		return u.commandBuildV2(upx, Messagesession)
 	default:
 		u.logger.Warn("unknown CMD Recived" + upx.Update.Info())
 		upx.Cancle()
@@ -122,9 +123,7 @@ func (u *Xraywiz) Commandhandler(cmd string, upx *update.Updatectx) error {
 	}
 }
 
-func (u *Xraywiz) commandCreateV2(upx *update.Updatectx) error {
-
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+func (u *Xraywiz) commandCreateV2(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	if upx.User.IsDistributedUser {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCrdisuser), nil)
 		return nil
@@ -213,8 +212,7 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx) error {
 	return nil
 }
 
-func (u *Xraywiz) commandStatus(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.Msgsession) error {
 	Messagesession.Addreply(upx.Update.Message.MessageID)
 
 	Usersession, err := controller.NewctrlSession(u.ctrl, upx, false)

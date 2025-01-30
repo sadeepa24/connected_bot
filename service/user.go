@@ -388,32 +388,60 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 }
 
 func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
+	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+
+
+	// calls := common.Tgcalls{
+			
+	// 	Callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
+	// 		_, err := Messagesession.Edit(msg, btns, "")
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 		return u.callback.GetcallbackContext(upx.Ctx, btns.ID())
+	// 	},
+	// 	Alertsender: func(msg string) { Messagesession.SendAlert(msg, nil) },
+	// 	Sendreciver: func(msg any) (*tgbotapi.Message, error) {
+	// 		if msg != nil {
+	// 			if _, err := Messagesession.Edit(msg, nil, ""); err != nil {
+	// 				return nil, err
+	// 			}
+	// 		}
+	// 		mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
+	// 		if err == nil {
+	// 			Messagesession.Addreply(mg.MessageID)
+	// 		}
+	// 		return mg, err
+	// 	},
+	// }
+	// _ = calls
+
 
 	switch cmd {
 	case C.CmdStart:
-		return u.commandStart(upx)
+		return u.commandStart(upx, Messagesession)
 	case C.CmdHelp:
-		return u.commandHelpV2(upx)
+		return u.commandHelpV2(upx, Messagesession)
 	case C.CmdGift:
 		if upx.User.IsDistributedUser { break }
-		return u.commandGift(upx)
+		return u.commandGift(upx, Messagesession)
 	case C.CmdDistribute:
-		return u.commandDistribute(upx)
+		return u.commandDistribute(upx, Messagesession)
 	case C.CmdCap:
 		if upx.User.IsDistributedUser { break }
-		return u.commandCap(upx)
+		return u.commandCap(upx, Messagesession)
 	case C.CmdRefer:
-		return u.commandReffral(upx)
+		return u.commandReffral(upx, Messagesession)
 	case C.CmdSugess:
-		return u.commandSuggesion(upx)
+		return u.commandSuggesion(upx, Messagesession)
 	case C.CmdEvents:
-		return u.commandEvents(upx)
+		return u.commandEvents(upx, Messagesession)
 	case C.CmdPoints:
-		return u.commandPoints(upx)
+		return u.commandPoints(upx, Messagesession)
 	case C.CmdContact: 
-		return u.commandContact(upx)
+		return u.commandContact(upx, Messagesession)
 	case C.CmdRecheck:
-		return u.Recheck(upx)
+		return u.Recheck(upx, Messagesession)
 	default:
 		u.logger.Warn("unknown cmd recived by userservice - " + cmd)
 		return u.defaultsrv.FromserviceExec(upx)
@@ -432,9 +460,9 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 	return nil
 }
 
-func (u *Usersrv) commandStart(upx *update.Updatectx) error {
+func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	var err error
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	//Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	btns := botapi.NewButtons([]int16{1, 1})
 	btns.Addbutton(C.BtnChannel, C.BtnChannel, u.ctrl.Channelink)
@@ -628,8 +656,8 @@ func (u *Usersrv) commandStart(upx *update.Updatectx) error {
 	return err
 }
 
-func (u *Usersrv) commandGift(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
+	//Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	if upx.User.IsCapped {
 		Messagesession.SendAlert(C.GetMsg(C.MsgGifUsercap), nil)
@@ -801,8 +829,8 @@ func (u *Usersrv) commandGift(upx *update.Updatectx) error {
 	return nil
 }
 
-func (u *Usersrv) commandDistribute(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botapi.Msgsession ) error {
+	//Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	if upx.User.IsDistributedUser {
 		Messagesession.SendAlert(C.GetMsg(C.MsgDisAlready), nil)
@@ -873,8 +901,8 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx) error {
 	return nil
 }
 
-func (u *Usersrv) commandCap(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
+	//Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	if upx.User.IsCapped {
 		Messagesession.SendAlert(C.GetMsg(C.MsgcapAlready), nil)
@@ -1031,9 +1059,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx) error {
 	return nil
 }
 
-func (u *Usersrv) commandReffral(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
-
+func (u *Usersrv) commandReffral(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
 	refred, refverified, err := u.ctrl.ReffralCount(upx.User.TgID)
 
 	if err != nil {
@@ -1173,11 +1199,9 @@ func (u *Usersrv) commandReffral(upx *update.Updatectx) error {
 }
 
 // TODO: implemet this function later
-func (u *Usersrv) commandContact(upx *update.Updatectx) error {
+func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
 	// Create contact session here
 	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 2*time.Minute)
-
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 	Messagesession.SendAlert(`
 	⏳ You have 2 minutes of chat time!
 	If an admin is online, they'll reply within this time. If not, don't worry—they'll get back to you as soon as possible.
@@ -1221,9 +1245,7 @@ func (u *Usersrv) commandContact(upx *update.Updatectx) error {
 
 }
 
-func (u *Usersrv) commandSuggesion(upx *update.Updatectx) error {
-
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+func (u *Usersrv) commandSuggesion(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
 	_, err := Messagesession.SendAlert(C.GetMsg(C.MsgSugess), nil)
 	if err != nil {
 		Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
@@ -1245,11 +1267,7 @@ func (u *Usersrv) commandSuggesion(upx *update.Updatectx) error {
 	return nil
 }
 
-func (u *Usersrv) Canhandle(upx *update.Updatectx) (bool, error) {
-	return upx.Service == C.Userservicename, nil
-}
-
-func (u *Usersrv) Recheck(upx *update.Updatectx) error {
+func (u *Usersrv) Recheck(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
 	var userMessage string
 	
 	if upx.User.Isverified() {
@@ -1270,6 +1288,10 @@ func (u *Usersrv) Recheck(upx *update.Updatectx) error {
 		Text: userMessage,
 	})
 	return nil
+}
+
+func (u *Usersrv) Canhandle(upx *update.Updatectx) (bool, error) {
+	return upx.Service == C.Userservicename, nil
 }
 
 func (u *Usersrv) Name() string {

@@ -1776,13 +1776,14 @@ func (b *BuildState) cacheFileChange() error {
 }
 
 
-func (u *Xraywiz) commandBuildV2(upx *update.Updatectx) error {
+func (u *Xraywiz) commandBuildV2(upx *update.Updatectx,  Messagesession *botapi.Msgsession) error {
 	//TODO: change later context deadline
-	newctx, cancle := context.WithTimeout(u.ctx, 5*time.Minute)
+	upx.Cancle()
+	newctx, cancle := context.WithTimeout(u.ctx, 10*time.Minute)
 	upx.Ctx = newctx
 	defer cancle()
 
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession.SetNewcontext(newctx)
 
 	if _, ok := u.builds.Load(upx.User.TgID); ok {
 		Messagesession.SendAlert("you have already opend a builder session please close it and open new one", nil)

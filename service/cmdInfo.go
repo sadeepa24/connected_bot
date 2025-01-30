@@ -16,8 +16,7 @@ import (
 	"github.com/sagernet/sing-vmess/vless"
 )
 
-func (u *Xraywiz) commandInfoV2(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.Msgsession) error {
 	Messagesession.AddreplyNoDelete(upx.Update.Message.MessageID)
 	var (
 		Usersession *controller.CtrlSession

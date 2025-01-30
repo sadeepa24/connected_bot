@@ -108,6 +108,7 @@ func (d *Defaultsrv) Canhandle(upx *update.Updatectx) (bool, error) {
 }
 
 func (d *Defaultsrv) FromserviceExec(upx *update.Updatectx) error {
+	upx.Cancle()
 	return nil
 }
 

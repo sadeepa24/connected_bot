@@ -178,9 +178,9 @@ func (h *HelpState) gotopage() error {
 	return nil
 }
 
-func (u *Usersrv) commandHelpV2(upx *update.Updatectx) error {
+func (u *Usersrv) commandHelpV2(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 5*time.Minute)
-	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession.SetNewcontext(upx.Ctx)
 	btns := botapi.NewButtons([]int16{1})
 
 	state := HelpState{
