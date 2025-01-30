@@ -17,7 +17,7 @@ import (
 )
 
 func (u *Xraywiz) commandInfoV2(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
 	Messagesession.AddreplyNoDelete(upx.Update.Message.MessageID)
 	var (
 		Usersession *controller.CtrlSession

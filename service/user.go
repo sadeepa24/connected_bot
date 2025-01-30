@@ -133,7 +133,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		}
 
 	}
-	Messagesession := botapi.NewMsgsession(u.botapicaller, NewUser.Id, NewUser.Id, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, NewUser.Id, NewUser.Id, upx.User.Lang)
 	//GroupSession := botapi.NewMsgsession(u.botapicaller, upx.User.Id, u.ctrl.GroupID, upx.User.Lang)
 	upx.User = NewUser	// To Create Usersession From Newuser not from the one who made action
 	Usersession, err := controller.NewctrlSession(u.ctrl, upx, true) //will force cancle other session is exicist
@@ -434,7 +434,7 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 
 func (u *Usersrv) commandStart(upx *update.Updatectx) error {
 	var err error
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	btns := botapi.NewButtons([]int16{1, 1})
 	btns.Addbutton(C.BtnChannel, C.BtnChannel, u.ctrl.Channelink)
@@ -629,7 +629,7 @@ func (u *Usersrv) commandStart(upx *update.Updatectx) error {
 }
 
 func (u *Usersrv) commandGift(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	if upx.User.IsCapped {
 		Messagesession.SendAlert(C.GetMsg(C.MsgGifUsercap), nil)
@@ -802,7 +802,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx) error {
 }
 
 func (u *Usersrv) commandDistribute(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	if upx.User.IsDistributedUser {
 		Messagesession.SendAlert(C.GetMsg(C.MsgDisAlready), nil)
@@ -874,7 +874,7 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx) error {
 }
 
 func (u *Usersrv) commandCap(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	if upx.User.IsCapped {
 		Messagesession.SendAlert(C.GetMsg(C.MsgcapAlready), nil)
@@ -1032,7 +1032,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx) error {
 }
 
 func (u *Usersrv) commandReffral(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	refred, refverified, err := u.ctrl.ReffralCount(upx.User.TgID)
 
@@ -1177,7 +1177,7 @@ func (u *Usersrv) commandContact(upx *update.Updatectx) error {
 	// Create contact session here
 	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 2*time.Minute)
 
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 	Messagesession.SendAlert(`
 	⏳ You have 2 minutes of chat time!
 	If an admin is online, they'll reply within this time. If not, don't worry—they'll get back to you as soon as possible.
@@ -1223,7 +1223,7 @@ func (u *Usersrv) commandContact(upx *update.Updatectx) error {
 
 func (u *Usersrv) commandSuggesion(upx *update.Updatectx) error {
 
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 	_, err := Messagesession.SendAlert(C.GetMsg(C.MsgSugess), nil)
 	if err != nil {
 		Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)

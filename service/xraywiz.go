@@ -124,7 +124,7 @@ func (u *Xraywiz) Commandhandler(cmd string, upx *update.Updatectx) error {
 
 func (u *Xraywiz) commandCreateV2(upx *update.Updatectx) error {
 
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
 	if upx.User.IsDistributedUser {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCrdisuser), nil)
 		return nil
@@ -214,7 +214,7 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx) error {
 }
 
 func (u *Xraywiz) commandStatus(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 	Messagesession.Addreply(upx.Update.Message.MessageID)
 
 	Usersession, err := controller.NewctrlSession(u.ctrl, upx, false)

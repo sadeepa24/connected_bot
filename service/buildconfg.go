@@ -1782,7 +1782,7 @@ func (u *Xraywiz) commandBuildV2(upx *update.Updatectx) error {
 	upx.Ctx = newctx
 	defer cancle()
 
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	if _, ok := u.builds.Load(upx.User.TgID); ok {
 		Messagesession.SendAlert("you have already opend a builder session please close it and open new one", nil)

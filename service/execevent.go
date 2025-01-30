@@ -10,7 +10,7 @@ import (
 )
 
 func (u *Usersrv) commandEvents(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	allevent, err := u.ctrl.LoadEvents(upx.User.TgID)
 	if err != nil {

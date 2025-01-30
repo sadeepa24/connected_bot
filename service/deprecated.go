@@ -1,3 +1,5 @@
+//go:build ignore
+
 package service
 
 import (
@@ -22,7 +24,7 @@ import (
 // Deprecated: use commandCreateV2 instead
 func (u *Xraywiz) commandCreate(upx *update.Updatectx) error {
 
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
 	Usersession, err := controller.NewctrlSession(u.ctrl, upx, false)
 	if err != nil {
 		if errors.Is(err, C.ErrSessionExcit) {
@@ -376,7 +378,7 @@ func (u *Xraywiz) commandCreate(upx *update.Updatectx) error {
 
 // Deprecated: use commandConfigureV2
 func (u *Xraywiz) commandConfigure(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
 	Messagesession.Addreply(upx.Update.Message.MessageID)
 	var (
 		Usersession *controller.CtrlSession
@@ -995,7 +997,7 @@ func (u *Xraywiz) commandConfigure(upx *update.Updatectx) error {
 // Deprecated: Use commandHelpV2
 func (u *Usersrv) commandHelp(upx *update.Updatectx) error {
 	u.logger.Info("help comma excuted  by " + upx.User.Info())
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	Messagesession.Addreply(upx.Update.Message.MessageID)
 	btns := botapi.NewButtons([]int16{2, 1, 1})
@@ -1136,7 +1138,7 @@ func (u *Usersrv) commandHelp(upx *update.Updatectx) error {
 
 // Deprecated: Use commandInfoV2
 func (u *Xraywiz) commandInfo(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
 	Messagesession.AddreplyNoDelete(upx.Update.Message.MessageID)
 	var (
 		Usersession *controller.CtrlSession

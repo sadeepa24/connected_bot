@@ -180,7 +180,7 @@ func (h *HelpState) gotopage() error {
 
 func (u *Usersrv) commandHelpV2(upx *update.Updatectx) error {
 	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 5*time.Minute)
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 	btns := botapi.NewButtons([]int16{1})
 
 	state := HelpState{

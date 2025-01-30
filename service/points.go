@@ -8,7 +8,7 @@ import (
 
 // var _ Event = AplusConfig{}
 func (u *Usersrv) commandPoints(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
 
 	btns := botapi.NewButtons([]int16{2})
 	btns.Addbutton(C.BtnInfo, C.BtnInfo, "")

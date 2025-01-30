@@ -305,9 +305,10 @@ type Msgsession struct {
 	lastmedia     string
 }
 
-func NewMsgsession(api BotAPI, userid int64, chatid int64, lang string) *Msgsession {
+func NewMsgsession(upxctx context.Context, api BotAPI, userid int64, chatid int64, lang string,) *Msgsession {
 	return &Msgsession{
 		api:    api,
+		mainctx: upxctx,
 		userID: userid,
 		ChatID: chatid,
 		infoctx: Infocontext{

@@ -440,7 +440,7 @@ const (
 )
 
 func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession(upx.Ctx, u.botapi, upx.User.Id, upx.User.Id, upx.User.Lang)
 	Messagesession.Addreply(upx.Update.Message.MessageID)
 	var (
 		Usersession *controller.CtrlSession

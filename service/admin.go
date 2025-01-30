@@ -76,11 +76,11 @@ func NewAdminsrv(
 func (a *Adminsrv) Exec(upx *update.Updatectx) error {
 	//Upx.User is nil in this scope
 	//admin, ok :=- upx.User.IsAdmin
-
 	upx.User = &a.adminuserbtype
 	if upx.Update == nil {
 		return nil
 	}
+	upx.Ctx, upx.Cancle = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
 	switch {
 	case upx.Update.Message != nil:
 		return a.handleMessage(upx)
@@ -91,15 +91,14 @@ func (a *Adminsrv) Exec(upx *update.Updatectx) error {
 
 func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
 	//Upx.User is nil in this scope
-
-	Messagesession := botapi.NewMsgsession(a.botapi, upx.FromChat().ID, upx.FromChat().ID, "en")
-
+	Messagesession := botapi.NewMsgsession(upx.Ctx, a.botapi, upx.FromChat().ID, upx.FromChat().ID, "en")
 	switch {
 	case upx.Update.Message.IsCommand():
-		return a.Commandhandler(upx)
+		return a.Commandhandler(upx, Messagesession)
 	case upx.Update.Message.ForwardFrom != nil:
 		forward := upx.Update.Message.ForwardFrom
 		_ = forward
+		//TODO: implement later
 	case upx.Update.Message.ReplyToMessage != nil:
 		replyMg := upx.Update.Message.ReplyToMessage
 
@@ -113,6 +112,8 @@ func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
 		}
 		Messagesession.CopyMessageTo(int64(id), int64(upx.Update.Message.MessageID))
 
+	default:
+		upx.Cancle()
 	}
 	return nil
 }
@@ -144,15 +145,7 @@ func (a *Adminsrv) Canhandle(upx *update.Updatectx) (bool, error) {
 	return upx.Service == C.Adminservicename, nil
 }
 
-func (a *Adminsrv) Commandhandler(upx *update.Updatectx) error {
-	if upx.Update.Message == nil {
-		return nil
-	}
-
-	upx.Ctx, upx.Cancle = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
-
-	Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
-
+func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	calls := common.Tgcalls{
 		//TODO: Create Function That construct below three function
 		Alertsender: func(msg string) {
@@ -209,7 +202,7 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx) error {
 }
 
 func (a *Adminsrv) broadcast(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(a.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang) 
+	Messagesession := botapi.NewMsgsession(upx.Ctx, a.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang) 
 	Messagesession.Edit("send brodcast message", nil, "")
 	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
 
@@ -303,7 +296,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 	}
 
 	defer endusersession.Close()
-	endusermsg := botapi.NewMsgsession(a.botapi, enduserupx.User.TgID, enduserupx.User.TgID, "en")
+	endusermsg := botapi.NewMsgsession(upx.Ctx, a.botapi, enduserupx.User.TgID, enduserupx.User.TgID, "en")
 
 	var (
 		state int
@@ -359,6 +352,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				btns.AddBtcommon("Remove Monthlimit")
 			}
 			btns.AddBtcommon(C.BtnBack)
+			btns.AddBtcommon("Distribute")
 			btns.AddClose(false)
 			Messagesession.Edit(userinfo{
 				CommonUser: &botapi.CommonUser{
@@ -400,6 +394,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			case "Distribute":
 				if enduserupx.User.IsCapped || enduserupx.User.IsDistributedUser {
 					alertsender("can't distribute, either user capped or already distributed")
+					continue
 				}
 				
 				endusersession.GetUser().IsDistributedUser = true
@@ -1345,7 +1340,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					calls.Alertsender("canceld usage reset")
 					continue mainloop
 				}
-				calls.Alertsender("Usage Reset Added, If you want to undo this You have backups DB")
+				calls.Alertsender("Usage Reset Added, If you want to undo this You have backup DB")
 				a.ctrl.Addquemg(a.ctx, controller.ForceResetUsage(1))
 				break mainloop
 
