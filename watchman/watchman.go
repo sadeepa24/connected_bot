@@ -501,9 +501,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				return fmt.Errorf("context cancled db refresh stops from record id %v, err %v ", user.TgID, refreshcontext.Err())
 			}
 
-			if user.IsAdmin {
-				continue
-			}
+			
 			tx.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&user.Configs)
 
 			//recalcuted the gift quota according to new ratio
@@ -847,9 +845,6 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context) (*preprosessd, e
 				w.ctrl.WatchmanUnlock()
 				w.logger.Warn("Force stopping DB updating, Db update stops from record " + user.Name)
 				return fmt.Errorf("context cancled db refresh stops from record id %v, err %v ", user.TgID, refreshcontext.Err())
-			}
-			if user.IsAdmin {
-				continue
 			}
 			// if err := w.db.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&user.Configs).Error; err != nil {
 			// 	continue

@@ -230,9 +230,9 @@ func testingfirst() connected.Botoptions {
 		},
 
 		Metadata: &controller.MetadataConf{
-			AllAdmin: []int64{
-				1832636256,
-			},
+			// AllAdmin: []int64{
+			// 	1832636256,
+			// },
 			GroupID:           -1002325676823,
 			ChannelID:         -1002400437670,
 			Maxconfigcount:    10,

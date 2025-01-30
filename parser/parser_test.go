@@ -300,7 +300,6 @@ func (t *Testservice) Exec(upx *update.Updatectx) error {
 	fmt.Printf("all results are above\n\n")
 
 	fmt.Println("is upx.User verified ", upx.User.Isverified())
-	fmt.Println("is upx user is admin", upx.User.Isadmin())
 	fmt.Println("is upx user started bot", upx.User.Isbotstarted())
 	fmt.Println("is upx user Newuser", upx.User.IsnewUser())
 

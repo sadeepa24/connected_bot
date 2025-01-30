@@ -1,7 +1,6 @@
 package bottype
 
 import (
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"fmt"
 
 	C "github.com/sadeepa24/connected_bot/constbot"
@@ -34,7 +33,6 @@ func Newuser(tguser *tgbotapi.User, dbuser *db.User) *User {
 }
 
 // check if user is admin of bot not groups
-func (u *User) Isadmin() bool { return u.IsAdmin }
 
 func (u *User) Info() string { 
 	if u == nil {

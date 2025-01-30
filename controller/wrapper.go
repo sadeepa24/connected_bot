@@ -754,8 +754,6 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		c.logger.Error("error when checking user is in group err " + err.Error())
 	}
 
-	_, isadmin := c.AdminList[user.ID]
-
 	newuser := &db.User{
 		Joined:  time.Now(),
 		TgID:    user.ID,
@@ -785,7 +783,6 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		ChannelBanned: false,
 		
 		IsVipUser:     false,
-		IsAdmin:       isadmin,
 		WebToken: sql.NullString{
 			String: "no token", //TODO: change after making wqb app
 			Valid:  true,

@@ -148,15 +148,14 @@ func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 		return nil, C.ErrClientRequestFail
 	}
 
-	if res.StatusCode != 200 {
-		//TODO: remove thease two lines later
-		resvody, err := io.ReadAll(res.Body)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(string(resvody))
-		return nil, C.ErrResponseMissmatch
-	}
+	// if res.StatusCode != 200 {
+	// 	//TODO: remove thease two lines later
+	// 	resvody, err := io.ReadAll(res.Body)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// 	return nil, C.ErrResponseMissmatch
+	// }
 	apires := &tgbotapi.APIResponse{}
 	resvody, err := io.ReadAll(res.Body)
 
@@ -167,7 +166,7 @@ func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 		return nil, C.ErrJsonopra
 	}
 	if !apires.Ok {
-		return nil, C.ErrApierror
+		return nil, errors.Join(C.ErrApierror, fmt.Errorf("tgrrcode %d Discription %s", apires.ErrorCode, apires.Description))
 	}
 	return apires, nil
 }

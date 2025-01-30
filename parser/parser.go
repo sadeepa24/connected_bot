@@ -204,11 +204,6 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 		return p.addtoservice(upx)
 	}
 
-	if upx.User.Isadmin() {
-		upx.Setservice(C.Adminservicename)
-		return p.addtoservice(upx)
-	}
-
 	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
 		return p.chatmemberparse(upx)
 	}

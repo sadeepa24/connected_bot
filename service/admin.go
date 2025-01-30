@@ -338,16 +338,15 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 
 		case 1:
 			if enduserupx.User.Restricted {
-				btns.Addbutton("Remove Restrict 🟢", "res", "")
+				btns.Addbutton("🟢 Remove Restrict ", "res", "")
 			} else {
-				btns.Addbutton("Restrict User 🔴",  "res","" )
+				btns.Addbutton("🔴 Restrict User ",  "res","" )
 			}
 			if enduserupx.User.IsMonthLimited {
 				btns.AddBtcommon("Remove Monthlimit")
 			}
-			btns.AddBtcommon(C.BtnBack)
-			btns.AddBtcommon("Distribute")
-			btns.AddClose(false)
+			btns.Addbutton("🔴 Distribute",  "Distribute","" )
+			btns.AddCloseBack()
 			Messagesession.Edit(userinfo{
 				CommonUser: &botapi.CommonUser{
 					Name:     enduserupx.User.Name,
@@ -394,7 +393,6 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				endusersession.GetUser().IsDistributedUser = true
 				endusersession.DeactivateAll()
 				endusermsg.SendAlert("you'r quota has being Distributed By Admin ", nil)
-			
 			case "res":
 				if endusersession.GetUser().Restricted {
 					endusersession.RemoveRestrict()
@@ -1247,7 +1245,13 @@ func (a *Adminsrv) setAdminMod() {
 }
 
 func (a *Adminsrv) SwapMode() {
-	a.modeUser.Swap(!a.modeUser.Load())
+	// for {
+	// 	old := a.modeUser.Load()  
+	// 	if a.modeUser.CompareAndSwap(old, !old) { 
+	// 		break
+	// 	}
+	// }
+	a.modeUser.Store(!a.modeUser.Load()) //this is okay with this, no heavy concurrent calls to this
 }
 func (a *Adminsrv) AdminMode() bool {
 	return !a.modeUser.Load()

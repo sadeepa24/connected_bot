@@ -1,13 +1,14 @@
 package constbot
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 )
 
 // use this for bandwidth represtation
-type Bwidth int64
+type Bwidth float64
 
 // retuns Byte value
 // 2MB => 2 * 1024 * 1024
@@ -38,12 +39,49 @@ func BwidthString(bwidth string) (Bwidth, error) {
 	}
 }
 
+//return value as bytes,
+//if no suffix found input will prosess as gb
+func ParserBwidth(i string) (Bwidth, error) {
+	ft, err := strconv.ParseFloat(i, 64)
+	if err == nil {
+		return Bwidth(ft).GbtoByte(), nil
+	}
+	i = strings.ReplaceAll(i, " ", "")
+	i = strings.ToLower(i)
+
+	if size, cut := strings.CutSuffix(i, "kb"); cut {
+		ft, err := strconv.ParseFloat(size, 64)
+		if err != nil {
+			return 0, err
+		}
+		return Bwidth(ft).KbtoBYte(), nil
+	}
+	if size, cut := strings.CutSuffix(i, "mb"); cut {
+		ft, err := strconv.ParseFloat(size, 64)
+		if err != nil {
+			return 0, err
+		}
+		return Bwidth(ft).KbtoBYte(), nil
+	}
+	if size, cut := strings.CutSuffix(i, "gb"); cut {
+		ft, err := strconv.ParseFloat(size, 64)
+		if err != nil {
+			return 0, err
+		}
+		return Bwidth(ft).KbtoBYte(), nil
+	}
+	return 0, errors.New("cannot parse")
+}
+
 func (b Bwidth) BytetoGB() Bwidth {
 	return b / Bwidth(AsGB)
 }
 
 func (b Bwidth) GbtoByte() Bwidth {
 	return b * GBtoByte
+}
+func (b Bwidth) KbtoBYte() Bwidth {
+	return b * KBtoByte
 }
 
 func (b Bwidth) BytetoMB() Bwidth {

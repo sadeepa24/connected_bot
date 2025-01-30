@@ -110,20 +110,38 @@ func ReciveInt(call Tgcalls, max, min int) (int, error) {
 //return as GB,
 func ReciveBandwidth(call Tgcalls, max, min C.Bwidth) (C.Bwidth, error) {
 	bwith := C.Bwidth(0)
+	var err error
+	var replymg *tgbotapi.Message
+	
+	var retry int
+	
 	for {
-		bth, err := ReciveInt(call, 100000, 0)
-		if err != nil {
+		//bth, err := ReciveInt(call, 100000, 0)
+		retry++
+		if retry > 5 {
+			call.Alertsender("yep you have been succses fully prove that you are real idiot")
+			return 0, errors.New("user is an idiot")
+		}
+		if replymg, err = call.Sendreciver(nil); err != nil {
 			return 0, err
 		}
-		bwith = C.Bwidth(bth)
-		if bwith.GbtoByte() > max || bwith.GbtoByte() <= min {
-			call.Alertsender(fmt.Sprintf("Bandwidth should be between %d, and %d", min, max))
+		if replymg.IsCommand() {
+			call.Alertsender("send valid value not commands")
+			continue
+		}
+		bwith, err = C.ParserBwidth(replymg.Text)
+		if err != nil {
+			call.Alertsender("recheck your inputs")
+			continue
+		}
+		if bwith.BytetoGB() > max || bwith.BytetoGB() <= min {
+			call.Alertsender(fmt.Sprintf("bandwidth should be between %s, and %s", min.BToString(), max.BToString()))
 			continue
 		}
 		break
 
 	}
 
-	return bwith, nil
+	return bwith.BytetoGB(), nil
 
 }

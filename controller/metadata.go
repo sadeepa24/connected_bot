@@ -2,7 +2,6 @@ package controller
 
 import (
 	"errors"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,7 +33,7 @@ type MetadataConf struct {
 	BotName     string `json:"botName,omitempty"`
 
 	//SudoAdminId int64 `json:"adminId,omitempty"`
-	AllAdmin  []int64 `json:"alladmin,omitempty"`
+	//AllAdmin  []int64 `json:"alladmin,omitempty"`
 	SudoAdmin int64   `json:"sudoadmin,omitempty"`
 
 	WatchMgbuf int
@@ -53,7 +52,7 @@ type MetadataConf struct {
 type Metadata struct {
 	ChannelId int64
 	GroupID   int64
-	AdminList map[int64]string
+	//AdminList map[int64]string
 	storePath string
 	//UserQuota        *atomic.Int64 // Last calculated userquota
 
@@ -130,24 +129,16 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 	m.Dbusercount = new(atomic.Int32)
 	m.Maxconfigcount = metaconf.Maxconfigcount
 	m.CheckCount = new(atomic.Int32)
-	m.AdminList = make(map[int64]string, len(metaconf.AllAdmin))
 
 	m.HelperInfo = metaconf.HelperInfo
 
 	m.MaxRecurtion = 20 //TODO: change this
 
-	if len(metaconf.AllAdmin) <= 0 {
-		return errors.New("no any admin found")
-	}
 
 	if metaconf.SudoAdmin == 0 {
 		return errors.New("sudo admin not found")
 	}
 	m.SudoAdmin = metaconf.SudoAdmin
-
-	for i, admin := range metaconf.AllAdmin {
-		m.AdminList[admin] = strconv.Itoa(i)
-	}
 	return nil
 }
 

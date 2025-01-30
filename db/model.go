@@ -25,7 +25,7 @@ type User struct {
 	ChannelBanned     bool `gorm:"column:channel_banned"`
 	IsVipUser         bool `gorm:"column:is_vip_user"`
 	IsBotStarted      bool `gorm:"column:is_bot_started"`
-	IsAdmin           bool `gorm:"column:is_admin"`
+	//IsAdmin           bool `gorm:"column:is_admin"`
 	IsDistributedUser bool `gorm:"column:is_dis_user"`
 	IsCapped          bool `gorm:"column:is_capped"`
 	IsMonthLimited    bool `gorm:"column:is_month_limited"`
