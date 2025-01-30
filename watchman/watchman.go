@@ -24,7 +24,7 @@ import (
 
 type Watchmanconfig struct {
 	//Simlogpath string `json:"box_log"`
-	Delbuffer  int    //msg count to buffer before delete
+	Delbuffer  int   `json:"del_buffer"` //msg count to buffer before delete
 }
 
 type Watchman struct {

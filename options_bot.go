@@ -19,7 +19,6 @@ type Botoptions struct {
 	Botmainurl          string                  `json:"bot_mainurl,omitempty"`
 	Metadata            *controller.MetadataConf `json:"metadata,omitempty"`
 	WebHookServerOption *server.ServerOption    `json:"webhook_server,omitempty"`
-	MGdelBuffer         int                     `json:"delete_buffer,omitempty"`
 	SboxConfPath        string                  `json:"sbox_path,omitempty"`
 	LoggerOption 		LoggerOptions   		`json:"log,omitempty"`
 	//MessageTempPath string                   `json:"template_path,omitempty"`
@@ -31,7 +30,7 @@ type Botoptions struct {
 }
 
 type LoggerOptions struct {
-	Paths []string `json:"path,omitempty"`
+	Paths []string `json:"paths,omitempty"`
 	Level string `json:"level,omitempty"`
 	Encoding string `json:"encoding,omitempty"`
 }

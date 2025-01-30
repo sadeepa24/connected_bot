@@ -498,7 +498,7 @@ func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msg
 				Username: upx.FromChat().UserName,
 				TgId:     upx.User.TgID,
 			},
-		}, nil, "restrictedstart")
+		}, nil, C.TmpRestrcistr)
 
 		//Messagesession.EditText(C.GetMsg(C.Msgstartmlimited), nil)
 

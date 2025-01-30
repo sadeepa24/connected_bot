@@ -320,19 +320,6 @@ var Testtemplts map[string]map[string]MgItem = map[string]map[string]MgItem{
 		},
 	},
 
-	constbot.TmpCrOutInfo: {
-		"en": {
-			Msgtmpl: `Selected outbound info is here 
-
-				OutName {{.OutName}}
-				OutType {{.OutType}}
-				OutInfo {{.OutInfo}}
-			
-			
-			
-			`,
-		},
-	},
 
 	constbot.TmpCrSendUID: {
 		"en": {

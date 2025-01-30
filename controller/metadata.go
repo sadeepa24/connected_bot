@@ -14,11 +14,11 @@ import (
 
 type MetadataConf struct {
 	ForceAdd          bool   `json:"forceAdd,omitempty"`
-	ChannelID         int64  `json:"channeid,omitempty"`
-	GroupID           int64  `json:"groupid,omitempty"`
+	ChannelID         int64  `json:"channel_id,omitempty"`
+	GroupID           int64  `json:"groupd_id,omitempty"`
 	BandwidthAvelable string `json:"bandwidthAvelable,omitempty"`
 	LoginLimit        int16  `json:"loginLimit,omitempty"`
-	Userquota         int32  `json:"userquota,omitempty"`
+	//Userquota         int32  `json:"userquota,omitempty"`
 	//Verifiedcount     int32  `json:"verifiedcount,omitempty"`
 	Maxconfigcount    int16  `json:"maxconfigcount,omitempty"`
 	//CheckCount        int32  `json:"checkcount,omitempty"`  // database checked count for exting period

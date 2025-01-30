@@ -323,9 +323,6 @@ func (m *MessageStore) Init(sender BotAPI, sudoadminID int64, logger *zap.Logger
 		}
 	}
 	*/
-
-
-	// TODO: uncomment this before push
 	return TemplateInit(sender, sudoadminID, logger, C.MapPtrToSlicePtr(m.Templates))
 }
 

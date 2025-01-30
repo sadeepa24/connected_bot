@@ -1,68 +1,60 @@
 package constbot
 
-const TmpConfigInfo string = "confusage"
-const TmplOutInfo string = "outinfoc"
-const TmpWelcomeBot string = "welcomebot"
+// command configure
+const (
+	TmpConfiConfigure string = "conf_configure" // msg before change config, para - {{.Name}}
+ 	TmplConfigureHome string = "configure_home"
+ 	TmpInchange string = "conf_in_change"
+ 	TmpOutchange string = "conf_out_change"
+ 	TmpConQuota string = "conf_quota_change"
+	TmpNameChange string = "conf_name_change"      // msg when user change name of the configvia configurecommand, para - {{.Name}}
 
-const TmpInboundinfo string = "ininfo"
-const TmpOutboundinfo string = "outinfo"
-
-// configure
-const TmpNameChange string = "confnamechange"      // msg when user change name of the configvia configurecommand, para - {{.Name}}
-const TmpConfiConfigure string = "configconfigure" // msg before change config, para - {{.Name}}
-const TmplConfigureHome string = "configurehome"
-
-// const Tmp
-const TmpInchange string = "confinchange"
-const TmpOutchange string = "confoutchange"
-const TmpFullInfoConfig string = "fullinfocg"
-const TmpUserInfo string = "userinfo"
-const TmpConQuota string = "newquota"
+)
 
 // CommandCreate
 const (
-	TmpCrAlreadyHave string = "cralreadyhave"
-	TmpCrAvblQuota   string = "cravblquota"
-	TmpCrSendUID     string = "senduuid"
-	TmpCrInInfo      string = "crininfo"
-	TmpCrOutInfo     string = "croutinfo"
-	TmplCrSelect     string = "crselectcreator"
+	TmpCrAlreadyHave string = "create_conf_limit"
+	TmpCrAvblQuota   string = "create_available_quota"
+	TmpCrSendUID     string = "create_result"
+	TmpCrInInfo      string = "create_in_info"
+	TmpCrOutInfo     string = "create_in_info"
+	TmplCrSelect     string = "create_select"
 )
 
 // CommandStatus
 const (
-	TmpStTotal    string = "status"
-	TmpStcallback string = "callback_status"
+	TmpStTotal    string = "status_home"
+	TmpStcallback string = "status_callback"
 )
 
 // cap
 const (
-	TmpcapQuota string = "tmcapquota"
-	TmpcapWarn  string = "tmpcapwarn"
-	Tmpcapreply string = "tmpcapreply"
+	TmpcapQuota string = "setcap_already"
+	TmpcapWarn  string = "setcap_warn"
+	Tmpcapreply string = "setcap_get"
 )
 
 // Gift
 const (
-	TmpGifSend  string = "tmpgiftsend"
-	TmplRecived string = "tmpgiftrec"
+	TmpGifSend  string = "gift_send"
+	TmplRecived string = "gift_reciver"
 )
 
 // Chatmemupdate
 const (
-	TmpChatmemLeft         string = "chatmemleft"
-	TmpGroupWelcome        string = "grpwelcome"
-	TmpWelcomeInbox        string = "dmwelcome"
-	TmplInboxVerified      string = "dmverified"
-	TmplInboxVerifiedAgain string = "dmverifiedagain"
-	TmpGrpComeback         string = "grpcmback"  //user who is not in channel join group
-	TmpChanComeback        string = "chancmback" //user who is not in channel join group
-	TmpChannelWelcome      string = "chanwelcome"
+	TmpChatmemLeft         string = "chat_mem_left"
+	TmpGroupWelcome        string = "grp_welcome"
+	TmpWelcomeInbox        string = "dm_welcome"
+	TmplInboxVerified      string = "dm_verified"
+	TmplInboxVerifiedAgain string = "dm_verified_again"
+	TmpGrpComeback         string = "grp_comeback"  //user who is not in channel join group
+	TmpChanComeback        string = "chan_comeback" //user who is not in channel join group
+	TmpChannelWelcome      string = "chan_welcome"
 )
 
 // common
 const (
-	TmplCommonUnverified string = "unverified"
+	TmplCommonUnverified string = "com_unverified"
 )
 
 // help
@@ -72,46 +64,52 @@ const (
 	TmpHelpInfoPage     string = "help_info" // this does not use directly istead TmpPage + pagenum
 	TmplHelpBuilderHelp string = "help_builder"
 	TmplHelpTuto        string = "help_tutorial"
-	TmpAbout            string = "botabout"
+	TmpAbout            string = "help_about"
 )
 
 // start
 const (
-	TmpNewUsers             string = "newusersbot"
-	TmpNewUsersVerified     string = "newusersbotverified"
-	TmplUserUnverifiedStart string = "newusersbountverified"
+	TmpNewUsers             string = "start_newuser"
+	TmpNewUsersVerified     string = "start_newuser_verified"
+	TmplUserUnverifiedStart string = "start_newuser_unverified"
 
-	TmpregularVerified string = "regverified"
+	TmpregularVerified string = "start_regular"
 
-	TmplMonthLimited string = "monthlimitedstart"
-	TmpRemUserst     string = "remuserstart"
+	TmplMonthLimited string = "start_monthlimited"
+	TmpRemUserst     string = "start_removed"
+	TmpRestrcistr string = "start_restricted"
 )
 
 // refer
 const (
-	TmpRefHome  string = "refhome"
-	TmpRefshare string = "refshare"
+	TmpRefHome  string = "refer_home"
+	TmpRefshare string = "refer_share"
 )
 
 // distribute
 const (
-	TmpDisGroup string = "disgroup"
+	TmpDisGroup string = "distribute_group"
 )
 
 // points
 const (
-	TmplPoints string = "pointsob"
+	TmplPoints string = "points_home"
 )
 
 // events
 const (
-	TmplEventHome string = "evehome"
+	TmplEventHome string = "event_home"
 )
 
 const (
-	TmplBuilderHome string = "builderhome"
+	TmplBuilderHome string = "builder_home"
 )
 
+
+//getinfo
 const (
-	TmplGetinfoHome string = "infohome"
+	TmplGetinfoHome string = "getinfo_home"
+	TmpUserInfo string = "getinfo_user"
+	TmplOutInfo string = "getinfo_out"
+	TmpConfigInfo string = "getinfo_usage"
 )
