@@ -129,7 +129,27 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 		}
 	}
 	if upx.FromChat().ID == p.ctrl.SudoAdmin {
-		return p.AdminSrc.Exec(upx)
+		if upx.Update.Message.Command() == "switch" {
+			p.AdminSrc.SwapMode()
+			var mode string 
+			if p.AdminSrc.AdminMode() {
+				mode = "from User to Admin"
+			} else {
+				mode = "from Admin to User"
+			}
+			p.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+				Infocontext: &botapi.Infocontext{
+					ChatId: p.ctrl.SudoAdmin,
+					User_id: p.ctrl.SudoAdmin,
+				},
+				
+				Text: "Mode Changed " + mode,
+			})
+			return nil
+		}
+		if p.AdminSrc.AdminMode() {
+			return p.AdminSrc.Exec(upx)
+		}
 	}
 
 	if err = p.Setuser(upx); err != nil { //loads info from database

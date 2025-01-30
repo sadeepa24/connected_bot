@@ -44,6 +44,8 @@ type Adminsrv struct {
 
 	adminuser db.User
 	adminuserbtype bottype.User
+
+	modeUser *atomic.Bool // true mode- user false - admin
 }
 
 func NewAdminsrv(
@@ -66,6 +68,7 @@ func NewAdminsrv(
 		logger:   logger,
 		msgstore: msgstore,
 		templateEditin: new(atomic.Bool),
+		modeUser: new(atomic.Bool),
 	}
 
 }
@@ -134,10 +137,6 @@ func (a *Adminsrv) Init() error {
 	}
 	
 
-
-
-
-
 	return nil
 }
 
@@ -191,7 +190,7 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx) error {
 	case C.CmdServerInfo:
 		return a.getserverinfo(upx)
 	case C.CmdChatSession:
-		return a.createchat(upx)
+		return a.createchat(upx, Messagesession, calls)
 	case C.CmdOverview:
 		return a.overview(upx)
 	case C.CmdRefreshDb:
@@ -700,11 +699,8 @@ func (a *Adminsrv) getserverinfo(upx *update.Updatectx) error {
 	return nil
 }
 
-func (a *Adminsrv) createchat(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(a.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang)
-
+func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
 	Messagesession.Edit("send target user", nil, "")
-
 	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
 	if err != nil {
 		return err
@@ -720,8 +716,14 @@ func (a *Adminsrv) createchat(upx *update.Updatectx) error {
 		dbuser, err = a.ctrl.GetUserById(int64(id))
 	}
 
+
 	if err != nil {
 		return err
+	}
+
+	if dbuser.TgID == a.adminuser.TgID {
+		calls.Alertsender("You can't chat weith your self 😅")
+		return nil
 	}
 	a.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
@@ -742,15 +744,13 @@ func (a *Adminsrv) createchat(upx *update.Updatectx) error {
 			default:
 			}
 			mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, src, src) // this will check context automatically
-			if err != nil {
-				if admin {
-					a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
-						Infocontext: &botapi.Infocontext{
-							ChatId: upx.User.TgID,
-						},
-						Text: "chat session ended",
-					})
-				}
+			if err != nil && admin{
+				a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+					Infocontext: &botapi.Infocontext{
+						ChatId: upx.User.TgID,
+					},
+					Text: "chat session ended",
+				})
 				break
 			}
 			if mg.IsCommand() {
@@ -878,6 +878,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 		}
 	}
 
+	calls.Alertsender("You will Recive All Media Before initing Template Editor")
 	botapi.TemplateInit(a.botapi, a.adminuser.TgID, a.logger, t)
 	t = nil
 
@@ -1247,6 +1248,22 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 	return nil
 
 }
+
+func (a *Adminsrv) setUserMod() {
+	a.modeUser.Store(true)
+}
+
+func (a *Adminsrv) setAdminMod() {
+	a.modeUser.Store(false)
+}
+
+func (a *Adminsrv) SwapMode() {
+	a.modeUser.Swap(!a.modeUser.Load())
+}
+func (a *Adminsrv) AdminMode() bool {
+	return !a.modeUser.Load()
+}
+
 
 
 
