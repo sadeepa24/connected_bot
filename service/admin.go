@@ -95,10 +95,6 @@ func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
 	switch {
 	case upx.Update.Message.IsCommand():
 		return a.Commandhandler(upx, Messagesession)
-	case upx.Update.Message.ForwardFrom != nil:
-		forward := upx.Update.Message.ForwardFrom
-		_ = forward
-		//TODO: implement later
 	case upx.Update.Message.ReplyToMessage != nil:
 		replyMg := upx.Update.Message.ReplyToMessage
 
@@ -111,7 +107,11 @@ func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
 			return err
 		}
 		Messagesession.CopyMessageTo(int64(id), int64(upx.Update.Message.MessageID))
-
+	case upx.Update.Message.ForwardFrom != nil:
+		forward := upx.Update.Message.ForwardFrom
+		_ = forward
+		//TODO: implement later
+		upx.Cancle() //emove when implimeting
 	default:
 		upx.Cancle()
 	}
@@ -170,16 +170,11 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 			return a.callback.GetcallbackContext(upx.Ctx, btns.ID())
 		},
 	}
-
-	
-	
-	
-
 	switch upx.Update.Message.Command() {
 	case C.CmdUserInfo:
 		return a.getuserinfo(upx, Messagesession, calls)
 	case C.CmdBrodcast:
-		return a.broadcast(upx)
+		return a.broadcast(upx, Messagesession)
 	case C.CmdServerInfo:
 		return a.getserverinfo(upx)
 	case C.CmdChatSession:
@@ -201,8 +196,7 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 	return nil
 }
 
-func (a *Adminsrv) broadcast(upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession(upx.Ctx, a.botapi, upx.User.TgID, upx.User.TgID, upx.User.Lang) 
+func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	Messagesession.Edit("send brodcast message", nil, "")
 	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
 
