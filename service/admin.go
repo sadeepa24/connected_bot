@@ -228,7 +228,10 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 	case "to all":
 		err = a.ctrl.GetUserList(&userlist) 
 	case "to unverified":
-		err = a.ctrl.GetUnVerifiedUserList(&userlist) 
+		err = a.ctrl.GetUnVerifiedUserList(&userlist)
+	default:
+		Messagesession.SendAlert("Broadcast Canceled", nil)
+		return nil
 	}
 	if err != nil {
 		Messagesession.SendAlert("fetching user list failed try again", nil)
@@ -244,10 +247,13 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 		sendrfunc = Messagesession.CopyMessageTo
 	}
 
+	var erroreduser int
 	for _, user := range userlist {
-		sendrfunc(user, int64(message.MessageID))
+		if err := sendrfunc(user, int64(message.MessageID)); err != nil {
+			erroreduser++
+		}
 	}
-	Messagesession.Edit(fmt.Sprintf("Broadcast Done, Message Sent To %d users", len(userlist))  , nil, "")
+	Messagesession.Edit(fmt.Sprintf("Broadcast Done, Message Sent successfully to %d users from %d", len(userlist)-erroreduser, len(userlist) )  , nil, "")
 
 	return nil
 }
