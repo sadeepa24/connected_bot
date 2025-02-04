@@ -28,7 +28,8 @@ const (
 	BtnFullInfo  string = "full info"
 	BtnFullUsage string = "Get Full Usage Alltime"
 
-	BtnCheckOutbounds string = "Check Outbounds"
+	BtnCheckOutbounds string = "Outbounds"
+	BtnCheckInbounds string = "Inbounds"
 )
 
 // Urls

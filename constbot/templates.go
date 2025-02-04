@@ -111,5 +111,6 @@ const (
 	TmplGetinfoHome string = "getinfo_home"
 	TmpUserInfo string = "getinfo_user"
 	TmplOutInfo string = "getinfo_out"
+	TmplInInfo string = "getinfo_in"
 	TmpConfigInfo string = "getinfo_usage"
 )

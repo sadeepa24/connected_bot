@@ -58,6 +58,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 			btns.Addbutton(C.BtnUserInfo, C.BtnUserInfo, "")
 			btns.Addbutton(C.BtnConfigs, C.BtnConfigs, "")
 			btns.AddBtcommon(C.BtnCheckOutbounds)
+			btns.AddBtcommon(C.BtnCheckInbounds)
 			btns.AddClose(false)
 	
 			Messagesession.Edit(botapi.UpMessage{
@@ -79,6 +80,8 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				state = 2
 			case C.BtnCheckOutbounds:
 				state = 3
+			case C.BtnCheckInbounds:
+				state = 5
 			}
 			
 		case 1:
@@ -177,7 +180,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 			btns.AddCloseBack()
 	
 
-			if _, err = Messagesession.Edit("select outbound", btns, ""); err != nil {
+			if _, err = Messagesession.Edit("select outbound to see details", btns, ""); err != nil {
 				continue info
 			}
 			
@@ -368,6 +371,72 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				Messagesession.SendAlert("usage history function is not avalable yet", nil)
 			}
 
+		case 5:
+			allins := u.ctrl.Getinbounds()
+			if len(allins) == 0 {
+				Messagesession.Callbackanswere(callback.ID, "no any outbound found", true)
+				state = 0
+				continue info
+			}
+			btns.Reset([]int16{2})
+			for _, in:= range allins {
+				btns.Addbutton(in.Tag, strconv.Itoa(int(in.Id)), "")
+			}
+			btns.AddCloseBack()
+
+			if _, err = Messagesession.Edit("select inbound to see details", btns, ""); err != nil {
+				continue info
+			}
+			
+			if callback, err = u.callback.GetcallbackContext(upx.Ctx, btns.ID()); err != nil {
+				return err
+			}
+			switch callback.Data{
+			case C.BtnBack:
+				state = 0
+				continue
+			case C.BtnClose:
+				Messagesession.DeleteAllMsg()
+				return nil
+			default:
+				id, err := strconv.Atoi(callback.Data)
+				if err != nil {
+					continue info
+				}
+
+				in, ok := u.ctrl.Getinbound(id)
+				if !ok {
+					Messagesession.Callbackanswere(callback.ID, "inbound not found", true)
+					continue info 
+				}
+				btns.Reset([]int16{2})
+				btns.AddCloseBack()
+				if _, err = Messagesession.Edit(struct {
+					InName         string
+					InType         string
+					InPort         int
+					InAddr         string
+					InInfo         string
+					TranstPortType string
+					TlsEnabled     bool
+					SupportInfo    []string
+
+				}{
+					InName: in.Name,
+					InType: in.Type,
+					InPort: in.Port(),
+					TlsEnabled: in.Tlsenabled,
+					TranstPortType: in.Transporttype,
+					InAddr: u.ctrl.DefaultPubip,
+					InInfo: in.Custom_info,
+					SupportInfo: in.Support,
+					
+				}, btns, C.TmplOutInfo); err != nil {
+					u.logger.Error(err.Error())
+					continue info
+	
+				}
+			}
 
 		}
 
