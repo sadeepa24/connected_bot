@@ -431,7 +431,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 					InInfo: in.Custom_info,
 					SupportInfo: in.Support,
 					
-				}, btns, C.TmplOutInfo); err != nil {
+				}, btns, C.TmplInInfo); err != nil {
 					u.logger.Error(err.Error())
 					continue info
 	
