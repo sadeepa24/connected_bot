@@ -26,7 +26,7 @@ func TestBuilder(t *testing.T) {
 
 	Builder.AddDnsServer(option.DNSServerOptions{})
 	err = Builder.AddOutbound(db.Config{
-		UUID: uid,
+		UUID: uid.String(),
 		Name: "tests",
 	}, sbox.Inboud{
 		Type:          "vless",

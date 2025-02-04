@@ -1007,7 +1007,7 @@ func (b *BuildConfig) AddOutbound(sboxot db.Config, serverIN sbox.Inboud, sni st
 	switch sboxot.Type {
 	case C.Vless:
 		vlessOutbound.VLESSOptions = option.VLESSOutboundOptions{
-			UUID: sboxot.UUID.String(),
+			UUID: sboxot.UUID,
 			ServerOptions: option.ServerOptions{
 
 				Server:     serverIN.Domain,

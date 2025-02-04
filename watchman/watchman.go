@@ -523,7 +523,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				if (newConfigQuota - user.Configs[i].Usage > 0) && userVerifycity && !user.IsDistributedUser && !user.IsMonthLimited && !user.Restricted {
 					status, err := w.ctrl.AddResetUserSbox(&sbox.Userconfig{
 						Vlessgroup: &sbox.Vlessgroup{
-							UUID: user.Configs[i].UUID,
+							UUID: user.Configs[i].GetUUID(),
 						},
 						Type: user.Configs[i].Type,
 						UsercheckId: int(user.CheckID),
@@ -583,7 +583,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					}
 					status, err := w.ctrl.RemoveUserSbox(&sbox.Userconfig{
 						Vlessgroup: &sbox.Vlessgroup{
-							UUID: user.Configs[i].UUID,
+							UUID: user.Configs[i].GetUUID(),
 						},
 						UsercheckId: int(user.CheckID),
 						Name:        user.Name,

@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"net/netip"
 
 	"github.com/sadeepa24/connected_bot/botapi"
@@ -42,7 +41,7 @@ type configinfo struct {
 
 	ConfigName string
 	ConfigType string
-	ConfigUUID fmt.Stringer
+	ConfigUUID string
 
 	ConfigUpload     string
 	ConfigDownload   string

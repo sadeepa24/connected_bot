@@ -84,7 +84,7 @@ func (u *User) Iscaptimeover() bool {
 type Config struct {
 	Id         int64 `gorm:"primaryKey"`
 	Name       string
-	UUID       uuid.UUID
+	UUID       string `gorm:"not null;uniqueIndex"`
 	Type       string
 	Password   string
 	Active     bool
@@ -103,6 +103,9 @@ type Config struct {
 	LoginLimit int16
 	//DeletedAt 		gorm.DeletedAt `gorm:"index"`
 
+}
+func (c *Config) GetUUID() uuid.UUID {
+	return uuid.FromStringOrNil(c.UUID) //this won't return nil because db's uuid verified before store them in db
 }
 
 type UsageHistory struct {

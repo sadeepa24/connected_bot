@@ -421,7 +421,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 	err = dB.Model(&db.Config{}).Create(&[]db.Config{
 		{
 			Name:       "unused verified",
-			UUID:       uid1,
+			UUID:       uid1.String(),
 			UserID:     userID,
 			Type:       "vless",
 			Active:     true,
@@ -435,7 +435,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 		},
 		{
 			Name:       "unused verified",
-			UUID:       uid2,
+			UUID:       uid2.String(),
 			UserID:     userID,
 			Active:     true,
 			InboundID:  1,
@@ -493,7 +493,7 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 	err = dB.Model(&db.Config{}).Create(&[]db.Config{
 		{
 			Name:       "usaged user",
-			UUID:       uid1,
+			UUID:       uid1.String(),
 			UserID:     userID,
 			Type:       "vless",
 			Active:     true,
@@ -507,7 +507,7 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 		},
 		{
 			Name:       "usaged user",
-			UUID:       uid2,
+			UUID:       uid2.String(),
 			UserID:     userID,
 			Active:     true,
 			InboundID:  1,
@@ -627,7 +627,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 	err = dB.Model(&db.Config{}).Create(&[]db.Config{
 		{
 			Name:       "gift couple",
-			UUID:       uid1,
+			UUID:       uid1.String(),
 			UserID:     userID + 500,
 			Type:       "vless",
 			Active:     true,
@@ -641,7 +641,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 		},
 		{
 			Name:       "gift couple",
-			UUID:       uid2,
+			UUID:       uid2.String(),
 			UserID:     userID + 500,
 			Active:     true,
 			InboundID:  1,

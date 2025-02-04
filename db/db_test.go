@@ -34,7 +34,7 @@ func TestDb(t *testing.T) {
 	uid, _ := uuid.NewV4()
 	testconfig := sdb.Config{
 		Id:        66,
-		UUID:      uid,
+		UUID:      uid.String(),
 		UserID:    247,
 		InboundID: 3,
 		Usage:     0,

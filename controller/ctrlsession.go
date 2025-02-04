@@ -99,10 +99,33 @@ func (c *CtrlSession) AddNewConfig(inboundid int16, outboundid int16, Quota C.Bw
 	c.add()
 	defer c.done()
 
-	uid, err := uuid.NewV4()
-	if err != nil {
-		return nil, C.Erruuidcreatefailed
+	
+	var (
+		exists bool
+		uid uuid.UUID
+		err error
+	)
+
+	//to check redundant uuid
+	for {
+		uid, err = uuid.NewV4()
+		if err != nil {
+			return nil, C.Erruuidcreatefailed
+		}
+		if err = c.ctrl.db.Raw("SELECT EXISTS(SELECT 1 FROM users WHERE uuid = ?)", uid.String()).Scan(&exists).Error; err != nil {
+			return nil, C.ErrDbopration
+		}
+		if exists {
+			continue
+		}
+		break
 	}
+
+
+	// db.Where("tg_id = ?", 123).First(&user)
+	//if c.ctrl.db.Model(&db.Config{}).Where("uuid = ?", uid).
+	
+	
 
 	intag, err := c.ctrl.GetdbInbound(int(inboundid))
 	if err != nil {
@@ -141,7 +164,7 @@ func (c *CtrlSession) AddNewConfig(inboundid int16, outboundid int16, Quota C.Bw
 		dbconf = db.Config{
 			InboundID:  newconfig.InboundId,
 			OutboundID: newconfig.OutboundID,
-			UUID:       newconfig.UUID,
+			UUID:       newconfig.UUID.String(),
 			Name:       name,
 			UserID:     c.user.TgID,
 			Active:     true,
@@ -773,7 +796,7 @@ func (c *CtrlSession) getsboxconf(confid int64) (*sbox.Userconfig, *db.Config, e
 	switch config.Type {
 	case C.Vless:
 		vlessgrp = &sbox.Vlessgroup{
-			UUID: config.UUID,
+			UUID: config.GetUUID(),
 		}
 	//TODO: add other config types here when adding them
 	default:

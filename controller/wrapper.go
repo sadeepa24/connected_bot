@@ -647,7 +647,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 		user.Configs[i].Quota = newConfigQuota
 		status, err := c.AddResetUserSbox(&sbox.Userconfig{
 			Vlessgroup: &sbox.Vlessgroup{
-				UUID: user.Configs[i].UUID,
+				UUID: user.Configs[i].GetUUID(),
 			},
 			Type: user.Configs[i].Type,
 
@@ -680,7 +680,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 
 			c.RemoveUserSbox(&sbox.Userconfig{
 				Vlessgroup: &sbox.Vlessgroup{
-					UUID: user.Configs[i].UUID,
+					UUID: user.Configs[i].GetUUID(),
 				},
 				UsercheckId: int(user.CheckID),
 				Name:        user.Name,
