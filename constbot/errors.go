@@ -7,6 +7,8 @@ var ErrConfigNotFound = errors.New("config Notfound")
 var ErrInboundNotFound = errors.New("inbound Notfound")
 var ErrOutboundNotFound = errors.New("outbound Notfound")
 var ErrResultMalformed = errors.New("status result malformed")
+var ErrNotMsgType = errors.New("type is not valid messagetype")
+
 
 var ErrTypeMissmatch = errors.New("iobound type not supported or invalid type")
 
@@ -75,3 +77,5 @@ var (
 var (
 	ErrMsgDisabled = errors.New("msg disabled")
 )
+
+

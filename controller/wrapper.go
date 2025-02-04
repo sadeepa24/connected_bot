@@ -1146,3 +1146,50 @@ func (c *Controller) GetLastRefreshtime() time.Time {
 func (c *Controller) SetLastRefreshtime() {
 	c.lastDbRefresh = time.Now()
 }
+
+func (c *Controller) SendMsgContext(ctx context.Context, msg any) (*tgbotapi.Message, error) {
+	var (
+		repmg *tgbotapi.Message
+		err   error
+	)
+	switch unwrapedmg := msg.(type) {
+	case *botapi.Msgcommon:
+			if unwrapedmg.Endpoint == "" {
+				unwrapedmg.Endpoint = C.ApiMethodSendMG
+			}
+			repmg, err = c.botapi.SendContext(ctx, unwrapedmg)
+	case botapi.UpMessage:
+		var texttmpl *botapi.Message
+		texttmpl, err = c.botapi.GetMgStore().GetMessage(unwrapedmg.TemplateName, unwrapedmg.Lang, unwrapedmg.Template)
+		if err != nil {
+			c.logger.Error("failed to get message from msgstore template - " + unwrapedmg.TemplateName , zap.Error(err))
+			return nil, err
+		}
+		sendmg := botapi.Msgcommon{
+			Parse_mode: texttmpl.ParseMode,
+			Infocontext: &botapi.Infocontext{
+				ChatId: unwrapedmg.DestinatioID,
+			},
+		}
+		if unwrapedmg.Buttons != nil {
+			sendmg.Reply_markup = unwrapedmg.Buttons.Getkeyboard()
+		}
+		sendmg.Meadiacommon = &botapi.Meadiacommon{}
+		sendmg.Caption = texttmpl.String()
+		if texttmpl.MedType == C.MedPhoto {
+			sendmg.Photo = texttmpl.MediaId
+			sendmg.Endpoint = C.ApiMethodSendPhoto
+		} else if texttmpl.MedType == C.MedVideo {
+			sendmg.Video = texttmpl.MediaId
+			sendmg.Endpoint = C.ApiMethodSendVid
+		} else {
+			sendmg.Meadiacommon = nil
+			sendmg.Text = texttmpl.Msg
+			sendmg.Endpoint = C.ApiMethodSendMG
+		}
+		repmg, err = c.botapi.SendContext(ctx, &sendmg)
+	default:
+		return nil, C.ErrNotMsgType
+	}
+	return repmg, err
+}

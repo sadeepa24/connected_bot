@@ -14,7 +14,6 @@ import (
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
 	"github.com/sagernet/sing-vmess/vless"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -154,7 +153,6 @@ func (w *Watchman) startAutoupdater() {
 	w.lastUserCount = w.ctrl.Dbusercount.Load()
 update:
 	for {
-	sele:
 		select {
 
 		case <-w.ctx.Done():
@@ -193,9 +191,7 @@ update:
 			w.logger.Info("db refresh done", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
 
 		case mg := <-w.ctrl.Getmgque():
-
 			currentcount := w.ctrl.Dbusercount.Load()
-
 			switch unwrapedmg := mg.(type) {
 			case controller.RefreshSignal:
 				w.ctrl.DirectMg("force refresh added", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
@@ -212,7 +208,6 @@ update:
 					w.ctrl.DirectMg("refresh done", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
 				}
 			case controller.BroadcastSig:
-
 				go func ()  {
 					userlist := []int64{}
 					if w.ctrl.GetUserList(&userlist) != nil {
@@ -223,8 +218,6 @@ update:
 						w.ctrl.DirectMg(string(unwrapedmg), user, user)
 					}
 				}()
-
-	
 			case controller.ForceResetUsage:
 				refreshctx, cancle := context.WithCancel(w.ctx)
 
@@ -242,104 +235,27 @@ update:
 				}
 				if float32(w.lastUserCount)+(float32(w.lastUserCount)/4)*3 < float32(currentcount) {
 					refreshctx, cancle := context.WithCancel(w.ctx)
-
-					
 					err := w.RefreshDb(refreshctx, false, false)
 					cancle()
-
 					if err != nil {
 						w.logger.Error("Usercount Db Refresh Failed Due to: ", zap.Error(err))
 						continue
 					}
 					w.logger.Info("db refresh done")
 				}
-
 				continue
-			case *botapi.Msgcommon:
-				var (
-					repmg *tgbotapi.Message
-					err   error
-				)
-				if unwrapedmg.Endpoint == "" {
-					unwrapedmg.Endpoint = C.ApiMethodSendMG
-				}
-
-				if repmg, err = w.botapi.SendContext(w.ctx, unwrapedmg); err != nil {
-					if errors.Is(err, C.ErrClientRequestFail) {
-						w.ctrl.Getmgque() <- mg // buffer again
-					}
-					break sele
-				}
-
-				if unwrapedmg.ChatId == w.ctrl.GroupID {
-					w.Delmg(repmg.MessageID)
-				}
-			case botapi.UpMessage:
-
-				texttmpl, err := w.mgstore.GetMessage(unwrapedmg.TemplateName, unwrapedmg.Lang, unwrapedmg.Template)
+			default:
+				repmg, err := w.ctrl.SendMsgContext(w.ctx, mg)
 				if err != nil {
-					w.logger.Error("message from msgque chan failed to send", zap.Error(err))
-					continue
-				}
-				sendmg := botapi.Msgcommon{
-					Parse_mode: texttmpl.ParseMode,
-					Infocontext: &botapi.Infocontext{
-						ChatId: unwrapedmg.DestinatioID,
-					},
-				}
-
-				if unwrapedmg.Buttons != nil {
-					sendmg.Reply_markup = unwrapedmg.Buttons.Getkeyboard()
-				}
-
-				sendmg.Meadiacommon = &botapi.Meadiacommon{}
-				sendmg.Caption = texttmpl.String()
-				if texttmpl.MedType == C.MedPhoto {
-
-					sendmg.Photo = texttmpl.MediaId
-					sendmg.Endpoint = C.ApiMethodSendPhoto
-
-				} else if texttmpl.MedType == C.MedVideo {
-
-					sendmg.Video = texttmpl.MediaId
-					sendmg.Endpoint = C.ApiMethodSendVid
-
-				} else {
-					sendmg.Meadiacommon = nil
-					sendmg.Text = texttmpl.Msg
-					sendmg.Endpoint = C.ApiMethodSendMG
-				}
-				var repmg *tgbotapi.Message
-
-				if repmg, err = w.botapi.SendContext(w.ctx, &sendmg); err != nil {
 					if errors.Is(err, C.ErrClientRequestFail) {
 						w.ctrl.Getmgque() <- mg // buffer again
 					}
-					break sele
+					continue update
 				}
-
-				if sendmg.ChatId == w.ctrl.GroupID {
+				if repmg.Chat != nil && repmg.Chat.ID == w.ctrl.GroupID {
 					w.Delmg(repmg.MessageID)
 				}
-
 			}
-
-		/*
-		case log := <-w.sboxlog:
-			w.simplelog.Info("sboxlog ", log.(string))
-
-			if len(w.sboxlog)+200 > cap(w.sboxlog) {
-				for len(w.sboxlog) > 0 {
-					lg := <-w.sboxlog
-					w.simplelog.Info("sboxlog ", lg.(string))
-				}
-			}
-
-			w.simplelog.Sync()
-			w.logger.Sync()
-		// case delmg := <- w.DeleteQue:
-		*/
-
 		}
 
 	}
@@ -355,12 +271,6 @@ update:
 // 			flush = 0
 // 		}
 // 		flush++
-// 	}
-// }
-
-// func (w *Watchman) Testloop() {
-// 	for {
-// 		w.sboxlog <- "text buffer test test test test test"
 // 	}
 // }
 
@@ -428,6 +338,37 @@ func (w *Watchman) Delmg(delmg int) {
 
 }
 
+// send any uint16 value to stop this chan
+func (w *Watchman) MessageBufSend(recivechan chan any)  {
+	tmpctx, cancel := context.WithTimeout(w.ctx, 15 * time.Minute) //maximum time to send all buffred message if message get 1s to send 900 messages can be send (worst case)
+	defer cancel()
+	for val := range recivechan {
+		if tmpctx.Err() != nil {
+			close(recivechan)
+			return
+		}
+		if _, ok := val.(uint16); ok {
+			close(recivechan)
+			return
+		}
+		_,err := w.ctrl.SendMsgContext(tmpctx, val)
+		if err != nil {
+			if errors.Is(err, C.ErrClientRequestFail) {
+				w.ctrl.Getmgque() <- val // buffer again to send later
+			}
+		}
+	}
+}
+
+func (w *Watchman) SendUsingBufChan(send chan any, msg string, id int64) {
+	send <- &botapi.Msgcommon{
+		Infocontext: &botapi.Infocontext{
+			ChatId: id,
+			User_id: id,
+		},
+		Text: msg,
+	}
+}
 // refresh member verificity
 // refresh usage to database
 // if docount true CheckkCount will increase by one
@@ -438,6 +379,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 	w.ctrl.WaitCriticalop()      //waiting for all critical opration done
 	w.ctrl.CancleUpdateContexs() // cancling all non critical ongoing upx
+
+	
 
 	var (
 		checkcount = w.ctrl.CheckCount.Load()
@@ -454,6 +397,9 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		w.ctrl.DirectMg("Predata prosseing error Please Make Manual Refresh := " + err.Error(), w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
 		return errors.Join(errors.New("predata prosseing failed"), err)
 	}
+
+	msgchan := make(chan any, predata.verifiedusercount)
+	go w.MessageBufSend(msgchan) // this will recive all messages to user using the above chan, so this function does not wait for request response, everything releted to req, res will be handled by this, chan will close automatically after 15 minitues(max time)
 
 	w.ctrl.VerifiedUserCount.Swap(int32(predata.verifiedusercount))
 	MainCommonUserQuota := w.ctrl.BandwidthAvelable // Newcalculated main quota for each user
@@ -496,7 +442,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			if refreshcontext.Err() != nil {
 				w.ctrl.WatchmanUnlock()
 				w.logger.Warn("Force stopping DB updating, Db update stops from record Db may malformed " + user.Name)
-				w.ctrl.DirectMg("force stopped db refresh you may need to start bot with last backup see logs to more info", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
+				w.SendUsingBufChan(msgchan, "force stopped db refresh you may need to start bot with last backup see logs to more info", w.ctrl.SudoAdmin )
 				return fmt.Errorf("context cancled db refresh stops from record id %v, err %v ", user.TgID, refreshcontext.Err())
 			}
 
@@ -611,7 +557,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					} else {
 
 						if !user.Configs[i].Active {
-							w.ctrl.DirectMg("Good News Configuration "+ user.Configs[i].Name+" Online Again Due to Bandiwdth Change 🔄", user.TgID, user.TgID)
+							w.SendUsingBufChan(msgchan, "Good News Configuration "+ user.Configs[i].Name+" Online Again Due to Bandiwdth Change 🔄", user.TgID)
 						}
 						user.Configs[i].Active = true
 						user.Configs[i].Usage += (status.Download + status.Upload)
@@ -633,7 +579,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					}
 				} else if user.Configs[i].Active {
 					if (user.Configs[i].Quota - user.Configs[i].Usage) <= 0 {
-						w.ctrl.DirectMg("⚠️ Your configuration "+user.Configs[i].Name+" has exceeded its usage limit. The config will not function until it is renewed. 🔄", user.TgID, user.TgID)
+						w.SendUsingBufChan(msgchan, "⚠️ Your configuration "+user.Configs[i].Name+" has exceeded its usage limit. The config will not function until it is renewed. 🔄", user.TgID)
 					}
 					status, err := w.ctrl.RemoveUserSbox(&sbox.Userconfig{
 						Vlessgroup: &sbox.Vlessgroup{
@@ -685,10 +631,10 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 			if condcheck() {			
 				if user.IsDistributedUser && !user.Restricted {
-					w.ctrl.DirectMg(C.GetMsg(C.MsgDistributeOver), user.TgID, user.TgID)
+					w.SendUsingBufChan(msgchan, C.GetMsg(C.MsgDistributeOver), user.TgID)
 				}
 				if user.IsMonthLimited && !user.Restricted {
-					w.ctrl.DirectMg("You'r Limitation is over", user.TgID, user.TgID)
+					w.SendUsingBufChan(msgchan, "You'r Limitation is over", user.TgID)
 				}
 				
 				user.AddPoint(10)
@@ -697,12 +643,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				if user.MonthUsage > user.CalculatedQuota+user.AdditionalQuota {
 
 					//TODO: add template here
-					w.ctrl.Addquemg(w.ctx, &botapi.Msgcommon{
+					msgchan <- &botapi.Msgcommon{
 						Infocontext: &botapi.Infocontext{
 							ChatId: user.TgID,
 						},
 						Text: C.GetMsg(C.MsgwtchUsagereset),
-					})
+					}
 
 					user.AlltimeUsage += user.CalculatedQuota
 					user.MonthUsage = user.MonthUsage - user.CalculatedQuota
@@ -721,12 +667,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 				} else if user.MonthUsage < ((user.CalculatedQuota*3)/4) && !user.IsMonthLimited && !user.IsDistributedUser && !user.Restricted{ 
 					//check whether user used 75% from his quota if not user will limited next 30 days
-					w.ctrl.Addquemg(w.ctx, &botapi.Msgcommon{
+					msgchan <- &botapi.Msgcommon{
 						Infocontext: &botapi.Infocontext{
 							ChatId: user.TgID,
 						},
 						Text: C.GetMsg(C.MsgQuotanotUsed),
-					})
+					}
 
 					user.IsMonthLimited = true
 					user.MonthUsage = 0
@@ -734,12 +680,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				} else  {
 
 					//TODO: add template here
-					w.ctrl.Addquemg(w.ctx, &botapi.Msgcommon{
+					msgchan <- &botapi.Msgcommon{
 						Infocontext: &botapi.Infocontext{
 							ChatId: user.TgID,
 						},
 						Text: C.GetMsg(C.MsgresetUsage),
-					})
+					}
 					user.IsMonthLimited = false
 					user.AlltimeUsage += user.MonthUsage
 					user.MonthUsage = 0
@@ -799,7 +745,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	// it's okay copy db manually here 
 	// all other goroutines won't make db calls while watchman RefreshDb running, it's guranteed 
 	w.sendDbBackup()
-
+	msgchan <- uint16(1) // to tell buffring is over
 
 	// if w.CheckClose() != nil {
 	// 	w.close <- struct{}{}
@@ -947,7 +893,6 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context) (*preprosessd, e
 
 	return predata, nil
 }
-
 // DO not call outside refresh db
 func (w *Watchman) sendDbBackup() {
 	dbraw, err := os.Open(w.db.DatabasePath())
