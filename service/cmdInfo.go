@@ -54,7 +54,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 	
 		case 0:
 
-			btns.Reset([]int16{2, 1})
+			btns.Reset([]int16{2, 2, 1})
 			btns.Addbutton(C.BtnUserInfo, C.BtnUserInfo, "")
 			btns.Addbutton(C.BtnConfigs, C.BtnConfigs, "")
 			btns.AddBtcommon(C.BtnCheckOutbounds)
