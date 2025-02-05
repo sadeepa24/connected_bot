@@ -436,6 +436,13 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 					continue info
 	
 				}
+				if callback, err = u.callback.GetcallbackContext(upx.Ctx, btns.ID()); err != nil {
+					return err
+				}
+				switch callback.Data {
+				case C.BtnClose:
+					break info
+				}
 			}
 
 		}

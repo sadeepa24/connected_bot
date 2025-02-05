@@ -209,6 +209,8 @@ var (
 
 	MsgwtchUsagereset string = "🔄 All your usage has been reset, but any excess usage has been carried over to this month. 📊"
 	MsgresetUsage     string = "🔄 All your usage has been successfully reset. ✨"
+
+	MsgNoInbound      string = "Something Wrong Inbound Can't be found you may need to contact admin"
 )
 
 var (
@@ -225,6 +227,8 @@ var (
 	MsgContactTimeover string = "✨ Your contact time has expired. ⏳ Please feel free to reach out again when you're ready! 😊"
 	MsgContactCancle   string = "❌ You have canceled the contact session. If you need assistance later, don't hesitate to reach out! 😊"
 )
+
+
 
 type UserMsg map[string]string
 
@@ -384,5 +388,7 @@ func overide() {
 	MsgQuotawarnlow = "MsgQuotawarnlow"
 	MsgQuotawarnzero = "MsgQuotawarnzero"
 	MsgNoQuota = "MsgNoQuota"
+
+	MsgNoInbound = "MsgNoInbound"
 
 }

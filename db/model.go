@@ -2,10 +2,12 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/gofrs/uuid"
 	C "github.com/sadeepa24/connected_bot/constbot"
+	"github.com/sadeepa24/connected_bot/sbox"
 )
 
 type User struct {
@@ -69,6 +71,19 @@ func (u *User) GetCalculatedQuota() C.Bwidth {
 	return u.CalculatedQuota
 }
 
+func (u User) String() string {
+	return fmt.Sprintf(
+		"User{TgID: %d, Name: %s, Username: %s, Points: %d, Lang: %s, IsVipUser: %t, "+
+			"CalculatedQuota: %s, AdditionalQuota: %s, GiftQuota: %s, CappedQuota: %s, UsedQuota: %s, "+
+			"MonthUsage: %s, AlltimeUsage: %s}",
+		u.TgID, u.Name, u.Username.String, u.Points, u.Lang, u.IsVipUser,
+		u.CalculatedQuota.BToString(), u.AdditionalQuota.BToString(), u.GiftQuota.BToString(),
+		u.CappedQuota.BToString(), u.UsedQuota.BToString(),
+		u.MonthUsage.BToString(), u.AlltimeUsage.BToString(),
+	)
+}
+
+
 // retuns sum of addtional + gift +
 func (u *User) GenaralQuotSum() C.Bwidth {
 	if u.IsCapped {
@@ -104,6 +119,12 @@ type Config struct {
 	//DeletedAt 		gorm.DeletedAt `gorm:"index"`
 
 }
+func (c *Config) UpdateUsages(status sbox.Sboxstatus) {
+	c.Usage += status.Download + status.Upload
+	c.Download += status.Download
+	c.Upload += status.Upload
+}
+
 func (c *Config) GetUUID() uuid.UUID {
 	return uuid.FromStringOrNil(c.UUID) //this won't return nil because db's uuid verified before store them in db
 }
