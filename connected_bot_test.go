@@ -101,7 +101,6 @@ func TestConnectedBot(t *testing.T) {
 			Maxconfigcount:    10,
 			LoginLimit:        1,
 			BandwidthAvelable: "4000GB",
-			ForceAdd:          false,
 		},
 		Logger:     zLogger,
 		Sboxoption: newopt,
