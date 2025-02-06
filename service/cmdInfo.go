@@ -88,6 +88,8 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 			btns.Reset([]int16{2})
 			btns.AddCloseBack()
 
+			tusage := Usersession.TotalUsage()
+
 			if _, err = Messagesession.Edit(userinfo{
 
 				CommonUser: &botapi.CommonUser{
@@ -101,7 +103,8 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				Dedicated: C.Bwidth(u.ctrl.CommonQuota.Load()).BToString(),
 				TQuota:    (Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota).BToString(),
 				LeftQuota: Usersession.LeftQuota().BToString(),
-				TUsage:    Usersession.TotalUsage().BToString(),
+				TUsage:    tusage.BToString(),
+				AlltimeUsage: (tusage+upx.User.MonthUsage).BToString(),
 				ConfCount: Usersession.GetUser().ConfigCount,
 				CapEndin:  upx.User.Captime.AddDate(0, 0, 30).String(),
 

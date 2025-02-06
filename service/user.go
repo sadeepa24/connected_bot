@@ -157,6 +157,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		Usersession.Chatupdate(updatedchat, false)
 		Usersession.GetUser().IsRemoved = true
 		Usersession.DeactivateAll()
+		upx.User.LeaveTime = time.Now()
 
 		if NewUser.Isbotstarted() {
 
@@ -177,6 +178,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 	case C.Statuskicked:
 		Usersession.Banuser(updatedchat)
 		Messagesession.SendAlert(C.GetMsg(C.MsgBannedMem), nil)
+		upx.User.LeaveTime = time.Now()
 
 	case C.Statusmember:
 		switch {

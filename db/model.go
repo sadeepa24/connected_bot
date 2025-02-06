@@ -35,7 +35,7 @@ type User struct {
 	Points int64
 
 	CalculatedQuota C.Bwidth // This value includes Main User quota which is calculated on watchman + Giftquota
-	AdditionalQuota C.Bwidth `gorm:"column:additional_quota"` // this is static does not reset, value always in byte
+	AdditionalQuota C.Bwidth `gorm:"column:additional_quota"` // this is static does not reset, value always in byte (this value does not use yet in codebase may be future)
 	GiftQuota       C.Bwidth // this value can be +,-
 	CappedQuota     C.Bwidth `gorm:"column:capped_quota"`
 	UsedQuota       C.Bwidth // current total quota used by the user
@@ -166,7 +166,7 @@ type Gift struct {
 	Date        time.Time
 	Valid       bool // used by watchman
 
-	ComQuota C.Bwidth //common quota exited when creating the record
+	ComQuota C.Bwidth //Maincommon quota which was exist when gift was created
 	//DeletedAt  gorm.DeletedAt `gorm:"index"`
 }
 

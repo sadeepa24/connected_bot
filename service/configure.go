@@ -215,12 +215,11 @@ func (c *configState) action() error {
 			AvblQuota string
 			ConfName string
 		}{
-			
 			AvblQuota: (c.lastconfig.Quota + c.Usersession.LeftQuota()).BToString(),
 			ConfName: c.lastconfig.Name,
 		}, nil, C.TmpConQuota)
 
-		newquota, err := common.ReciveBandwidth(c.Tgcalls, c.Usersession.GetconfigUsageTotal(c.lastconfig.Id), (c.lastconfig.Quota + c.Usersession.LeftQuota())  )
+		newquota, err := common.ReciveBandwidth(c.Tgcalls, (c.lastconfig.Quota + c.Usersession.LeftQuota()), c.Usersession.GetconfigUsageTotal(c.lastconfig.Id)  )
 
 		if err != nil {
 			return err
@@ -242,18 +241,11 @@ func (c *configState) action() error {
 		return nil
 	
 	case C.BtnChangeLogin:
-
-		limitstr, err := c.Sendreciver("send new login limit count (0 < x <= 5)") 
+		c.Alertsender("send new login limit count (0 < x <= 5)") 
+		limit, err := common.ReciveInt(c.Tgcalls, 0, 5)
 		if err != nil {
 			return nil
 		}
-
-		limit, err := strconv.Atoi(limitstr.Text)
-		if err != nil {
-			c.Alertsender("please send valid intiger")
-			return nil
-		}
-
 		if limit <= 0 || limit > 5 {
 			c.Alertsender("login should be between 0 and 5")
 			return nil
@@ -478,9 +470,11 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx,  Messagesession *bot
 				Messagesession.SendAlert(msg, nil)
 			},
 			Sendreciver: func(msg any) (*tgbotapi.Message, error) {
-				_, err := Messagesession.Edit(msg, nil, "")
-				if err != nil {
-					return nil, err
+				if msg != nil {
+					_, err := Messagesession.Edit(msg, nil, "")
+					if err != nil {
+						return nil, err
+					}
 				}
 				mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
 				if err == nil {

@@ -17,7 +17,7 @@ const (
 	TmpCrAvblQuota   string = "create_available_quota"
 	TmpCrSendUID     string = "create_result"
 	TmpCrInInfo      string = "create_in_info"
-	TmpCrOutInfo     string = "create_in_info"
+	TmpCrOutInfo     string = "create_out_info"
 	TmplCrSelect     string = "create_select"
 )
 

@@ -61,14 +61,14 @@ func ParserBwidth(i string) (Bwidth, error) {
 		if err != nil {
 			return 0, err
 		}
-		return Bwidth(ft).KbtoBYte(), nil
+		return Bwidth(ft).MbtoBYte(), nil
 	}
 	if size, cut := strings.CutSuffix(i, "gb"); cut {
 		ft, err := strconv.ParseFloat(size, 64)
 		if err != nil {
 			return 0, err
 		}
-		return Bwidth(ft).KbtoBYte(), nil
+		return Bwidth(ft).GbtoByte(), nil
 	}
 	return 0, errors.New("cannot parse")
 }
@@ -77,12 +77,16 @@ func (b Bwidth) BytetoGB() Bwidth {
 	return b / Bwidth(AsGB)
 }
 
-func (b Bwidth) GbtoByte() Bwidth {
-	return b * GBtoByte
+func (b Bwidth) MbtoBYte() Bwidth {
+	return b * MBtoByte
 }
 func (b Bwidth) KbtoBYte() Bwidth {
 	return b * KBtoByte
 }
+func (b Bwidth) GbtoByte() Bwidth {
+	return b * GBtoByte
+}
+
 
 func (b Bwidth) BytetoMB() Bwidth {
 	return b / Bwidth(AsMB)

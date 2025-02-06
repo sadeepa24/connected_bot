@@ -15,7 +15,7 @@ type Defaultsrv struct {
 	ctx      context.Context
 	callback *Callback
 	logger   zap.Logger
-	admin    *Adminsrv
+	//admin    *Adminsrv
 	//ctrl *controller.Controller
 	//botapi botapi.BotAPI
 

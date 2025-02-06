@@ -112,7 +112,7 @@ func (c *CtrlSession) AddNewConfig(inboundid int16, outboundid int16, Quota C.Bw
 		if err != nil {
 			return nil, C.Erruuidcreatefailed
 		}
-		if err = c.ctrl.db.Raw("SELECT EXISTS(SELECT 1 FROM users WHERE uuid = ?)", uid.String()).Scan(&exists).Error; err != nil {
+		if err = c.ctrl.db.Raw("SELECT EXISTS(SELECT 1 FROM configs WHERE uuid = ?)", uid.String()).Scan(&exists).Error; err != nil {
 			return nil, C.ErrDbopration
 		}
 		if exists {

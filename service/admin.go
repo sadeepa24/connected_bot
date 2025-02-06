@@ -1242,21 +1242,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 
 }
 
-func (a *Adminsrv) setUserMod() {
-	a.modeUser.Store(true)
-}
-
-func (a *Adminsrv) setAdminMod() {
-	a.modeUser.Store(false)
-}
-
 func (a *Adminsrv) SwapMode() {
-	// for {
-	// 	old := a.modeUser.Load()  
-	// 	if a.modeUser.CompareAndSwap(old, !old) { 
-	// 		break
-	// 	}
-	// }
 	a.modeUser.Store(!a.modeUser.Load()) //this is okay with this, no heavy concurrent calls to this
 }
 func (a *Adminsrv) AdminMode() bool {
@@ -1358,6 +1344,10 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					Messagesession.SendAlert("Restart Signal Sending Failed "+ err.Error(), nil)
 				}
 				break mainloop
+			case C.BtnClose:
+				Messagesession.DeleteAllMsg()
+				alertsender("manager closed")
+				break mainloop
 			default:
 				Messagesession.DeleteAllMsg()
 				alertsender("not Available yet")
@@ -1410,7 +1400,6 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 				state = 0
 
 			}
-
 		case 2:
 
 

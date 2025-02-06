@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type Sendreciver func(msg any) (*tgbotapi.Message, error)
+type Sendreciver func(msg any) (*tgbotapi.Message, error) //sendreciver should support only recive mode (when msg == nil)
 type Callbackreciver func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error)
 type Alertsender func(msg string)
 
@@ -134,7 +134,7 @@ func ReciveBandwidth(call Tgcalls, max, min C.Bwidth) (C.Bwidth, error) {
 			call.Alertsender("recheck your inputs")
 			continue
 		}
-		if bwith.BytetoGB() > max || bwith.BytetoGB() <= min {
+		if bwith > max || bwith <= min {
 			call.Alertsender(fmt.Sprintf("bandwidth should be between %s, and %s", min.BToString(), max.BToString()))
 			continue
 		}

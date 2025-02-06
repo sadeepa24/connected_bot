@@ -3,10 +3,12 @@ package watchman_test
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
 	"net/netip"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -25,315 +27,83 @@ import (
 	"go.uber.org/zap"
 )
 
-var ctx = context.Background()
-
-var zLogger, _ = zap.NewDevelopment()
-
-func TestTemp(t *testing.T) {
-	addr, _ := netip.ParseAddr("0.0.0.0")
-	val := 1
-	val2 := 2
-	val3 := 3
-	val4 := 4
-
-	newopt := option.Options{
-		Log: &option.LogOptions{
-			Disabled: true,
-		},
-		DNS: &option.DNSOptions{
-			ReverseMapping: false,
-		},
-		Inbounds: []option.Inbound{
-			option.Inbound{
-				Type: "vless",
-				Tag:  "default",
-				Id:   &val,
-
-				VLESSOptions: option.VLESSInboundOptions{
-					Users: []option.VLESSUser{
-						option.VLESSUser{
-							Name:     "testt",
-							UUID:     "1c7a5143-bfeb-4cfd-b733-1f5e96edc949",
-							Maxlogin: 3,
-						},
-					},
-					ListenOptions: option.ListenOptions{
-						Listen:      option.NewListenAddress(addr),
-						ListenPort:  443,
-						TCPFastOpen: true,
-						InboundOptions: option.InboundOptions{
-							SniffEnabled:              true,
-							SniffOverrideDestination:  false,
-							SniffTimeout:              option.Duration(100 * time.Millisecond),
-							UDPDisableDomainUnmapping: true,
-							//	DomainStrategy: option.DomainStrategy(3),
-						},
-					},
-					Transport: &option.V2RayTransportOptions{
-						Type: "ws",
-						WebsocketOptions: option.V2RayWebsocketOptions{
-							Path: "/",
-						},
-					},
-				},
-			},
-
-			option.Inbound{
-				Type: "vless",
-				Tag:  "inbn_2",
-				Id:   &val2,
-
-				VLESSOptions: option.VLESSInboundOptions{
-
-					Users: []option.VLESSUser{
-						option.VLESSUser{
-							Name:     "routetest",
-							UUID:     "1c7a5143-bfeb-4cfd-b733-1f5e96edc949",
-							Maxlogin: 3,
-						},
-					},
-					ListenOptions: option.ListenOptions{
-						Listen:      option.NewListenAddress(addr),
-						ListenPort:  444,
-						TCPFastOpen: true,
-						InboundOptions: option.InboundOptions{
-							SniffEnabled:              true,
-							SniffOverrideDestination:  false,
-							SniffTimeout:              option.Duration(100 * time.Millisecond),
-							UDPDisableDomainUnmapping: true,
-							//	DomainStrategy: option.DomainStrategy(3),
-						},
-					},
-					Transport: &option.V2RayTransportOptions{
-						Type: "ws",
-						WebsocketOptions: option.V2RayWebsocketOptions{
-							Path: "/",
-						},
-					},
-				},
-			},
-		},
-
-		Outbounds: []option.Outbound{
-			option.Outbound{
-				Type: "direct",
-				Tag:  "direct",
-				Id:   &val,
-				DirectOptions: option.DirectOutboundOptions{
-					DialerOptions: option.DialerOptions{
-						BindInterface: "tun0",
-					},
-				},
-			},
-			option.Outbound{
-				Type: "direct",
-				Tag:  "direct2",
-				Id:   &val2,
-				DirectOptions: option.DirectOutboundOptions{
-					DialerOptions: option.DialerOptions{
-						BindInterface: "Ethernet 2",
-					},
-				},
-			},
-			option.Outbound{
-				Type: "block",
-				Tag:  "block",
-				Id:   &val3,
-			},
-
-			option.Outbound{
-				Id:          &val4,
-				Type:        "vless",
-				Tag:         "vlessout",
-				Custom_info: "This is outbound from the server",
-				VLESSOptions: option.VLESSOutboundOptions{
-					UUID: "",
-					ServerOptions: option.ServerOptions{
-						Server:     "104.27.206.92",
-						ServerPort: 443,
-					},
-					OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{
-						TLS: &option.OutboundTLSOptions{
-							ServerName: "linkedin.ghostnet.site",
-							Insecure:   true,
-							Enabled:    true,
-						},
-					},
-					Transport: &option.V2RayTransportOptions{
-						Type: "ws",
-						WebsocketOptions: option.V2RayWebsocketOptions{
-							Path: "/",
-						},
-					},
-				},
-			},
-		},
-
-		Route: &option.RouteOptions{
-			AutoDetectInterface: true,
-			Final:               "direct",
-			Rules: []option.Rule{
-
-				option.Rule{
-					Type: "default",
-					DefaultOptions: option.DefaultRule{
-						AuthUser: option.Listable[string]{
-							"ttt",
-							"hello",
-						},
-						Outbound: "direct",
-					},
-				},
-				option.Rule{
-					Type: "botrule",
-					DefaultOptions: option.DefaultRule{
-						AuthUser: option.Listable[string]{
-							"routetest",
-						},
-						Outbound: "direct",
-					},
-				},
-				option.Rule{
-					Type: "botrule",
-					DefaultOptions: option.DefaultRule{
-						AuthUser: option.Listable[string]{
-							"routetest",
-						},
-						Outbound: "vlessout",
-					},
-				},
-
-				option.Rule{
-					Type: "botrule",
-					DefaultOptions: option.DefaultRule{
-						AuthUser: option.Listable[string]{
-							"routetest",
-						},
-						Outbound: "direct2",
-					},
-				},
-
-				option.Rule{
-					Type: "default",
-					DefaultOptions: option.DefaultRule{
-						Protocol: option.Listable[string]{},
-						Outbound: "direct",
-					},
-				},
-			},
-		},
-	}
-	bt, _ := json.Marshal(newopt)
-
-	fmt.Println(string(bt))
-
-}
-
-func TestAlgo(t *testing.T) {
-	var bandwidth float64 = 4000
-	var cappedusers float64 = 2
-	var verifiedusers float64 = 100
-	var captotal float64 = 10
-	var addtonal float64 = 0
-
-	mainquota2 := (bandwidth - (captotal + addtonal)) / (verifiedusers - cappedusers)
-	fmt.Println(mainquota2)
-}
-
-func TestAlgo2(t *testing.T) {
-	var gb int = 1024 * 1024 * 1024
-	var Mainquota int = 2000 * gb
-	var Newquota int = 1000 * gb
-	var Gift int = 300 * gb
-	st := time.Now()
-	k := float64(Mainquota) / float64(Gift)
-	fmt.Println(k)
-	Newgift := float64(Newquota) / k
-
-	fmt.Println(C.Bwidth(Newgift).BToString())
-	fmt.Println(time.Since(st))
-}
+var (
+	ctx = context.Background()
+	zLogger, _ = zap.NewDevelopment()
+	VpsBandwidthForeach = C.Bwidth(5000 * 1024 * 1024 * 1024)/300
+)
 
 // you have to edit database mannualy some cases
 func TestWatchman(t *testing.T) {
+	dbpath := "./newtest.db"
+	os.Remove(dbpath)
+	
 	fmt.Println("starting watchman ")
-
 	testctx, cancle := context.WithCancel(context.Background())
 	defer cancle()
-
 	predata := preconfigure(testctx)
 
 	watchman, _ := watchman.New(testctx, predata.ctrl, predata.botapi, predata.db, predata.watchmaconfig, zLogger, predata.msgstore)
-
 	defer watchman.Close()
+	
+	rnd := Randomizer{
+		db: predata.db,
+		ctrl: predata.ctrl,
+	}
+
+	rnd.RandomizeDb()
+
+
+	dbch, err := os.ReadFile(dbpath)
+	if err == nil {
+		dbfile, err := os.Create("before_watchman_start.db")
+		if err == nil {
+			dbfile.Write(dbch)
+		}
+	}
 	if err := watchman.Start(); err != nil {
 		zLogger.Fatal("watchman start failed err ===> " + err.Error())
 	}
-
-	//insertdummyuser(predata.db, 100, C.Bwidth(predata.ctrl.CommonQuota.Load()), 0)
-
-	//testing predata function
-	datadb, err := watchman.PreprosessDb(testctx)
-	if err != nil {
-		zLogger.Info("predata error watchman")
-		zLogger.Fatal(err.Error())
+	dbch, err = os.ReadFile(dbpath)
+	if err == nil {
+		dbfile, err := os.Create("after_watchman_start.db")
+		if err == nil {
+			dbfile.Write(dbch)
+		}
 	}
-	fmt.Println(datadb.String())
-	fmt.Println(predata.ctrl.CheckCount.Load())
+	zLogger.Info("watchman started")
+	watchman.RefreshDb(testctx, true, false)
+	dbch, err = os.ReadFile(dbpath)
+	if err == nil {
+		dbfile, err := os.Create("after_watchman_refresh(count).db")
+		if err == nil {
+			dbfile.Write(dbch)
+		}
+	}
+	watchman.RefreshDb(testctx, true, true)
+	dbch, err = os.ReadFile(dbpath)
+	if err == nil {
+		dbfile, err := os.Create("after_watchman_refresh(usage_reset).db")
+		if err == nil {
+			dbfile.Write(dbch)
+		}
+	}
 
 	watchman.RefreshDb(testctx, true, false)
-	//inserGiftcoupleV2(predata.ctrl, 1, 3)
-
-	return
-	//adding 5 verified user
-
-	type dbinfo struct {
-		verfiedusercount int
-		unverifedcount   int
-		usageduser       int
+	dbch, err = os.ReadFile(dbpath)
+	if err == nil {
+		dbfile, err := os.Create("final_withLasrefresh.db")
+		if err == nil {
+			dbfile.Write(dbch)
+		}
 	}
-
-	err = inserGiftcouple(predata.db, 20, predata.ctrl, 20)
-	fmt.Println(err)
-
-	start := 15
-	tval := start
-	for start < tval+2 {
-		start++
-		insertVerfied2config(predata.db, int64(start), predata.ctrl, int64(start))
-	}
-	watchman.RefreshDb(testctx, true, false)
-
-	//adding 3 unveirifed user
-	tval = start
-	for start < tval+3 {
-		start++
-		insertUnverified(predata.db, int64(start), predata.ctrl, int64(start))
-	}
-
-	tval = start
-	//adding2 usaged user
-	for start < tval+2 {
-		start++
-		insertUsagedUser(predata.db, int64(start), predata.ctrl, int64(start))
-	}
-
-	tval = start
-	//adding 4 month limited
-	for start < tval+4 {
-		start++
-		insertMonthlimited(predata.db, int64(start), predata.ctrl, int64(start))
-	}
-
-	time.Sleep(2 * time.Minute)
-	watchman.RefreshDb(testctx, true, false)
 
 }
 
 type preconfdata struct {
 	ctrl          *controller.Controller
 	db            *db.Database
-	botapi        *botapi.Botapi
+	botapi        botapi.BotAPI
 	msgstore      *botapi.MessageStore
 	watchmaconfig *watchman.Watchmanconfig
 }
@@ -345,8 +115,12 @@ func preconfigure(ctx context.Context) (data preconfdata) {
 	options.Ctx = ctx
 
 	data.db = db.New(options.Ctx, options.Logger, options.Dbpath)
-	data.msgstore, _ = botapi.NewMessageStore("")
+	data.msgstore, _ = botapi.NewMessageStore("./store.json")
 	data.botapi = botapi.NewBot(options.Ctx, options.Bottoken, options.Botmainurl, data.msgstore)
+	data.botapi = &TestBotapiWatchman{
+		dotrace: false,
+	}
+
 	data.ctrl, _ = controller.New(options.Ctx, data.db, options.Logger, options.Metadata, data.botapi, options.Sboxoption)
 	data.watchmaconfig = options.Watchman
 
@@ -358,6 +132,9 @@ func preconfigure(ctx context.Context) (data preconfdata) {
 	if err != nil {
 		panic(err)
 	}
+
+
+
 	return
 }
 
@@ -387,8 +164,6 @@ func insertdummyuser(dB *db.Database, count int, initquota C.Bwidth, startfrom i
 
 	return nil
 }
-
-// varified user with 2 configs
 func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 
 	randomquota := rand.Int63n(ctrl.CommonQuota.Load())
@@ -451,7 +226,6 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 	return err
 
 }
-
 func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 
 	randomquota := rand.Int63n(ctrl.CommonQuota.Load())
@@ -522,7 +296,6 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 	}).Error
 	return err
 }
-
 func insertMonthlimited(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 	return dB.Model(&db.User{}).Create(&db.User{
 		CheckID: uint(checkId),
@@ -544,7 +317,6 @@ func insertMonthlimited(dB *db.Database, checkId int64, ctrl *controller.Control
 		RecheckVerificity: false,
 	}).Error
 }
-
 func insertUnverified(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 	return dB.Model(&db.User{}).Create(&db.User{
 		CheckID: uint(checkId),
@@ -565,12 +337,11 @@ func insertUnverified(dB *db.Database, checkId int64, ctrl *controller.Controlle
 		RecheckVerificity: false,
 	}).Error
 }
-
 func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 
 	randomquota := rand.Int63n(ctrl.CommonQuota.Load())
 
-	giftquota := rand.Int31n(2000000)
+	giftquota := rand.Int31n(20000)
 
 	err := dB.Model(&db.User{}).Create(&db.User{
 		CheckID: uint(checkId),
@@ -598,8 +369,8 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 	}
 
 	err = dB.Model(&db.User{}).Create(&db.User{
-		CheckID: uint(500),
-		TgID:    500,
+		CheckID: uint(checkId)+1,
+		TgID:    checkId+1,
 		Name:    "gift couple",
 		Username: sql.NullString{
 			Valid:  true,
@@ -657,7 +428,6 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 	return err
 
 }
-
 func inserGiftcoupleV2(ctrl *controller.Controller, from, to int64) error {
 	upx := update.Updatectx{
 		Ctx:    context.Background(),
@@ -680,7 +450,6 @@ func inserGiftcoupleV2(ctrl *controller.Controller, from, to int64) error {
 	//zLogger.Error(err.Error())
 	return nil
 }
-
 func testingfirst() connected.Botoptions {
 	addr, _ := netip.ParseAddr("0.0.0.0")
 	val := 1
@@ -880,12 +649,15 @@ func testingfirst() connected.Botoptions {
 		},
 		Dbpath:     "./newtest.db",
 		Ctx:        ctx,
+	
+		SboxConfPath: "./path.json",
 		Bottoken:   "<your token>",
 		Botmainurl: "https://api.telegram.org/bot",
 		Metadata: &controller.MetadataConf{
 			// AllAdmin: []int64{
 			// 	1832636256,
 			// },
+			ConfigFolder: "./confs",
 			GroupID:           -1002325676823,
 			ChannelID:         -1002400437670,
 			Maxconfigcount:    10,
@@ -898,6 +670,7 @@ func testingfirst() connected.Botoptions {
 			DefaultPublicIp:   "127.0.0.1",
 			SudoAdmin:         6695223775,
 			WatchMgbuf:        300,
+			StorePath: "./store.json",
 		},
 		Logger:     zLogger,
 		Sboxoption: newopt,
@@ -905,4 +678,389 @@ func testingfirst() connected.Botoptions {
 	}
 
 	return newoption
+}
+
+
+type Randomizer struct {
+	db *db.Database
+	ctrl *controller.Controller
+
+}
+
+/*
+
+unverifieduse who
+-- only in chan (with and without usage)
+-- only in group (with and without usage)
+-- left both (with and without usage)
+-- banned (with and without usage)
+-- 
+
+verifieduser who
+-- has 
+---- no config
+---- only one config
+---- many config
+---- one config full used
+---- many config full used
+---- config quota exceeded
+---- capped quota
+---- has deleted config
+---- has many deleted config
+---- has many deleted and many usaged config
+---- has many deleted and many usaged config and many unused config
+
+-- is 
+---- distributed and hasn't any config
+---- distributed and have configs
+---- distributed and has many usaged config
+
+*/
+
+
+func (r *Randomizer) ConfigUsed(user *db.User, active bool) C.Bwidth {
+	uid,_ := uuid.NewV4()
+	quota := C.Bwidth(5000)
+	up := C.Bwidth(rand.Int31n(1500))
+	dwn :=  C.Bwidth(rand.Int31n(1000))
+	
+	
+	r.db.Create(&db.Config{
+		Quota: quota,
+		Download: dwn,
+		Upload: up,
+		Usage: dwn+up,
+		LoginLimit: 5,
+		UserID: user.TgID,
+		UUID: uid.String(),
+		Type: "vless",
+		Name: user.Name,
+		Active: active,
+		InboundID: 1,
+		OutboundID: 1,
+
+	})
+	user.ConfigCount++
+	user.UsedQuota += quota
+	user.MonthUsage += dwn+up
+
+	return quota
+}
+func (r *Randomizer) ConfigUnUsed(user *db.User, active bool) C.Bwidth {
+	uid,_ := uuid.NewV4()
+	quota := C.Bwidth(5000)
+	r.db.Create(&db.Config{
+		Quota: quota,
+		Download: 0,
+		Upload: 0,
+		Usage: 0,
+		LoginLimit: int16(rand.Int31n(5)),
+		UserID: user.TgID,
+		UUID: uid.String(),
+		Type: "vless",
+		Name: user.Name,
+		Active: active,
+		InboundID: 1,
+		OutboundID: 1,
+	})
+	user.ConfigCount++
+	user.UsedQuota += quota
+	user.MonthUsage += 0
+	return quota
+}
+func (r *Randomizer) ConfigFullUsed(user *db.User, active bool) C.Bwidth {
+	uid,_ := uuid.NewV4()
+	quota := C.Bwidth(5000)
+	dwn := C.Bwidth(rand.Int31n(4000))
+	r.db.Create(&db.Config{
+		Quota: quota,
+		Download: dwn,
+		Upload: quota-dwn,
+		Usage: quota,
+		LoginLimit: int16(rand.Int31n(5)),
+		UserID: user.TgID,
+		UUID: uid.String(),
+		Type: "vless",
+		Name: user.Name,
+		Active: active,
+		InboundID: 1,
+		OutboundID: 1,
+	})
+	user.ConfigCount++
+	user.UsedQuota += quota
+	user.MonthUsage += quota
+
+	return quota
+}
+func (r *Randomizer) ConfigOverUsed(user *db.User, active bool) C.Bwidth {
+	uid,_ := uuid.NewV4()
+	quota := C.Bwidth(5000)
+	over := C.Bwidth(rand.Int31n(3000))
+	
+	total := quota+over
+	dwn := C.Bwidth(rand.Int31n(4000))
+	r.db.Create(&db.Config{
+		Quota: quota,
+		Download: dwn,
+		Upload: total-dwn,
+		Usage: total,
+		LoginLimit: int16(rand.Int31n(5)),
+		UserID: user.TgID,
+		UUID: uid.String(),
+		Type: "vless",
+		Name: user.Name,
+		Active: active,
+		InboundID: 1,
+		OutboundID: 1,
+	})
+	user.ConfigCount++
+	return quota
+}
+
+
+//TODO: complete this later 😪
+func (r *Randomizer) RandomizeDb() {
+	var totaluser int
+
+	r.ctrl.CommonQuota.Swap(VpsBandwidthForeach.Int64())
+
+	//30 unverified user randomized
+	for i := 0; i < 30; i++ {
+		user := &db.User{
+			Name: "unverified "+strconv.Itoa(i),
+			TgID: int64(i),
+			//Username: "unverified "+strconv.Itoa(i),
+			CalculatedQuota: VpsBandwidthForeach,
+			Lang: "en",
+			IsBotStarted: true,
+			Points: 5,
+		}
+
+
+		//user who isn't in chan or group
+		if i%4 == 0 {
+			user.IsInChannel = false
+			user.IsInGroup = false
+		}
+
+		//user who has config and used them for while and left
+		if i%10 == 0 {
+			user.ConfigCount = int16(i%5)
+			if user.ConfigCount > 0 {
+				for i := 0; i < i%5; i++ {
+					r.ConfigUsed(user, false)
+				}
+			}
+		}
+
+		//user who has config and notused them and left
+		if i%6 == 0 {
+			user.ConfigCount = int16(i%5)
+			if user.ConfigCount > 0 {
+				for i := 0; i < i%5; i++ {
+					r.ConfigUnUsed(user, false)
+					
+				}
+			}
+		
+		}
+
+
+
+
+		r.db.Create(user)
+	}
+
+	totaluser+= 30
+	var giftcpl bool
+	for i := 30; i < 330; i++ {
+		if giftcpl {
+			giftcpl = false
+			continue
+		}
+		
+		user := &db.User{
+			Name: "verified "+strconv.Itoa(i),
+			TgID: int64(i),
+			Lang: "en",
+			IsInChannel: true,
+			IsBotStarted: true,
+			IsInGroup: true,
+			Points: 10,
+			CalculatedQuota: VpsBandwidthForeach,
+		}
+
+		if i%2 == 0 {
+			confcount := rand.Int31n(5)
+			if confcount == 0 {
+				confcount++
+			}
+			for j := 0; j < int(confcount); j++ {
+				r.ConfigUsed(user, true)	
+			}
+		}
+
+		if i%5 == 0 {
+			confcount := rand.Int31n(5)
+			if confcount == 0 {
+				confcount++
+			}
+			user.Configs = []db.Config{}
+			user.ConfigCount = 0
+			user.UsedQuota = 0
+			user.MonthUsage = 0
+			for j := 0; j < int(confcount); j++ {
+				r.ConfigFullUsed(user, true)	
+			}
+
+		}
+		if i%50 == 0 {
+			confcount := rand.Int31n(5)
+			if confcount == 0 {
+				confcount++
+			}
+			user.Configs = []db.Config{}
+			user.ConfigCount = 0
+			user.UsedQuota = 0
+			user.MonthUsage = 0
+			for j := 0; j < int(confcount); j++ {
+				r.ConfigOverUsed(user, true)	
+			}
+
+		}
+
+		if i%30 == 0 {
+			giftcpl = true
+			inserGiftcouple(r.db, int64(i), r.ctrl, int64(i))
+		}
+
+	
+
+
+		r.db.Create(user)
+	}
+
+
+
+
+	//r.db.Create()
+}
+
+
+
+
+
+
+
+
+
+type TestBotapiWatchman struct {
+	botapi.BotAPI
+	dotrace bool
+}
+
+func (t *TestBotapiWatchman) Makerequest(ctx context.Context, method, endpoint string, body io.ReadCloser) (*tgbotapi.APIResponse, error){
+	if t.dotrace {
+		zLogger.Debug("call to botapi's makerequest", zap.Stack("trace"))
+	}
+	
+	
+	return &tgbotapi.APIResponse{}, nil
+}
+
+func (t *TestBotapiWatchman) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error){
+	if t.dotrace {
+
+		zLogger.Debug("call to botapi's serndrawreq", zap.Stack("trace"))
+	}
+	
+	return &tgbotapi.APIResponse{}, nil
+}
+
+func (t *TestBotapiWatchman) SendContext(ctx context.Context, msg *botapi.Msgcommon) (*tgbotapi.Message, error){
+	if t.dotrace {
+		zLogger.Debug("call to botapi's sendcontext", zap.Stack("trace"))
+	}
+	
+
+	return &tgbotapi.Message{}, nil
+}
+
+func (t *TestBotapiWatchman) AnswereCallbackCtx(ctx context.Context, Callbackanswere *botapi.Callbackanswere) error{
+	if t.dotrace {
+		zLogger.Debug("call to botapi's answerecallback", zap.Stack("trace"))
+	}
+	
+
+	return nil
+}
+
+func (t *TestBotapiWatchman) GetchatmemberCtx(ctx context.Context, Userid int64, Chatid int64) (*tgbotapi.ChatMember, bool, error){
+	if t.dotrace {
+
+		zLogger.Debug("call to botapi's GetchatmemberCtx", zap.Stack("trace"))
+	}
+	
+	return &tgbotapi.ChatMember{}, true, nil
+}
+
+
+func (t *TestBotapiWatchman) Send(msg *botapi.Msgcommon) (*tgbotapi.Message, error){
+	if t.dotrace {
+		zLogger.Debug("call to botapi's Send", zap.Stack("trace"))
+	}
+	
+	
+	return &tgbotapi.Message{}, nil
+}
+
+func (t *TestBotapiWatchman) SendError(error, int64){
+	if t.dotrace {
+		zLogger.Debug("call to botapi's SendError", zap.Stack("trace"))
+	}
+	
+	
+}
+
+func (t *TestBotapiWatchman) DeleteMsg(ctx context.Context, msgid int64, chatid int64) error{
+	if t.dotrace {
+		zLogger.Debug("call to botapi's DeleteMsg", zap.Stack("trace"))
+	}
+	
+	
+	return nil
+}
+
+func (t *TestBotapiWatchman) GetMgStore() *botapi.MessageStore{
+	if t.dotrace {
+		zLogger.Debug("call to botapi's GetMgStore", zap.Stack("trace"))
+	}
+	
+	
+	return nil
+}
+
+func (t *TestBotapiWatchman) SetWebhook(webhookurl, secret, ip_addr string, allowd_ob []string) error{
+	if t.dotrace {
+		zLogger.Debug("call to botapi's SetWebhook", zap.Stack("trace"))
+	}
+	
+	
+	return nil
+}
+
+func (t *TestBotapiWatchman) CreateFullUrl(endpoint string) string{
+	if t.dotrace {
+		zLogger.Debug("call to botapi's CreateFullUrl", zap.Stack("trace"))
+	}
+	
+	
+	return "nil"
+}
+
+func (t *TestBotapiWatchman) GetFile(file_Id string) (io.ReadCloser, error){
+	if t.dotrace {
+		zLogger.Debug("call to botapi's GetFile", zap.Stack("trace"))
+	}
+	return io.ReadCloser(nil), nil
 }
