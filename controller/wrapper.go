@@ -360,7 +360,9 @@ func (c *Controller) Init() error {
 	}
  	
 	//initilizing db first time
-	if dbnotfound || c.Metaconfig.ForceAdd { 
+	dbMeta.LoginLimit = int32(c.Metaconfig.LoginLimit)
+	
+	if dbnotfound { 
 
 		if dbMeta.BandwidthAvelable, err = C.BwidthString(c.Metaconfig.BandwidthAvelable); err != nil {
 			return err
@@ -368,23 +370,24 @@ func (c *Controller) Init() error {
 
 		dbMeta.ChannelId = c.Metaconfig.ChannelID
 		dbMeta.GroupID = c.Metaconfig.GroupID
-		dbMeta.LoginLimit = int32(c.Metaconfig.LoginLimit)
 		dbMeta.CommonQuota = dbMeta.BandwidthAvelable
 		dbMeta.ResetCount = (30 * 24) / c.Metaconfig.RefreshRate
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
-		dbMeta.Maxconfigcount = c.Metaconfig.Maxconfigcount
-
+		
 		var userct int64
 		if err = c.db.Model(&db.User{}).Count(&userct).Error; err != nil {
 			dbMeta.Dbusercount = 0
 		}
 		dbMeta.Dbusercount = userct
-		if err = c.db.Save(dbMeta).Error; err != nil {
-			return err
-		}
 		//Load to Database
+	}
+
+	if dbMeta.Maxconfigcount > c.Metaconfig.Maxconfigcount {
+		c.logger.Warn("Decrement of Maxconfigcount detected. This will not happen as users may have already created configs equal to Maxconfigcount.")
+	} else {
+		dbMeta.Maxconfigcount = c.Metaconfig.Maxconfigcount
 	}
 
 	if c.Metaconfig.RefreshRate != dbMeta.RefreshRate {
@@ -393,21 +396,18 @@ func (c *Controller) Init() error {
 		dbMeta.CheckCount = (dbMeta.CheckCount * oldRefreshRate) / c.Metaconfig.RefreshRate //Recalculating ResetCount according to new refresh rate
 		dbMeta.ResetCount = (30 * 24) / c.Metaconfig.RefreshRate
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
-		c.db.Save(dbMeta)
 	}
 
 	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
 		c.logger.Info("Defaul Domain Changed")
 		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.Metaconfig.DefaultDomain)
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
-		c.db.Save(dbMeta)
 	}
 
 	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
 		c.logger.Info("Defaul Public Ip Changed")
 		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
-		c.db.Save(dbMeta)
 	}
 
 
@@ -434,7 +434,10 @@ func (c *Controller) Init() error {
 	c.VerifiedUserCount.Swap(int32(dbMeta.VerifiedUserCount))
 	c.Metadata.CheckCount.Swap(dbMeta.CheckCount)
 	c.CommonQuota.Swap(dbMeta.CommonQuota.Int64())
-
+	
+	if err = c.db.Save(dbMeta).Error; err != nil {
+		return err
+	}
 
 
 	return nil

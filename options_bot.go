@@ -13,8 +13,8 @@ import (
 type Botoptions struct {
 	Watchman *watchman.Watchmanconfig `json:"watchman,omitempty"`
 
-	Dbpath              string                  `json:"dbpath,omitempty"`
-	TemplatesPath       string                  `json:"template_path"`
+	Dbpath              string                  `json:"db_path,omitempty"`
+	TemplatesPath       string                  `json:"templates_path"`
 	Bottoken            string                  `json:"bot_token,omitempty"`
 	Botmainurl          string                  `json:"bot_mainurl,omitempty"`
 	Metadata            *controller.MetadataConf `json:"metadata,omitempty"`

@@ -13,28 +13,28 @@ import (
 )
 
 type MetadataConf struct {
-	ForceAdd          bool   `json:"forceAdd,omitempty"`
+	//ForceAdd          bool   `json:"forceAdd,omitempty"`
 	ChannelID         int64  `json:"channel_id,omitempty"`
 	GroupID           int64  `json:"groupd_id,omitempty"`
-	BandwidthAvelable string `json:"bandwidthAvelable,omitempty"`
-	LoginLimit        int16  `json:"loginLimit,omitempty"`
+	BandwidthAvelable string `json:"bandwidth,omitempty"`
+	LoginLimit        int16  `json:"login_limit,omitempty"`
 	//Userquota         int32  `json:"userquota,omitempty"`
 	//Verifiedcount     int32  `json:"verifiedcount,omitempty"`
-	Maxconfigcount    int16  `json:"maxconfigcount,omitempty"`
+	Maxconfigcount    int16  `json:"max_config_count,omitempty"`
 	//CheckCount        int32  `json:"checkcount,omitempty"`  // database checked count for exting period
-	RefreshRate       int32  `json:"refreshrate,omitempty"` //rate of db refresh in hours
+	RefreshRate       int32  `json:"refresh_rate,omitempty"` //rate of db refresh in hours
 
-	GroupLink  string `json:"grouplink,omitempty"`
-	Channelink string `json:"channellink,omitempty"`
-	Botlink    string `json:"botlink,omitempty"`
+	GroupLink  string `json:"group_link,omitempty"`
+	Channelink string `json:"channel_link,omitempty"`
+	Botlink    string `json:"bot_link,omitempty"`
 
-	GroupName   string `json:"groupName,omitempty"`
-	ChannelName string `json:"channelName,omitempty"`
-	BotName     string `json:"botName,omitempty"`
+	GroupName   string `json:"group_name,omitempty"`
+	ChannelName string `json:"channel_name,omitempty"`
+	BotName     string `json:"bot_name,omitempty"`
 
 	//SudoAdminId int64 `json:"adminId,omitempty"`
 	//AllAdmin  []int64 `json:"alladmin,omitempty"`
-	SudoAdmin int64   `json:"sudoadmin,omitempty"`
+	SudoAdmin int64   `json:"admin,omitempty"`
 
 	WatchMgbuf int
 
@@ -46,7 +46,7 @@ type MetadataConf struct {
 
 	HelperInfo bottype.HelpCommandInfo `json:"help_cmd,omitempty"`
 
-	InlinePost []string `json:"inline_post,omitempty"`
+	InlinePost []string `json:"inline_posts,omitempty"`
 }
 
 type Metadata struct {

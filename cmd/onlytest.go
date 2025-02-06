@@ -239,7 +239,6 @@ func testingfirst() connected.Botoptions {
 			LoginLimit:        1,
 			BandwidthAvelable: "2000GB",
 			RefreshRate:       2,
-			ForceAdd:          false,
 			Botlink:           "https://t.me/connected_test_bot",
 			DefaultDomain:     "connected.bot",
 			DefaultPublicIp:   "127.0.0.1",
