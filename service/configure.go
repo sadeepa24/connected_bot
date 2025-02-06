@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
@@ -14,6 +13,7 @@ import (
 	"github.com/sadeepa24/connected_bot/db"
 	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
 	"github.com/sadeepa24/connected_bot/update"
+	"go.uber.org/zap"
 )
 
 type configState struct {
@@ -457,7 +457,6 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx,  Messagesession *bot
 	configState := &configState{
 		ctx:            upx.Ctx,
 		State:          stconfhome,
-		//upx:            upx,
 		userId: upx.User.TgID,
 		dbuser: Usersession.GetUser(),
 		btns:           botapi.NewButtons([]int16{2}),
@@ -516,7 +515,9 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx,  Messagesession *bot
 		}
 	}
 
-	configState.run()
+	if err = configState.run(); err !=nil {
+		u.logger.Error("configuration state errored", zap.Error(err))
+	}
 	if upx.Ctx.Err() != nil {
 		tempctx, closetemp := context.WithTimeout(u.ctx, 15*time.Second)
 		defer closetemp()

@@ -360,7 +360,7 @@ func (c *CtrlSession) DeleteConfig(configID int64) error {
 
 	delete(c.configmap, configID)
 	
-	if c.ctrl.db.Model(&db.Config{}).Delete(dbconf).Error != nil {
+	if c.ctrl.db.Delete(dbconf).Error != nil {
 		return C.ErrDbopration
 	}
 
