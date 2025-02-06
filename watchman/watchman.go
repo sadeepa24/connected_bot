@@ -583,6 +583,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 							Date:     time.Now(),
 							UserID:   user.TgID,
 							ConfigID: user.Configs[i].Id,
+							Name: user.Name,
 						}).Error
 						if err != nil {
 							w.logger.Error("error when creating usage history", zap.Error(err))

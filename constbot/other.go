@@ -110,7 +110,7 @@ func (b Bwidth) Int32() int32 {
 }
 
 func (b Bwidth) String() string {
-	return strconv.Itoa(int(b))
+	return strconv.FormatFloat(b.Float64(), 'f', 2, 64)
 }
 func (b Bwidth) Float64() float64 {
 	return float64(b)
