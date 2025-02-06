@@ -36,7 +36,7 @@ type MetadataConf struct {
 	//AllAdmin  []int64 `json:"alladmin,omitempty"`
 	SudoAdmin int64   `json:"admin,omitempty"`
 
-	WatchMgbuf int
+	WatchMgbuf int	  `json:"group_maxmg,omitempty"`
 
 	DefaultDomain   string `json:"default_domain,omitempty"`
 	DefaultPublicIp string `json:"default_publicip,omitempty"`
