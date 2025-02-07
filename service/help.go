@@ -46,13 +46,14 @@ func (h *HelpState) home() error {
 	h.btns.AddClose(false)
 
 	h.Messagesession.Edit(struct {
-		Name     string
-		Username string
-		TgId     int64
+		botapi.CommonUser
 	}{
-		Name:     h.upx.User.Name,
-		Username: h.upx.User.Tguser.UserName,
-		TgId:     h.upx.User.TgID,
+		CommonUser: botapi.CommonUser{
+			Name: h.upx.User.Name,
+			Username: h.upx.User.Tguser.UserName,
+			TgId:     h.upx.User.TgID,
+		},
+		
 	}, h.btns, C.TmpHelpHome)
 
 	var (

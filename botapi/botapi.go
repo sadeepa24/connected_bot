@@ -494,7 +494,7 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 
 			m.continuemedia = message.ContinueMed
 
-			if message.SuperContinue {
+			if message.SuperContinue { // cannot equal directly because if m.supercontinue == true then we cannot swap it to false again
 				m.supercontinue = true
 			}
 

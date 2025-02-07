@@ -227,7 +227,11 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 			Messagesession.Edit(struct {
 				*botapi.CommonUser
 				IsInChannel  bool
+				IsInGroup bool
 				IsBotStarted bool
+				GroupLink string
+				ChanLink string
+				Chat string
 			}{
 				CommonUser: &botapi.CommonUser{
 					Name:     upx.User.Name,
@@ -236,6 +240,10 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 				},
 				IsInChannel:  upx.User.IsInChannel,
 				IsBotStarted: upx.User.IsBotStarted,
+				Chat:         updatedchat,
+				GroupLink: u.ctrl.GroupLink,
+				ChanLink: u.ctrl.Channelink,
+				IsInGroup: upx.User.IsInGroup,
 			}, btns, C.TmpWelcomeInbox)
 
 		//newly joined channel
@@ -278,9 +286,12 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 			Messagesession.Edit(struct {
 				*botapi.CommonUser
 				IsInChannel  bool
+				IsInGroup	bool
 				IsBotStarted bool
 				GroupLink string
 				ChanLink string
+				Chat string
+
 			}{
 				CommonUser: &botapi.CommonUser{
 					Name:     upx.User.Name,
@@ -289,6 +300,8 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 				},
 				IsInChannel:  upx.User.IsInChannel,
 				IsBotStarted: upx.User.IsBotStarted,
+				Chat: updatedchat,
+				IsInGroup: upx.User.IsInGroup,
 			}, btns, C.TmpWelcomeInbox)
 
 		// left and joined again channel
@@ -310,7 +323,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 					GroupLink: u.ctrl.GroupLink,
 					ChanLink: u.ctrl.Channelink,
 				},
-				TemplateName: C.TmpChannelWelcome,
+				TemplateName: C.TmpChanComeback,
 				DestinatioID: u.ctrl.GroupID,
 				Lang:         NewUser.Lang,
 				Buttons:      btns,

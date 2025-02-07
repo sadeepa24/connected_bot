@@ -423,6 +423,11 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 					TranstPortType string
 					TlsEnabled     bool
 					SupportInfo    []string
+					Domain         string
+					PublicIp       string
+					Support        []string
+
+
 
 				}{
 					InName: in.Name,
@@ -433,6 +438,8 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 					InAddr: u.ctrl.DefaultPubip,
 					InInfo: in.Custom_info,
 					SupportInfo: in.Support,
+					Domain: in.Domain,
+					PublicIp: in.PublicIp,
 					
 				}, btns, C.TmplInInfo); err != nil {
 					u.logger.Error(err.Error())
