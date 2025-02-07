@@ -500,16 +500,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		
 			user.ConfigCount = int16(len(user.Configs))
 
-			if user.UsedQuota > user.CalculatedQuota {
-				w.logger.Warn("violation usedquota > calculatedquota detected from " + user.String())
-				w.sendUsingBufChan(msgchan, "We have detetcted you have bigger quota than we allocated to fix this we overide you'r config's quota", user.TgID)
-				user.UsedQuota = user.CalculatedQuota
-				quotaforeach := user.CalculatedQuota / C.Bwidth(user.ConfigCount)
-				for i := range user.Configs {
-					user.Configs[i].Quota = quotaforeach
-				}
-			}
-
 			var usedquota C.Bwidth
 			//configs:
 			for i := range user.Configs {
@@ -645,6 +635,17 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 			}
 			user.UsedQuota = usedquota
+			
+			if user.UsedQuota > user.CalculatedQuota {
+				w.logger.Warn("violation usedquota > calculatedquota detected from " + user.String())
+				w.sendUsingBufChan(msgchan, "We have detetcted you have bigger quota than we allocated to fix this we overide you'r config's quota", user.TgID)
+				user.UsedQuota = user.CalculatedQuota
+				quotaforeach := user.CalculatedQuota / C.Bwidth(user.ConfigCount)
+				for i := range user.Configs {
+					user.Configs[i].Quota = quotaforeach
+				}
+			}
+			
 			if condcheck() {			
 				if user.IsDistributedUser && !user.Restricted {
 					w.sendUsingBufChan(msgchan, C.GetMsg(C.MsgDistributeOver), user.TgID)
