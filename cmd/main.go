@@ -113,7 +113,7 @@ func getBotOption() (connected.Botoptions, error) {
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 		},
 		OutputPaths: botoption.LoggerOption.Paths,
-		// ErrorOutputPaths: []string{"stderr"},
+		ErrorOutputPaths: botoption.LoggerOption.Paths,
 	}
 	logger, err := logconfig.Build()
 	if err != nil {
