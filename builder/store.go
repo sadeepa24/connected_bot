@@ -191,7 +191,7 @@ func (r *ReqirmentsRule) FillReqirments(callback common.Callbackreciver, sendrec
 
 type StoreOption struct {
 	AllDnsRule    []DnsRule                 `json:"dnsrules,omitempty"`
-	AllDnsServer  []DnsServer				`json:"servers,omitempty"`
+	AllDnsServer  []DnsServer				`json:"dns_servers,omitempty"`
 	AllRouteRules []RouteRule               `json:"routerule,omitempty"`
 	AllRuleSet    []RuleSet                 `json:"ruleset,omitempty"`
 	AllOutbounds  []Outbound                `json:"outbounds,omitempty"`
