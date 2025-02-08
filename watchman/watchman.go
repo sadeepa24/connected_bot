@@ -188,6 +188,7 @@ update:
 				continue
 			}
 			w.logger.Info("db refresh done", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
+			w.logger.Sync()
 
 		case mg := <-w.ctrl.Getmgque():
 			currentcount := w.ctrl.Dbusercount.Load()
