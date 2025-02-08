@@ -1,0 +1,1608 @@
+
+<!doctype html>
+<html lang="si" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../store/ruleset/">
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.1">
+    
+    
+      
+        <title>Usermsg - Connected Bot</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.a40c8224.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#usermsg" class="md-skip">
+          අන්තර්ගතය වෙත යන්න
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="ශීර්ෂය">
+    <a href="../.." title="Connected Bot" class="md-header__button md-logo" aria-label="Connected Bot" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Connected Bot
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Usermsg
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="සොයන්න" placeholder="සොයන්න" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="මකන්න" aria-label="මකන්න" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sadeepa24/connected_bot" title="රිපොසිටරියට යන්න" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sadeepa24/connected_bot
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="ටැබ්ස්" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../quickstart/" class="md-tabs__link">
+          
+  
+    
+  
+  Quick Start
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../configuration/" class="md-tabs__link">
+          
+  
+    
+  
+  Configuration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Other Configs
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="යාත්‍රණය" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Connected Bot" class="md-nav__button md-logo" aria-label="Connected Bot" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Connected Bot
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sadeepa24/connected_bot" title="රිපොසිටරියට යන්න" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    sadeepa24/connected_bot
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../quickstart/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Quick Start
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Quick Start
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Example Configs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Example Configs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/example/config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    bot config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/example/sing-box/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    sing-box config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/example/template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    message template
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/example/store/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    store
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../configuration/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Configuration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../configuration/config/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    BOT Config
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            BOT Config
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/config/metadata/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    metadata
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/config/webhook/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    webhook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/config/watchman/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    watchman
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/config/log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    log
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../configuration/sing-box/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    SING-BOX config
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            SING-BOX config
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/sing-box/inbounds/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Inbounds
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/sing-box/outbounds/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Outbounds
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/sing-box/routing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Routings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Other Configs
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Other Configs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../templates/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Message-Templates
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2" id="__nav_4_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Message-Templates
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../templates/varibles/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Varibles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../store/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Store
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_3" id="__nav_4_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            Store
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../store/outbounds/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    outbounds
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../store/routerule/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    routerule
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../store/dnsrules/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dnsrules
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../store/dns_servers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dns_server
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../store/ruleset/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ruleset
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="./" class="md-nav__link md-nav__link--active">
+              
+  
+  <span class="md-ellipsis">
+    Usermsg
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            Usermsg
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="පටුන">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="usermsg">Usermsg</h1>
+<p>මේ file එකේ නම වෙනස් කරන්න එපා ඒක අනිවාරෙන් <code>usermsg.json</code> වෙන්න ඕනෙ.
+මේකෙ තියෙන්නෙ static messages ගොඩක් කැමතිනම් වෙනස් කරහැකි.</p>
+<p>ඒ වගේම message එකේ % symbol එකත් එක්කම අකුරක් තියේනම් ඒක අනිවාරෙන් තියෙන්න ඕනෙ.ේකත් varible එකක් තමා, ex - <code>%v</code>, <code>%s</code></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;MsgserverErr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🚨 Something went wrong on the server. Please try again later.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgNoconfigstochange&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚙️ You don&#39;t have any configurations to modify. Please use the /create command to set up your configurations.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgNewName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✏️ Enter a new name for the configuration.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgInAlredSelected&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Already This Inbound selected&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgOutAlredSelected&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Already This OUtbound selected&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgNamechangeSuc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ Configuration name changed successfully!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgNameChangeFailed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Failed to change the configuration name.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgInsel&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;📥 Select the inbound configuration to change.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgInchanGeWarn&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Warning: Changing the inbound configuration will interrupt your connection. Ensure you update your settings accordingly. Proceed only if you know what you&#39;re doing.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgInchangesucses&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ Inbound configuration successfully changed!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgoutsel&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;📤 Select the outbound configuration to change.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgOutchangeWar&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Warning: Changing the outbound configuration will modify your IP address.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsOutchangesucses&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ Outbound configuration successfully changed!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgdelConnWarn&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Your connection will be closed.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgSure&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❓ Are you sure? Your connection will be lost.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgdelFail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Failed to delete the configuration.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgdelSuccses&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ Configuration deleted successfully!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCoQuota&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ Configuration quota successfully updated!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgQuotawarn&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Your quota must be within the specified range.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgSessionExcist&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ A session already exists. Please close it first.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgwrong&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Something went wrong. Please try again.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgwrongtAdmmin&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Something went wrong. Please retry, or contact the admin with the error.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgConfUnfoun&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚙️ Configuration not found. Please retry.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgSessionOver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⏳ Your session has ended. Please try again.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgSessionFail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Session creation failed. Please try again later.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgContextDead&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Context canceled. Please try again.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgValidName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔑 Please send a valid name, no commands allowed.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgValidInt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔢 Please send a valid integer.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgretryfail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🚫 මෝඩයෙක් බව පෙන්නනන හදන්න එපා&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRecursionExceed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Too many button presses. Please do what you need to do. දකින දකින එක  ඔබන්න එප රිලවෙක් වගේ&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgDberr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ A database error occurred. Please try again later.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgUserNotFoun&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;👤 User not found. The user may not have registered with the bot.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgTargetcapped&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🚫 Target user is a capped user.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ButtonSelectEmjoi&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot; ✅&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgUserMonthLimited&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🚫 Service Restricted\nYou cannot use this service at the moment.\n🔒 Reason: You’ve been limited this month as you didn’t utilize at least 75% of your quota last month. Unfortunately, this led to a waste of bandwidth resources.\n\n💡 Tip: Ensure you make effective use of your quota next time to continue enjoying uninterrupted service.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgInfoNoconfigs&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚙️ You don&#39;t have any configurations.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgInfoSelectConfig&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔧 Select a configuration to reveal its information.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgconfcannotfind&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Configuration not found. Something went wrong. You may need to notify the admin if this continues.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgfetchUsage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⏳ Please wait while we fetch your usage history. This may take a moment.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgVerifiedUser&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 You need to be a verified user first. Please join our group and channel, then try again.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgUsageExceed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ You can create configurations, but you will not be able to use them as your quota is exceeded.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgselectIn&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;📥 Select an inbound configuration to create. You can change the inbound later.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgselectOut&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;📤 Select an outbound configuration to create. You can change the outbound later. Tip: Users should choose the default outbound unless they have special cases. Use the /help command for more information.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgnoQuota&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You don&#39;t have available quota to add to this configuration. Please change the quota of another configuration.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGetName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔑 Please provide a name for the configuration.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrFailed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Configuration creation failed. Please try again later.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgInternalErr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Internal VPN server error. You may need to contact the admin.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGetSni&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔑 Please provide your SNI you can change this later yourself.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrsuccsess&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ You have successfully created the configuration.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrLogin&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔑 Please specify how many users can log in at once max 5. Example: If you select 1, only one IP address can connect at a time.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrLoginwarn&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Login limit should be between 0 and 5.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgSnifail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ SNI reception failed while creating the configuration. You can compile your config into multiple blocks using /confblocks.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrConfigIn&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🛠️ You can create configuration blocks using the /buildconf command.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrdisuser&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You can&#39;t create configurations at the moment. You are a distributed user. please wait until you&#39;r distribution end&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrInerr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ The selected inbound configuration has a fatal error.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrOuterr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ The selected outbound configuration has a fatal error.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCrQuotaNote&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Your current quota may be higher than what you can add to this configuration. This happens because your total usage for the month doesn&#39;t match the usage of existing configurations, which could be due to the deletion of a configuration.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgStVerify&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 You are not a verified user. In order to see the status or access any Singbox services, you need to be a verified user.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgStNoconfig&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚙️ You don&#39;t have any configurations. To get usage, please create configs using the /create command.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgxrayuse&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 You need to be a verified user to use Xray services.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgcapverify&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 You need to be a verified user in order to distribute your bandwidth.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgcapAlready&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You are already capped. You can&#39;t cap again. Please wait until your cap time limit is over.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgcapexced&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ You can&#39;t cap your quota because you&#39;ve already used all of your quota.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgcapzerod&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ The cap cannot be zero. If you want to share your total bandwidth, please use the /distribute command.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgcapThan&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Please enter a value lower than your available quota.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgcapConform&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You are about to cap your quota. This quota will be valid for the next 30 days.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgcapCancle&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Capping your quota has been canceled.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgcapSuccses&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ You have successfully capped your quota.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgcapUsage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You have already used the cap you entered. Please enter a cap higher than your usage.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgcapRecalFail&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Recalculation Failed, You&#39;r quota will update in next db refresh&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgDisAlready&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You are already a distributed user. You can&#39;t distribute again.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgDisneedVerify&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 You need to be a verified user in order to distribute your bandwidth.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgDisConform&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Are you sure? You are about to distribute all of your quota.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgDisSucsess&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ You have successfully distributed your quota. Thank you!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgDisCapped&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You are capped user. You can&#39;t distribute&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGifVerify&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 You need to be a verified user in order to send gifts.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGifUsercap&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You can&#39;t send gifts as you are a capped user. Please wait until your cap is over.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGifrec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🎁 You have received a gift from someone, so you can&#39;t send one right now.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGifsend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You have already sent a gift. You can&#39;t send any more gifts until 30 days have passed.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msggifterr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ You can&#39;t gift more than what you have.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGifreciver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🎁 Alright, now send me the recipient&#39;s Telegram ID or username. If you want to cancel, send /cancel.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGiftcancle&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Sending the gift has been canceled.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGifRecnOconfig&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ The target user does not have any created config. They need to have configs in order to receive gifts.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgChatMemLeft&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgBannedMem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;👋 Bye Bye!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msghelpnoverify&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 This service is only available for verified users.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgCallbackFaq&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;💬 Ehema pasna na thama.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgHeloClosed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Help is closed.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgsttInChan&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔔 You are already in the channel, but to use this bot, you may need to join the group.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgstartGrpin&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔔 You are already in our group. To use this service, you need to join our channel.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgstartmlimited&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⏳ You didn&#39;t use 3/4 of your quota from last month, so you can&#39;t use the service for the next 30 days.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgBannedUser&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🚫 You are a banned user. Please contact the admin to be unbanned.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgSelfRef&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ You can&#39;t be your own referral.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefOwenerNFoun&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Something went wrong fetching the owner of the referral. The referral owner may not be registered.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgcanref&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;📢 You can also refer users and earn rewards. Use /refer for more info.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefAlredy&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;you cant be a reffred user, you are already reffred you are refred from user id %v&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgReferd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🎉 Welcome! You’re now a user who came from %v &#39;s referral. 🌟 Let’s get started on this exciting journey together! 🚀&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefVerify&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔒 You can&#39;t use this command unless you&#39;re a verified user. Please join the channel and group, then try again.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefNousers&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You don&#39;t have any referred users yet. Hurry up and refer users!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefNoUser&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ You don&#39;t have any verified referred users to claim. Please ask your referred user to verify, so you can claim your points.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefClaimNote&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ℹ️ You can claim referrals as points: Verified user : 2 points, Normal user : 1 point.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefClaimConform&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ Confirm to claim your referral points.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefClaimError&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Error processing claim. Please try again.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefClaimed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🎉 You have claimed %v points.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MSgRefClaimAllunsupport&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Claim all feature is not supported yet.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgClaimCancle&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ Claim canceled.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefLink&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔗 Your referral link is: %v&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgRefNoANyUser&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You don&#39;t have any referred users.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgSugess&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;💡 Please share your suggestion! We’d love to hear your thoughts and ideas. 😊&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;Msgsugessdone&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✅ Suggestion submitted! 📩 It will be sent to the admin for review. Thank you for your input! 🙏&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgQuotanotUsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ You have not utilized 75% of your previous quota. As a result, access to the service is suspended for the next 30 days. 🚫 Please plan your usage wisely in the future! 📊&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgDistributeOver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✨ You are no longer part of the distributed users. If you&#39;d like to share your quota again, simply use the /distribute command. 🌟 Thank you for your valuable contribution and support! 🙏&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgwtchErrinnotfound&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Your configuration encountered an error during the database refresh. Please reach out to the developer for assistance. 🛠️ Error: Inbound not found.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgwtchErrtypemiss&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Your configuration encountered an error during the database refresh. Please contact the developer for assistance. 🛠️ Error: Inbound type mismatch.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgwtchErruseradd&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Your configuration encountered an error during the database refresh. Please contact the developer for assistance. 🛠️ Error: VLESS service error during user addition.&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgwtchUsagereset&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔄 All your usage has been reset, but any excess usage has been carried over to this month. 📊&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgresetUsage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🔄 All your usage has been successfully reset. ✨&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgGiftSent&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;🎁 You have successfully sent a gift of %v to %v. 🌟 Enjoy sharing the love!&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgBtnOffline&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ It looks like the button is no longer online. Please restart the command 🔌&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgContactTimeover&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;✨ Your contact time has expired. ⏳ Please feel free to reach out again when you&#39;re ready! 😊&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgContactCancle&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;❌ You have canceled the contact session. If you need assistance later, don&#39;t hesitate to reach out! 😊&quot;</span><span class="p">,</span>
+
+<span class="w">  </span><span class="nt">&quot;MsgNotCmdDIs&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;command is not for distributed user&quot;</span><span class="p">,</span>
+
+<span class="w">  </span><span class="nt">&quot;MsgQuotawarnlow&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Your quota must be greater than you&#39;r current usage&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;MsgQuotawarnzero&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;⚠️ Value must be greater than zero&quot;</span><span class="p">,</span>
+
+<span class="w">  </span><span class="nt">&quot;MsgNoQuota&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;You Don&#39;t Have Available Quota To create a new config, if you want to create a new config, you can change the quota of the existing config or delete&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2024 sadeepa24. All rights reserved.
+    </div>
+  
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://t.me/DaRker_WoLF" target="_blank" rel="noopener" title="t.me" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M248 8C111.033 8 0 119.033 0 256s111.033 248 248 248 248-111.033 248-248S384.967 8 248 8m114.952 168.66c-3.732 39.215-19.881 134.378-28.1 178.3-3.476 18.584-10.322 24.816-16.948 25.425-14.4 1.326-25.338-9.517-39.287-18.661-21.827-14.308-34.158-23.215-55.346-37.177-24.485-16.135-8.612-25 5.342-39.5 3.652-3.793 67.107-61.51 68.335-66.746.153-.655.3-3.1-1.154-4.384s-3.59-.849-5.135-.5q-3.283.746-104.608 69.142-14.845 10.194-26.894 9.934c-8.855-.191-25.888-5.006-38.551-9.123-15.531-5.048-27.875-7.717-26.8-16.291q.84-6.7 18.45-13.7 108.446-47.248 144.628-62.3c68.872-28.647 83.183-33.623 92.511-33.789 2.052-.034 6.639.474 9.61 2.885a10.45 10.45 0 0 1 3.53 6.716 43.8 43.8 0 0 1 .417 9.769"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.expand", "navigation.path", "navigation.sections", "header.autohide", "content.code.copy", "content.code.select", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "\u0d9a\u0ddc\u0db4\u0dd2 \u0d9a\u0dc5\u0dcf", "clipboard.copy": "\u0d9a\u0ddc\u0db4\u0dd2 \u0d9a\u0dbb\u0db1\u0dca\u0db1", "search.result.more.one": "\u0dad\u0dc0 1 \u0db4\u0dca\u200d\u0dbb\u0dad\u0dd2\u0db5\u0dbd\u0dba\u0d9a\u0dca", "search.result.more.other": "\u0dad\u0dc0 \u0db4\u0dca\u200d\u0dbb\u0dad\u0dd2\u0db5\u0dbd # \u0d9a\u0dca", "search.result.none": "\u0d9a\u0dd2\u0dc3\u0dd2\u0dc0\u0d9a\u0dca \u0dc4\u0db8\u0dd4 \u0db1\u0ddc\u0dc0\u0dd4\u0dab\u0dd2", "search.result.one": "1 \u0d9c\u0dd0\u0dbd\u0db4\u0dd9\u0db1 \u0d9c\u0ddc\u0db1\u0dd4\u0dc0\u0d9a\u0dca", "search.result.other": "\u0d9c\u0dd0\u0dbd\u0db4\u0dd9\u0db1 \u0d9c\u0ddc\u0db1\u0dd4 # \u0d9a\u0dca", "search.result.placeholder": "\u0dc3\u0dd9\u0dc0\u0dd3\u0db8\u0da7 \u0da7\u0dba\u0dd2\u0db4\u0dca \u0d9a\u0dbb\u0db1\u0dca\u0db1", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.5090c770.min.js"></script>
+      
+    
+  </body>
+</html>
