@@ -1,0 +1,109 @@
+site_name: Connected Bot
+theme:
+  name: material
+  features:
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.indexes
+    - navigation.expand
+    - navigation.path
+    - navigation.sections
+    - header.autohide
+    - content.code.copy
+    - content.code.select
+    - content.code.annotate
+
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  # - Installation:
+  #     - installation/index.md
+  #     - from_source: installation/build_from_source.md
+  - Quick Start:
+      - quickstart/index.md
+      - Example Configs:
+          - bot config: quickstart/example/config.md
+          - sing-box config: quickstart/example/sing-box.md
+          - message template: quickstart/example/template.md
+          - store: quickstart/example/store.md
+  - Configuration:
+      - configuration/index.md
+      - BOT Config:
+          - configuration/config/index.md
+          - metadata: configuration/config/metadata.md
+          - webhook: configuration/config/webhook.md
+          - watchman: configuration/config/watchman.md
+          - log: configuration/config/log.md
+      - SING-BOX config:
+          - configuration/sing-box/index.md
+          - Inbounds: configuration/sing-box/inbounds.md
+          - Outbounds: configuration/sing-box/outbounds.md
+          - Routings: configuration/sing-box/routing.md
+  - Other Configs:
+      - other_config/index.md
+      - Message-Templates:
+          - other_config/templates/index.md
+          - Varibles: other_config/templates/varibles.md
+      - Store:
+          - other_config/store/index.md
+          - outbounds: other_config/store/outbounds.md
+          - routerule: other_config/store/routerule.md
+          - dnsrules: other_config/store/dnsrules.md
+          - dns_server: other_config/store/dns_servers.md
+          - ruleset: other_config/store/ruleset.md
+
+      - Usermsg:
+          - other_config/usermsg/index.md
+  # - Developer Guide:
+  #     - developer_guide/index.md
+repo_url: https://github.com/sadeepa24/connected_bot
+repo_name: sadeepa24/connected_bot
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+plugins:
+  - search
+  - i18n:
+      default_language: si
+      docs_structure: folder
+      languages:
+        # - locale: en
+        #   name: English
+        - locale: si
+          name: සින්හල
+          default: true # Mark English as the default language
+          build: true # Ensure this language is built
+        #   build: true # Spanish should also be built
+        # - locale: fr
+        #   name: Français
+        #   build: false # French will not be built (optional)
+
+extra:
+  i18n:
+    languages:
+      # - locale: en
+      #   name: English
+      - locale: si
+        name: සින්හල
+      # - locale: fr
+      #   name: Français
+  social:
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/DaRker_WoLF
+  generator: false
+
+copyright: Copyright &copy; 2024 sadeepa24. All rights reserved.
