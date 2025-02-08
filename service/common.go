@@ -62,6 +62,7 @@ type configinfo struct {
 	InAddr         string
 	InInfo         string
 	TranstPortType string
+	TransPortPath string
 	Loginlimit int16
 	TlsEnabled     bool
 	SupportInfo    []string

@@ -334,6 +334,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				InAddr:         u.ctrl.DefaultPubip,
 				InInfo:         sboxin.Custom_info,
 				TranstPortType: sboxin.TransortType(),
+				TransPortPath:  sboxin.TransportPath(),
 				TlsEnabled:     sboxin.TlsIsEnabled(),
 				UsageDuration:  time.Since(u.ctrl.GetLastRefreshtime()).Round(1 * time.Second).String(),
 				SupportInfo:    sboxin.Support,

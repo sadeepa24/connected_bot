@@ -514,6 +514,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 					InInfo:         sboxin.Custom_info,
 					TranstPortType: sboxin.TransortType(),
 					TlsEnabled:     sboxin.TlsIsEnabled(),
+					TransPortPath:  sboxin.TransportPath(),
 					UsageDuration:  time.Since(a.ctrl.GetLastRefreshtime()).Round(1 * time.Second).String(),
 					SupportInfo:    sboxin.Support,
 	

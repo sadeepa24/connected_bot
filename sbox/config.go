@@ -104,6 +104,27 @@ func (in *Inboud) TransortType() string {
 	}
 	return "notype"
 }
+func (in *Inboud) TransportPath() string {
+	if in.Option == nil {
+		return "/"
+	}
+	switch in.Type {
+	case C.Vless:
+		if in.Option.VLESSOptions.Transport == nil {
+			return "notype"
+		}
+		switch in.Option.VLESSOptions.Transport.Type {
+		case "ws":
+			return in.Option.VLESSOptions.Transport.WebsocketOptions.Path
+		case "http":
+			return in.Option.VLESSOptions.Transport.HTTPOptions.Path
+		default:
+			return ""
+		}
+
+	}
+	return "nopath"
+}
 
 func (in *Inboud) TlsIsEnabled() bool {
 	if in.Option == nil {
