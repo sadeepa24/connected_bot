@@ -322,7 +322,7 @@ func (p *Parser) Setuser(upx *update.Updatectx) error {
 	}
 
 	switch upx.Command {
-	case C.CmdStart, C.CmdHelp, C.CmdNull, C.CmdContact, C.CmdRecheck:
+	case C.CmdStart, C.CmdHelp, C.CmdNull, C.CmdContact, C.CmdRecheck, C.CmdSource:
 		break
 	default:
 		if !upx.Update.FromChat().IsPrivate() {
@@ -352,7 +352,7 @@ func (p *Parser) chatmemberparse(upx *update.Updatectx) error {
 func (p *Parser) commandparser(msg *tgbotapi.Message) (string, string, error) {
 	//TODO: remove this switch and create good way to select service
 	switch msg.Command() {
-	case C.CmdStart, C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact:
+	case C.CmdStart, C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact, C.CmdSource:
 		return msg.Command(), C.Userservicename, nil
 	case C.CmdCreate, C.CmdStatus, C.CmdConfigure, C.CmdInfo, C.CmdBuild:
 		return msg.Command(), C.Xraywizservicename, nil

@@ -13,6 +13,7 @@ const (
 	CmdDistribute = "distribute"
 	CmdPoints     = "points"
 	CmdRecheck    = "recheck"
+	CmdSource	  = "source"
 
 	//xraywiz
 	CmdInfo      = "getinfo"

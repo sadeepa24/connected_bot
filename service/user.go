@@ -456,7 +456,9 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 	case C.CmdContact: 
 		return u.commandContact(upx, Messagesession)
 	case C.CmdRecheck:
-		return u.Recheck(upx, Messagesession)
+		return u.cmdRecheck(upx, Messagesession)
+	case C.CmdSource:
+		return u.cmdSendSource(Messagesession)
 	default:
 		u.logger.Warn("unknown cmd recived by userservice - " + cmd)
 		return u.defaultsrv.FromserviceExec(upx)
@@ -1282,12 +1284,11 @@ func (u *Usersrv) commandSuggesion(upx *update.Updatectx , Messagesession *botap
 	return nil
 }
 
-func (u *Usersrv) Recheck(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
+func (u *Usersrv) cmdRecheck(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
 	var userMessage string
 	
 	if upx.User.Isverified() {
 		userMessage = "already verified"
-		return nil
 	} else {
 		err := u.ctrl.RefreshUser(upx.Ctx, upx.Dbuser())
 		userMessage = "rechecking verificity done"
@@ -1295,13 +1296,23 @@ func (u *Usersrv) Recheck(upx *update.Updatectx , Messagesession *botapi.Msgsess
 			userMessage = "rechecking verificity failed"
 		}
 	}
-	
-	u.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
-		Infocontext: &botapi.Infocontext{
-			ChatId: upx.User.TgID,
-		},
-		Text: userMessage,
-	})
+	Messagesession.SendAlert(userMessage, nil)
+	return nil
+}
+
+func (u *Usersrv) cmdSendSource(Messagesession *botapi.Msgsession) error {
+	btns := botapi.NewButtons([]int16{2})
+
+	btns.AddUrlbutton("🔗 Source Code", "https://github.com/sadeepa24/connected_bot")
+	btns.AddUrlbutton("Docs", "https://sadeepa24.github.io/connected_bot/")
+	Messagesession.SendExtranal(`🚀 Explore the Source Code!
+
+This project is built with passion and is open for contributions. Whether you're here to explore, improve, or collaborate, your input is always valued.
+
+🔗 Tap the button below to view the source code.
+💡 Found an issue or have a suggestion? Feel free to contribute or share your thoughts!
+
+Let’s build something great together! ✨`, btns, "", true)
 	return nil
 }
 
