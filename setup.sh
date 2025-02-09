@@ -46,7 +46,7 @@ echo "Extracting $TAR_FILE..."
 sudo tar -xzf "$TAR_FILE" -C "$TEMP_DIR"
 
 # Find the actual binary
-BOT_BINARY=$(find "$TEMP_DIR" -type f -name "connected_bot" | head -n 1)
+BOT_BINARY=$(find "$TEMP_DIR" -type f -name "connected_bot_linux" | head -n 1)
 if [ -z "$BOT_BINARY" ]; then
   echo "Error: connected_bot binary not found in extracted files!"
   exit 1
