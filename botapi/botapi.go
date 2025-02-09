@@ -147,6 +147,9 @@ func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 	if err != nil {
 		return nil, C.ErrClientRequestFail
 	}
+	if res.StatusCode == 400 {
+		return nil, C.ErrTgParsing
+	}
 	apires := &tgbotapi.APIResponse{}
 	resvody, err := io.ReadAll(res.Body)
 
@@ -702,7 +705,17 @@ func (m *Msgsession) SendExtranal(msg any, buttons *Buttons, name string, nodel 
 
 	replymg, err := m.api.SendContext(m.mainctx, sendmsg)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, C.ErrTgParsing) {
+			sendmsg.Parse_mode = ""
+			if sendmsg.Meadiacommon != nil && sendmsg.Meadiacommon.Media != nil {
+				sendmsg.Meadiacommon.Media.ParseMode = ""
+			}
+			replymg, err = m.api.SendContext(m.mainctx, sendmsg)
+
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if !nodel {

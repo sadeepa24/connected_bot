@@ -29,7 +29,7 @@ var ErrRead = errors.New("body reading error")
 var ErrApierror = errors.New("request not resolverd by server ")
 
 var ErrJsonopra = errors.New("json marshling error")
-
+var ErrTgParsing = errors.New("json marshling error")
 // parser
 var ErrServiceNotFound = errors.New("service not found")
 
