@@ -13,10 +13,12 @@ import (
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	singconst "github.com/sagernet/sing-box/constant"
+
+	// option "github.com/sagernet/sing-box/option"
+	option "github.com/sadeepa24/connected_bot/builder/sbox_option/v1"
 	"gorm.io/gorm"
 )
 

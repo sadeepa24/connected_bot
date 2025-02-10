@@ -11,7 +11,7 @@ import (
 
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/parser"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"go.uber.org/zap"
 )
 

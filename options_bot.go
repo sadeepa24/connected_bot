@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/sadeepa24/connected_bot/controller"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
 	"github.com/sadeepa24/connected_bot/server"
 	"github.com/sadeepa24/connected_bot/watchman"
 	"go.uber.org/zap"
@@ -26,7 +25,7 @@ type Botoptions struct {
 	Logger     *zap.Logger                         `json:"-"`
 	Ctx        context.Context                     `json:"-"`
 	//Templates  map[string]map[string]botapi.MgItem `json:"-"`
-	Sboxoption option.Options                      `json:"-"`
+	//Sboxoption option.Options                      `json:"-"`
 }
 
 type LoggerOptions struct {

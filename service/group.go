@@ -6,7 +6,7 @@ import (
 
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/update"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 

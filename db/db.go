@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"go.uber.org/zap"
 
 	sqlite "gorm.io/driver/sqlite"

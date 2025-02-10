@@ -5,7 +5,7 @@ import (
 
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 )
 
 // Standar Userfor all aplication

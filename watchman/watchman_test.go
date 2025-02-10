@@ -7,11 +7,9 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"net/netip"
 	"os"
 	"strconv"
 	"testing"
-	"time"
 
 	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/gofrs/uuid"
@@ -20,9 +18,8 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/watchman"
 	"go.uber.org/zap"
 )
@@ -111,7 +108,8 @@ type preconfdata struct {
 func preconfigure(ctx context.Context) (data preconfdata) {
 	data = preconfdata{}
 
-	options := testingfirst()
+	//options := testingfirst()
+	options := connected.Botoptions{}
 	options.Ctx = ctx
 
 	data.db = db.New(options.Ctx, options.Logger, options.Dbpath)
@@ -121,7 +119,7 @@ func preconfigure(ctx context.Context) (data preconfdata) {
 		dotrace: false,
 	}
 
-	data.ctrl, _ = controller.New(options.Ctx, data.db, options.Logger, options.Metadata, data.botapi, options.Sboxoption)
+	data.ctrl, _ = controller.New(options.Ctx, data.db, options.Logger, options.Metadata, data.botapi, "./sbox.json")
 	data.watchmaconfig = options.Watchman
 
 	err := data.db.InitDb()
@@ -450,6 +448,7 @@ func inserGiftcoupleV2(ctrl *controller.Controller, from, to int64) error {
 	//zLogger.Error(err.Error())
 	return nil
 }
+/* //TODO: update this test confgi to v1.12.0
 func testingfirst() connected.Botoptions {
 	addr, _ := netip.ParseAddr("0.0.0.0")
 	val := 1
@@ -678,7 +677,7 @@ func testingfirst() connected.Botoptions {
 
 	return newoption
 }
-
+*/
 
 type Randomizer struct {
 	db *db.Database

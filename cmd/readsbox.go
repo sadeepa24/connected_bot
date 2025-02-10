@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
+	option "github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 )

@@ -13,8 +13,10 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
 	sboxConst "github.com/sagernet/sing-box/constant"
+
+	// option "github.com/sagernet/sing-box/option"
+	option "github.com/sadeepa24/connected_bot/builder/sbox_option/v1"
 	singJson "github.com/sagernet/sing/common/json"
 	"go.uber.org/zap"
 )

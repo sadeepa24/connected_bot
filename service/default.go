@@ -6,8 +6,8 @@ import (
 
 	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 

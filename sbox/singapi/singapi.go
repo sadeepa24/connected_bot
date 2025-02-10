@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -15,11 +16,16 @@ import (
 	box "github.com/sagernet/sing-box"
 	"github.com/sagernet/sing-box/connectedbot"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/experimental/deprecated"
+	"github.com/sagernet/sing-box/include"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-vmess/vless"
 	"github.com/sagernet/sing/common"
+	"github.com/sagernet/sing/common/json"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
+	"github.com/sagernet/sing/service"
 	"go.uber.org/zap"
 )
 
@@ -36,17 +42,30 @@ type SingAPI struct {
 
 var _ sbox.Sboxcontroller = &SingAPI{}
 
-func NewsingAPI(ctx context.Context, opt option.Options, logger *zap.Logger) (*SingAPI, error) {
+func NewsingAPI(ctx context.Context, optpath string, logger *zap.Logger) (*SingAPI, option.Options, error) {
+	filecont, err := os.ReadFile(optpath)
+	if err!= nil {
+		return nil, option.Options{}, err
+	}
+
+	var opts option.Options
+	globalCtx := service.ContextWith(ctx, deprecated.NewStderrManager(log.StdLogger()))
+	globalCtx = box.Context(globalCtx, include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), include.DNSTransportRegistry())
+
+	opts, err = json.UnmarshalExtendedContext[option.Options](globalCtx,  filecont)
+	if err != nil {
+		return nil, opts, errors.New("sing box option unmarshelling error "+ err.Error())
+	}
 	instance, err := box.New(box.Options{
-		Context: ctx,
-		Options: opt,
+		Context: globalCtx,
+		Options: opts,
 	})
 	if err != nil {
-		return nil, errors.Join(err, errors.New( "sing box insrance creation failed "))
+		return nil, opts, errors.Join(err, errors.New( "sing box insrance creation failed "))
 	}
 	logger.Debug("sing box instance created successfully")
 	outmap := []string{}
-	for _, out := range opt.Outbounds {
+	for _, out := range opts.Outbounds {
 		outmap = append(outmap, out.Tag)
 	}
 	return &SingAPI{
@@ -54,7 +73,7 @@ func NewsingAPI(ctx context.Context, opt option.Options, logger *zap.Logger) (*S
 		urltests: &sync.Map{},
 		logger:   logger,
 		outtags:  outmap,
-	}, nil
+	}, opts, nil
 
 }
 

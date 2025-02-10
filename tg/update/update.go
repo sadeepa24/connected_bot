@@ -7,8 +7,8 @@ import (
 	//	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update/bottype"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 )
 
 type Updatectx struct {

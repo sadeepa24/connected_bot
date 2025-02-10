@@ -15,7 +15,7 @@ import (
 	"time"
 
 	C "github.com/sadeepa24/connected_bot/constbot"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
@@ -323,6 +323,7 @@ func (m *MessageStore) Init(sender BotAPI, sudoadminID int64, logger *zap.Logger
 		}
 	}
 	*/
+	return nil //TODO: remove
 	return TemplateInit(sender, sudoadminID, logger, C.MapPtrToSlicePtr(m.Templates))
 }
 

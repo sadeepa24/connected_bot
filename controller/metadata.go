@@ -9,7 +9,8 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
-	"github.com/sadeepa24/connected_bot/update/bottype"
+	"github.com/sadeepa24/connected_bot/tg/update/bottype"
+	"github.com/sagernet/sing-box/option"
 )
 
 type MetadataConf struct {
@@ -72,6 +73,8 @@ type Metadata struct {
 
 	inboundasMap  map[int]sbox.Inboud
 	outboundasMap map[int]sbox.Outbound
+
+	rawoptions option.Options
 
 	defaultinbound  sbox.Inboud
 	defaultoutbound sbox.Outbound

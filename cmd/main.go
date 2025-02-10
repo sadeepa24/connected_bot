@@ -75,11 +75,11 @@ func getBotOption() (connected.Botoptions, error) {
 		return botoption, err
 	}
 	botoption.Ctx = Mainctx
-	opt, err := readsboxconfigAT(botoption.SboxConfPath)
-	if err != nil {
-		return botoption, err
-	}
-	botoption.Sboxoption = opt.options
+	// opt, err := readsboxconfigAT(botoption.SboxConfPath)
+	// if err != nil {
+	// 	return botoption, err
+	// }
+	// botoption.Sboxoption = opt.options
 
 	if botoption.LoggerOption.Encoding == "" {
 		botoption.LoggerOption.Encoding = "console"

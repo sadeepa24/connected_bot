@@ -16,7 +16,7 @@ import (
 	"time"
 
 	C "github.com/sadeepa24/connected_bot/constbot"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 )
 
 type BotAPI interface {
@@ -151,8 +151,8 @@ func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 		return nil, C.ErrTgParsing
 	}
 	apires := &tgbotapi.APIResponse{}
-	resvody, err := io.ReadAll(res.Body)
-
+	resvody := make([]byte, res.ContentLength)
+	_, err = io.ReadFull(res.Body, resvody)
 	if err != nil {
 		return nil, C.ErrRead
 	}

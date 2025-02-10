@@ -12,10 +12,9 @@ import (
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/parser"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
 	"github.com/sadeepa24/connected_bot/service"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -28,7 +27,7 @@ var usethisdb = db.New(ctx, nil, "connect.db")
 func TestParser(t *testing.T) {
 
 	usethisdb.InitDb()
-	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, option.Options{})
+	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "./sbox.json")
 
 	var callbacksrv = service.NewCallback(ctx, zLogger, nil, nil)
 	var adminsrv *service.Adminsrv

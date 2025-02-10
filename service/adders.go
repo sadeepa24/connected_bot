@@ -13,8 +13,10 @@ import (
 	"github.com/sadeepa24/connected_bot/builder"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+
+	// option "github.com/sagernet/sing-box/option"
+	option "github.com/sadeepa24/connected_bot/builder/sbox_option/v1"
 )
 
 func tlsconstruct(sendreciver common.Sendreciver, callback common.Callbackreciver, btns *botapi.Buttons) (*option.OutboundTLSOptionsContainer, error) {

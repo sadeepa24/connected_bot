@@ -8,7 +8,7 @@ import (
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 )
 
 type creator interface {
@@ -255,8 +255,8 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 		Transport:     sboxin.Transporttype,
 		TlsEnabled:    sboxin.Tlsenabled,
 		UUID:          config.UUID.String(),
-		Path:          sboxin.Option.VLESSOptions.GetPath(),
-		TransportType: sboxin.Option.VLESSOptions.TransportType(),
+		Path:          "/", //TODO: change later
+		TransportType: "ws", //TODO: change later
 	}, nil, C.TmpCrSendUID, true)
 
 	//Messagesession.SendExtranal(fmt.Sprintf("vless://%v@%v:%v?path=%v&security=%v&type=", config.UUID.String(), sboxin.Domain, sboxin.Port(), sboxin.Option.VLESSOptions.GetPath()     ), nil, "", true)

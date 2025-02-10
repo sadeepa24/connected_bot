@@ -11,10 +11,9 @@ import (
 	"github.com/sadeepa24/connected_bot/controller"
 
 	"github.com/sadeepa24/connected_bot/db"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
 	"github.com/sadeepa24/connected_bot/service"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +29,7 @@ func init() {
 
 func TestUsersrv(t *testing.T) {
 	usethisdb.InitDb()
-	var ctrl ,_ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, option.Options{})
+	var ctrl ,_ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "")
 
 	groupid := 88890
 
@@ -140,7 +139,7 @@ func TestUsersrv(t *testing.T) {
 func TestXraywiz(t *testing.T) {
 
 	usethisdb.InitDb()
-	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, option.Options{})
+	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "option.Options{}")
 
 	var callbacksrv = service.NewCallback(ctx, zLogger, nil, nil)
 	//var adminsrv *service.Adminsrv

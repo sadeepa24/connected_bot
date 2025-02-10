@@ -7,7 +7,9 @@ import (
 	"github.com/sadeepa24/connected_bot/builder"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
+
+	// option "github.com/sagernet/sing-box/option"
+	option "github.com/sadeepa24/connected_bot/builder/sbox_option/v1"
 )
 
 type changer interface {

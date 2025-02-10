@@ -770,7 +770,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 	// it's safe to send backup here
 	// because any other goroutine can't access this db while this function is running
-	w.sendDbBackup()
+	//w.sendDbBackup()
 	msgchan <- uint16(1) // to tell buffring is over
 
 	// if w.CheckClose() != nil {

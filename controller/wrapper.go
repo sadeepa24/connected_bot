@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/netip"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -15,10 +16,10 @@ import (
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
 	"github.com/sadeepa24/connected_bot/sbox/singapi"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
-	"github.com/sadeepa24/connected_bot/update/bottype"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
+	"github.com/sadeepa24/connected_bot/tg/update/bottype"
+	"github.com/sagernet/sing-box/option"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -55,12 +56,18 @@ type Controller struct {
 	signals chan any // share signals and message types to watchman (*botapi.Msgcommon, botapi.Upmessage, controller.UserCount, //TODO: forcedbrefresh signal) 
 }
 
-func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *MetadataConf, btapi botapi.BotAPI, sboxopt option.Options) (*Controller, error) {
+func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
 
 	//sboxlog := make(chan any, 2000) //buffer for reciving logs from sbox core
 
 	if metaconf.WatchMgbuf <= 0 {
 		metaconf.WatchMgbuf = 100
+	}
+
+	var err error
+	boxapi, boxopts, err := singapi.NewsingAPI(ctx, sboxpath, logger)
+	if err != nil {
+		return nil, errors.Join(err, errors.New("sing api creation failed"))
 	}
 
 	basectx, basecanc := context.WithCancel(ctx)
@@ -72,14 +79,16 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		Overview: &Overview{
 			Mu: &sync.RWMutex{},
 		},
+		sbox: boxapi,
 		basecancle:     basecanc,
 		signals:         make(chan any, metaconf.WatchMgbuf),
 		Usermgrsession: &sync.Map{},
 		Metadata: &Metadata{
 			Inbounds:      []sbox.Inboud{},
 			Outbounds:     []sbox.Outbound{},
-			inboundasMap:  make(map[int]sbox.Inboud, len(sboxopt.Inbounds)),
-			outboundasMap: make(map[int]sbox.Outbound, len(sboxopt.Outbounds)),
+			rawoptions: boxopts,
+			inboundasMap:  make(map[int]sbox.Inboud, len(boxopts.Inbounds)),
+			outboundasMap: make(map[int]sbox.Outbound, len(boxopts.Outbounds)),
 			Botlink:       metaconf.Botlink,
 			GroupLink:     metaconf.GroupLink,
 			Channelink:    metaconf.Channelink,
@@ -91,17 +100,13 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		botapi:     btapi,
 		Lockval:    new(atomic.Int32),
 		sboxio: &SboxIO{
-			Inbounds:  sboxopt.Inbounds,
-			outbounds: sboxopt.Outbounds,
+			Inbounds:  boxopts.Inbounds,
+			outbounds: boxopts.Outbounds,
 		},
 		//sboxlog: sboxlog,
 	}
 
-	var err error
-	cn.sbox, err = singapi.NewsingAPI(ctx, sboxopt.SagerNetOpt(), logger)
-	if err != nil {
-		return nil, errors.Join(err, errors.New("sing api creation failed"))
-	}
+
 
 	return cn, nil
 }
@@ -170,6 +175,16 @@ func (c *Controller) Init() error {
 
 	//intilize All inbounds to map
 	for _, in := range c.sboxio.Inbounds {
+		if in.Type != C.Vless {
+			return errors.New("this type inbound not supported yet " + in.Type)
+		}
+
+		vlessout, ok := in.Options.(*option.VLESSInboundOptions)
+		if !ok {
+			return errors.New("this type inbound not supported yet " + in.Type)
+		}
+
+
 		if in.Id == nil {
 			return errors.New("inbound id not found for " + in.Tag)
 		}
@@ -177,8 +192,8 @@ func (c *Controller) Init() error {
 		if in.Domain == "" {
 			in.Domain = c.DefaultDomain
 		}
-		if in.PubIp == "" {
-			in.PubIp = c.DefaultPubip
+		if in.Public_Ip == "" {
+			in.Public_Ip = c.DefaultPubip
 		}
 
 		inbdremake := sbox.Inboud{
@@ -189,21 +204,21 @@ func (c *Controller) Init() error {
 			Option:      &in,
 			Custom_info: in.Custom_info,
 			Domain:      in.Domain,
-			PublicIp:    in.PubIp,
+			PublicIp:    in.Public_Ip,
 			Support:     in.SupportInfo,
 		}
 
 		switch in.Type {
 		case C.Vless:
-			inbdremake.ListenAddres = in.VLESSOptions.ListenOptions.Listen.Build().String()
-			inbdremake.Listenport = int(in.VLESSOptions.ListenPort)
+			inbdremake.ListenAddres = vlessout.ListenOptions.Listen.Build(netip.IPv4Unspecified()).String()
+			inbdremake.Listenport = int(vlessout.ListenPort)
 
-			if in.VLESSOptions.TLS != nil {
-				inbdremake.Tlsenabled = in.VLESSOptions.TLS.Enabled
+			if vlessout.TLS != nil {
+				inbdremake.Tlsenabled = vlessout.TLS.Enabled
 			}
-			if in.VLESSOptions.Transport != nil {
-				inbdremake.Transporttype = in.VLESSOptions.Transport.Type
-				inbdremake.Transportoption = *in.VLESSOptions.Transport
+			if vlessout.Transport != nil {
+				inbdremake.Transporttype = vlessout.Transport.Type
+				inbdremake.Transportoption = *vlessout.Transport
 			}
 		default:
 			return C.ErrNotsupported
@@ -235,7 +250,7 @@ func (c *Controller) Init() error {
 			Name:        out.Tag,
 			Tag:         out.Tag,
 			Type:        out.Type,
-			Option:      &out,
+			///Option:      &out,
 			Custom_info: out.Custom_info,
 			Latency:     new(atomic.Int32),
 		}
@@ -244,6 +259,9 @@ func (c *Controller) Init() error {
 		if out.Type == C.Direct {
 			c.defaultoutbound = c.outboundasMap[*out.Id]
 		}
+	}
+	if c.rawoptions.Route == nil {
+		return errors.New("route cannopt be empty")
 	}
 
 	if c.defaultinbound.Type == "" {
