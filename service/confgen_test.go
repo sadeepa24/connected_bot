@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
-	"github.com/sadeepa24/connected_bot/builder"
+	"github.com/sadeepa24/connected_bot/builder/v1"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
 	option "github.com/sagernet/sing-box/option"

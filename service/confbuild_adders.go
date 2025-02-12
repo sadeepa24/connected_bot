@@ -10,7 +10,7 @@ import (
 	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/gofrs/uuid"
 	"github.com/sadeepa24/connected_bot/botapi"
-	"github.com/sadeepa24/connected_bot/builder"
+	"github.com/sadeepa24/connected_bot/builder/v1"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
