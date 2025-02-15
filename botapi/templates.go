@@ -323,7 +323,7 @@ func (m *MessageStore) Init(sender BotAPI, sudoadminID int64, logger *zap.Logger
 		}
 	}
 	*/
-	return nil //TODO: remove
+	//return nil //TODO: remove
 	return TemplateInit(sender, sudoadminID, logger, C.MapPtrToSlicePtr(m.Templates))
 }
 
