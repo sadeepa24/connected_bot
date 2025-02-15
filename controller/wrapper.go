@@ -34,7 +34,7 @@ type Controller struct {
 
 	Lockval    *atomic.Int32
 	Metaconfig *MetadataConf
-	sboxio     *SboxIO
+	//sboxio     *SboxIO
 	*Metadata
 	Overview *Overview
 
@@ -99,10 +99,10 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		Metaconfig: metaconf,
 		botapi:     btapi,
 		Lockval:    new(atomic.Int32),
-		sboxio: &SboxIO{
-			Inbounds:  boxopts.Inbounds,
-			outbounds: boxopts.Outbounds,
-		},
+		// sboxio: &SboxIO{
+		// 	Inbounds:  boxopts.Inbounds,
+		// 	outbounds: boxopts.Outbounds,
+		// },
 		//sboxlog: sboxlog,
 	}
 
@@ -174,7 +174,7 @@ func (c *Controller) Init() error {
 	}
 
 	//intilize All inbounds to map
-	for _, in := range c.sboxio.Inbounds {
+	for _, in := range c.rawoptions.Inbounds {
 		if in.Type != C.Vless {
 			return errors.New("this type inbound not supported yet " + in.Type)
 		}
@@ -238,7 +238,8 @@ func (c *Controller) Init() error {
 	}
 
 	//intilize All outbounds to map
-	for _, out := range c.sboxio.outbounds {
+	//c.sboxio.outbounds = append(c.sboxio.outbounds, c.rawoptions.Endpoints)
+	for _, out := range c.rawoptions.Outbounds {
 		if out.Id == nil {
 			return errors.New("outbound id not found for " + out.Tag)
 		}
@@ -260,6 +261,28 @@ func (c *Controller) Init() error {
 			c.defaultoutbound = c.outboundasMap[*out.Id]
 		}
 	}
+
+	for _, endpt := range c.rawoptions.Endpoints {
+		if endpt.Id == nil {
+			return errors.New("endpoint id not found for " + endpt.Tag)
+		}
+
+		_, loaded := c.outboundasMap[*endpt.Id]
+		if loaded {
+			return errors.New("outbound and endpoint id conflicts outbound and endpoint id canoot be same")
+		}
+		c.outboundasMap[*endpt.Id] = sbox.Outbound{
+			Id:          int64(*endpt.Id),
+			Name:        endpt.Tag,
+			Tag:         endpt.Tag,
+			Type:        endpt.Type,
+			///Option:      &out,
+			Custom_info: endpt.Custom_info,
+			Latency:     new(atomic.Int32),
+		}
+		c.Outbounds = append(c.Outbounds, c.outboundasMap[*endpt.Id])
+	}
+
 	if c.rawoptions.Route == nil {
 		return errors.New("route cannopt be empty")
 	}
