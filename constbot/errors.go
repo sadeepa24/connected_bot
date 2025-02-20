@@ -55,7 +55,12 @@ var (
 	ErrUserNotVerified    = errors.New("user is not verified user")
 	ErrUserIsNotinPrivate = errors.New("user is not private")
 	ErrUserIsRestricted = errors.New("restricted user")
+	ErrUserTempLimited = errors.New("templimited user")
+
+	ErrUpdateFaile = errors.New("recived updated has nothing to process")
 )
+
+
 
 // Messagesession
 var (

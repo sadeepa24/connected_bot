@@ -416,6 +416,7 @@ func (c *Controller) Init() error {
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
+		dbMeta.CommonWarnRatio = c.Metaconfig.GetWarnRate()
 		
 		var userct int64
 		if err = c.db.Model(&db.User{}).Count(&userct).Error; err != nil {
@@ -437,6 +438,13 @@ func (c *Controller) Init() error {
 		dbMeta.CheckCount = (dbMeta.CheckCount * oldRefreshRate) / c.Metaconfig.RefreshRate //Recalculating ResetCount according to new refresh rate
 		dbMeta.ResetCount = (30 * 24) / c.Metaconfig.RefreshRate
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
+	}
+
+	if c.Metaconfig.GetWarnRate() != dbMeta.CommonWarnRatio {
+		c.logger.Info("Warn rate change detected, resetting all warn rates of users")
+		if err := c.db.Model(&db.User{}).Update("warn_ratio", c.Metaconfig.GetWarnRate()).Error; err != nil {
+			return errors.New("errored when changing warn rate")
+		}
 	}
 
 	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
@@ -799,6 +807,7 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		CalculatedQuota:   C.Bwidth(c.CommonQuota.Load()),
 		DeletedConfCount:  0,
 		AddtionalConfig:   0,
+		WarnRatio: c.Metaconfig.GetWarnRate(),
 		RecheckVerificity: recheck,
 		Lang:        "en",
 		Points:      C.DefaultPoint,
@@ -811,11 +820,11 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		GroupBanned:   false,
 		ChannelBanned: false,
 		
-		IsVipUser:     false,
-		WebToken: sql.NullString{
-			String: "no token", //TODO: change after making wqb app
-			Valid:  true,
-		},
+		//IsVipUser:     false,
+		// WebToken: sql.NullString{
+		// 	String: "no token", //TODO: change after making wqb app
+		// 	Valid:  true,
+		// },
 	}
 
 	dbUser, err := c.db.AddUser(newuser)

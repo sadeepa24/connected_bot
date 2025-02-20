@@ -459,6 +459,8 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 		return u.cmdRecheck(upx, Messagesession)
 	case C.CmdSource:
 		return u.cmdSendSource(Messagesession)
+	case C.CmdFree:
+		return u.cmdFree(upx, Messagesession)
 	default:
 		u.logger.Warn("unknown cmd recived by userservice - " + cmd)
 		return u.defaultsrv.FromserviceExec(upx)
@@ -1313,6 +1315,42 @@ This project is built with passion and is open for contributions. Whether you're
 💡 Found an issue or have a suggestion? Feel free to contribute or share your thoughts!
 
 Let’s build something great together! ✨`, btns, "", true)
+	return nil
+}
+
+func (u *Usersrv) cmdFree(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
+	if !upx.User.Templimited && !upx.User.IsMonthLimited {
+		Messagesession.SendAlert(C.GetMsg(C.MsgTempNoLimit), nil)
+		return nil
+	}
+
+	Usersession, err := controller.NewctrlSession(u.ctrl, upx, false)
+	if err != nil {
+		if errors.Is(err, C.ErrSessionExcit) {
+			Messagesession.SendAlert(C.GetMsg(C.MsgSessionExcist), nil)
+		} else {
+			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
+		}
+		return nil
+
+	}
+	defer Usersession.Close()
+
+	switch {
+	case upx.User.Templimited:
+		if upx.User.WarnRatio == 0 {
+			Messagesession.SendAlert(C.GetMsg(C.MsgTempMonth), nil)
+			return nil
+		}
+		upx.User.EmptyCycle = 0
+		upx.User.Templimited = false
+		Usersession.ActivateAll()
+		Messagesession.SendAlert(C.GetMsg(C.MsgFree), nil)
+	case upx.User.IsMonthLimited:
+		Messagesession.SendAlert(C.GetMsg(C.MsgTempMonthLimited), nil)
+	}
+
+	upx.Cancle()
 	return nil
 }
 

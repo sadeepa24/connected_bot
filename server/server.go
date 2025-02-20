@@ -143,30 +143,19 @@ func (w *BotHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	data := make([]byte, req.ContentLength)
-	var read int
 	
-	for read < len(data) {
-		n, err := req.Body.Read(data[read:])
-		read += n
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			w.logger.Error("Error reading request body: " +  err.Error())
-			break
+	read, err := io.ReadFull(req.Body, data)
+	if err != nil {
+		w.logger.Error("Error reading request body: " +  err.Error())
+		if read < len(data) {
+			w.logger.Debug("Incomplete read, expected:", zap.Int("data len", len(data)), zap.Int("but got", read))
+			writer.WriteHeader(http.StatusBadRequest)
 		}
-		
-	}
-	
-	if read < len(data) {
-		w.logger.Debug("Incomplete read, expected:", zap.Int("data len", len(data)), zap.Int("but got", read))
-		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	
 	w.logger.Debug("Read: ", zap.Int("read", read), zap.Int("data len", len(data)))
 	req.Body.Close()
-	
-	
 	
 	var msg = &tgbotapi.Update{}
 	if err := json.Unmarshal(data, msg); err != nil {

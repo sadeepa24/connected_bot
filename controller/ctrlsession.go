@@ -277,7 +277,7 @@ func (c *CtrlSession) ChangeLoginLimit(confid int64, newlimit int32) (sbox.Sboxs
 
 func (c *CtrlSession) ActivateAll() error {
 
-	if c.user.IsRemoved || !(c.user.IsInChannel && c.user.IsInGroup) || c.user.IsMonthLimited || c.user.Restricted || c.user.IsDistributedUser {
+	if c.user.IsRemoved || !(c.user.IsInChannel && c.user.IsInGroup) || c.user.IsMonthLimited || c.user.Restricted || c.user.IsDistributedUser  ||c.user.Templimited{
 		return errors.New("cannot activate configs user is not verified")
 	}
 	c.add()

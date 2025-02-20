@@ -136,6 +136,16 @@ var (
 	MsgDisCapped     string = "⚠️ You are capped user. You can't distribute"
 )
 
+// User Free
+
+var (
+	MsgTempMonth = "MsgTempMonth"
+	MsgFree = "MsgFree"
+	MsgTempMonthLimited = "MsgTempMonthLimited"
+	MsgTempNoLimit = "MsgTempNoLimit"
+	MsgTempLimitAlert = "MsgTempLimitAlert"
+)
+
 // User Conform
 var (
 	MsgGifVerify      string = "🔒 You need to be a verified user in order to send gifts."
@@ -211,6 +221,8 @@ var (
 	MsgresetUsage     string = "🔄 All your usage has been successfully reset. ✨"
 
 	MsgNoInbound      string = "Something Wrong Inbound Can't be found you may need to contact admin"
+
+	MsgTemplimit   	  string = "templimit1"
 )
 
 var (
@@ -226,6 +238,7 @@ var (
 var (
 	MsgContactTimeover string = "✨ Your contact time has expired. ⏳ Please feel free to reach out again when you're ready! 😊"
 	MsgContactCancle   string = "❌ You have canceled the contact session. If you need assistance later, don't hesitate to reach out! 😊"
+	MsgTempOver = "MsgTempOver"
 )
 
 
@@ -384,11 +397,16 @@ func overide() {
 	MsgContactCancle = "MsgContactCancle"
 	MsgContactTimeover = "MsgContactTimeover"
 	MsgNotCmdDIs = "MsgNotCmdDIs"
-
 	MsgQuotawarnlow = "MsgQuotawarnlow"
 	MsgQuotawarnzero = "MsgQuotawarnzero"
 	MsgNoQuota = "MsgNoQuota"
-
 	MsgNoInbound = "MsgNoInbound"
+	MsgTemplimit = "MsgTemplimit"
 
+	MsgTempOver = "MsgTempOver"
+	MsgTempMonth = "MsgTempMonth"
+	MsgTempMonthLimited = "MsgTempMonthLimited"
+	MsgTempNoLimit = "MsgTempNoLimit"
+	MsgTempLimitAlert = "MsgTempLimitAlert"
 }
+

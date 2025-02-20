@@ -14,6 +14,7 @@ const (
 	CmdPoints     = "points"
 	CmdRecheck    = "recheck"
 	CmdSource	  = "source"
+	CmdFree		  = "free"	
 
 	//xraywiz
 	CmdInfo      = "getinfo"

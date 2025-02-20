@@ -24,7 +24,7 @@ type User struct {
 	Restricted 		  bool `gorm:"column:restricted"` // admin can restrict users
 	GroupBanned       bool `gorm:"column:group_banned"`
 	ChannelBanned     bool `gorm:"column:channel_banned"`
-	IsVipUser         bool `gorm:"column:is_vip_user"`
+	//IsVipUser         bool `gorm:"column:is_vip_user"`
 	IsBotStarted      bool `gorm:"column:is_bot_started"`
 	//IsAdmin           bool `gorm:"column:is_admin"`
 	IsDistributedUser bool `gorm:"column:is_dis_user"`
@@ -46,8 +46,11 @@ type User struct {
 	AddtionalConfig  int16    `gorm:"column:max_config_count"`
 	ConfigCount      int16    `gorm:"column:config_count"`
 	DeletedConfCount int16    `gorm:"column:deleted_conf_count"`
+	EmptyCycle		 int16    `gorm:"column:empty_cycle"`
+	Templimited 	 bool 	  `gorm:"column:temp_limited"`
+	WarnRatio 		 int16    `gorm:"column:warn_ratio"`
 
-	WebToken sql.NullString `gorm:"type:varchar(200);column:web_token"`
+	//WebToken sql.NullString `gorm:"type:varchar(200);column:web_token"`
 	Configs  []Config       `gorm:"foreignKey:UserID"`
 	//Gifts 		[]Gift 			`gorm:"foreignKey:UserID"`
 
@@ -73,10 +76,10 @@ func (u *User) GetCalculatedQuota() C.Bwidth {
 
 func (u User) String() string {
 	return fmt.Sprintf(
-		"User{TgID: %d, Name: %s, Username: %s, Points: %d, Lang: %s, IsVipUser: %t, "+
+		"User{TgID: %d, Name: %s, Username: %s, Points: %d, Lang: %s, "+
 			"CalculatedQuota: %s, AdditionalQuota: %s, GiftQuota: %s, CappedQuota: %s, UsedQuota: %s, "+
 			"MonthUsage: %s, AlltimeUsage: %s}",
-		u.TgID, u.Name, u.Username.String, u.Points, u.Lang, u.IsVipUser,
+		u.TgID, u.Name, u.Username.String, u.Points, u.Lang,
 		u.CalculatedQuota.BToString(), u.AdditionalQuota.BToString(), u.GiftQuota.BToString(),
 		u.CappedQuota.BToString(), u.UsedQuota.BToString(),
 		u.MonthUsage.BToString(), u.AlltimeUsage.BToString(),
@@ -93,6 +96,9 @@ func (u *User) GenaralQuotSum() C.Bwidth {
 }
 
 func (u *User) Iscaptimeover() bool {
+	return u.Captime.AddDate(0, 0, 30).Compare(time.Now()) <= 0
+}
+func (u *User) Verified() bool {
 	return u.Captime.AddDate(0, 0, 30).Compare(time.Now()) <= 0
 }
 
@@ -236,6 +242,8 @@ type Metadata struct {
 
 	PublicDomain string
 	PublicIp string
+
+	CommonWarnRatio int16
 }
 
 type Reffral struct {

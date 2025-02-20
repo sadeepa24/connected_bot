@@ -48,6 +48,12 @@ type MetadataConf struct {
 	HelperInfo bottype.HelpCommandInfo `json:"help_cmd,omitempty"`
 
 	InlinePost []string `json:"inline_posts,omitempty"`
+
+	CommonWarnRatio int16  `json:warn_rate,omitempty"`
+}
+
+func (mn *MetadataConf) GetWarnRate() int16 {
+	return mn.CommonWarnRatio/int16(mn.RefreshRate)
 }
 
 type Metadata struct {
@@ -140,6 +146,9 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 
 	if metaconf.SudoAdmin == 0 {
 		return errors.New("sudo admin not found")
+	}
+	if metaconf.CommonWarnRatio == 0 {
+		metaconf.CommonWarnRatio = 24 //default for 2 days
 	}
 	m.SudoAdmin = metaconf.SudoAdmin
 	return nil
