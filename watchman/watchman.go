@@ -47,8 +47,6 @@ type Watchman struct {
 	mgstore *botapi.MessageStore
 	lastUserCount int32 //User count on db when running function RefreshDb last time
 
-	maxEmptyCycle int16
-
 	//msgque chan *botapi.Msgcommon
 
 }
@@ -621,6 +619,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						TgId: user.TgID,
 					})
 					if err == nil && status.Download + status.Upload > 0 && !forceremove {
+						
+						if status.FullUsage() > 0 {
+							user.Configs[i].UpdateUsages(status)
+							user.MonthUsage = status.FullUsage()
+						}
+
 						tx.Create(&db.UsageHistory{
 							Usage:    status.Download + status.Upload,
 							Download: status.Download,

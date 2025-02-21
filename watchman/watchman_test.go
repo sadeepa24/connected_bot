@@ -112,6 +112,10 @@ func preconfigure(ctx context.Context) (data preconfdata) {
 	options := connected.Botoptions{}
 	options.Ctx = ctx
 
+	options.Metadata = &controller.MetadataConf{
+		WatchMgbuf: 100,
+	}
+
 	data.db = db.New(options.Ctx, options.Logger, options.Dbpath)
 	data.msgstore, _ = botapi.NewMessageStore("./store.json")
 	data.botapi = botapi.NewBot(options.Ctx, options.Bottoken, options.Botmainurl, data.msgstore)
