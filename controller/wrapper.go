@@ -416,7 +416,7 @@ func (c *Controller) Init() error {
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
-		dbMeta.CommonWarnRatio = c.Metaconfig.GetWarnRate()
+		dbMeta.CommonWarnRatio = c.GetWarnRate()
 		
 		var userct int64
 		if err = c.db.Model(&db.User{}).Count(&userct).Error; err != nil {
@@ -440,11 +440,16 @@ func (c *Controller) Init() error {
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
 	}
 
-	if c.Metaconfig.GetWarnRate() != dbMeta.CommonWarnRatio {
+	if c.GetWarnRate() < int16(c.RefreshRate) {
+		return errors.New("warn rate cannot be zero or lower than RefreshRate warnRate " +  strconv.Itoa(int(c.GetWarnRate())) + " refreshRate " + strconv.Itoa(int(c.RefreshRate)))
+	}
+
+	if c.GetWarnRate() != dbMeta.CommonWarnRatio {
 		c.logger.Info("Warn rate change detected, resetting all warn rates of users")
-		if err := c.db.Model(&db.User{}).Update("warn_ratio", c.Metaconfig.GetWarnRate()).Error; err != nil {
+		if err := c.db.Model(&db.User{}).Where("1 = 1").Update("warn_ratio", c.GetWarnRate()).Error; err != nil {
 			return errors.New("errored when changing warn rate")
 		}
+		dbMeta.CommonWarnRatio = c.GetWarnRate()
 	}
 
 	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
@@ -807,7 +812,7 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		CalculatedQuota:   C.Bwidth(c.CommonQuota.Load()),
 		DeletedConfCount:  0,
 		AddtionalConfig:   0,
-		WarnRatio: c.Metaconfig.GetWarnRate(),
+		WarnRatio: c.GetWarnRate(),
 		RecheckVerificity: recheck,
 		Lang:        "en",
 		Points:      C.DefaultPoint,

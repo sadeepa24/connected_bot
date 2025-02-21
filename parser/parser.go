@@ -112,6 +112,8 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 			upx.Ctx, upx.Cancle = context.WithTimeout(p.GetBaseCtx(), 2 * time.Second) //replace old context because chatmember update must be proceed
 		}
 	}
+
+	defer upx.Cancle()
 	
 	if upx.Update.CallbackQuery != nil {
 		upx.Setcallback()
@@ -159,9 +161,7 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 		return err
 	}
 	if !cannprocUpdate {
-		if upx.User != nil {
-			p.logger.Error("Cannot Continue With Update " +  upx.User.Info())
-		}
+		p.logger.Info("Cannot Continue With Update " +  upx.User.Info())
 		return nil
 	}
 
@@ -345,8 +345,8 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 			return false, nil
 			
 		}
-		if upx.User != nil {
-			p.logger.Error("Error When Preprosess user command" +  upx.User.Info(), zap.Error(err))
+		if upx.User == nil {
+			p.logger.Error("Error When Preprosess user command User Object nil")
 			return false, nil
 		}
 	}

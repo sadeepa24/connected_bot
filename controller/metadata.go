@@ -49,11 +49,11 @@ type MetadataConf struct {
 
 	InlinePost []string `json:"inline_posts,omitempty"`
 
-	CommonWarnRatio int16  `json:warn_rate,omitempty"`
+	CommonWarnRatio int16  `json:"warn_rate,omitempty"`
 }
 
-func (mn *MetadataConf) GetWarnRate() int16 {
-	return mn.CommonWarnRatio/int16(mn.RefreshRate)
+func (mn *Metadata) GetWarnRate() int16 {
+	return mn.CommonWarnRate/int16(mn.RefreshRate)
 }
 
 type Metadata struct {
@@ -109,6 +109,8 @@ type Metadata struct {
 
 	inlineposts []string
 
+	CommonWarnRate int16 
+
 	//mu *sync.RWMutex
 
 }
@@ -147,9 +149,12 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 	if metaconf.SudoAdmin == 0 {
 		return errors.New("sudo admin not found")
 	}
+	m.RefreshRate = metaconf.RefreshRate
 	if metaconf.CommonWarnRatio == 0 {
 		metaconf.CommonWarnRatio = 24 //default for 2 days
 	}
+	
+	m.CommonWarnRate = metaconf.CommonWarnRatio
 	m.SudoAdmin = metaconf.SudoAdmin
 	return nil
 }

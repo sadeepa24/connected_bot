@@ -1349,8 +1349,6 @@ func (u *Usersrv) cmdFree(upx *update.Updatectx, Messagesession *botapi.Msgsessi
 	case upx.User.IsMonthLimited:
 		Messagesession.SendAlert(C.GetMsg(C.MsgTempMonthLimited), nil)
 	}
-
-	upx.Cancle()
 	return nil
 }
 

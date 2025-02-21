@@ -697,6 +697,7 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 	Messagesession.Edit("send target user", nil, "")
 	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
 	if err != nil {
+		calls.Alertsender("chat creation failed" + err.Error())
 		return err
 	}
 
@@ -725,6 +726,8 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 		},
 		Text: "admin created chat session with you, you can't use any command or anything until he ends the session ",
 	})
+
+	calls.Alertsender("chat started")
 
 
 	canclechan := make(chan any)
@@ -989,11 +992,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 
 			switch callback.Data {
 			case "Add Help Pages":
-
-				//TODO: add later
-				calls.Alertsender("not avbl yet")
-
-
+				calls.Alertsender("This feature is not available yet. Please check back later.")
 			case "Add Inline Post":
 				replymg, err = calls.Sendreciver("Send Name for New template")
 				if err != nil {
@@ -1008,7 +1007,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 
 					},
 				}
-				calls.Alertsender("New Template Created, Now You can Edit It, Also You have to Add this Template Name Into config.json's metadata.inline_post inorder to recive")
+				calls.Alertsender("New Template Created, Now You can Edit It, Also You have to Add this Template Name Into config.json's metadata.inline_post in order to recive the post via inline mode")
 
 			case C.BtnClose:
 				return nil
@@ -1301,7 +1300,6 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 		callback *tgbotapi.CallbackQuery
 		err error
 	)
-
 	mainloop:
 	for {
 
@@ -1309,8 +1307,8 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 
 		switch state {
 		case 0:
-			btns.AddBtcommon("Change Config Settings")
-			btns.AddBtcommon("Reset Usage")
+			btns.AddBtcommon("🔴 Change Config Settings")
+			btns.AddBtcommon("🔴 Reset Usage")
 			btns.Addbutton("🔴 Restart", "Restart", "")
 			btns.AddClose(true)
 			
@@ -1336,6 +1334,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 				break mainloop
 
 			case "Change Config Settings":
+				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴")
 				alertsender("very carefull when you changing the config, if you make something wrong program will not restart correctly")
 				state = 1
 			case "Restart":
@@ -1402,8 +1401,6 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 
 			}
 		case 2:
-
-
 		default:
 			Messagesession.DeleteAllMsg()
 			break mainloop

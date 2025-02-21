@@ -415,14 +415,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	w.ctrl.VerifiedUserCount.Swap(int32(predata.verifiedusercount))
 	MainCommonUserQuota := w.ctrl.BandwidthAvelable // Newcalculated main quota for each user
 
-	if predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser + predata.restricted) > 0 && (predata.cappeduser != predata.verifiedusercount) {
-
-		// yes i Know below line is stupid but here is how it works
-		//it calculate quota for each user accrding to predata values
-		// many parameters are responsible for calculating the value
-		//here all parameter
-		// verified user count, capped user, monthlimited user, gifted user, usage overided user
-		// addtional quota from users
+	if predata.verifiedusercount-predata.unUsedUser > 0 && (predata.cappeduser != predata.verifiedusercount) {
+		// Calculate the quota for each user based on various parameters
+		// Parameters include: verified user count, capped user, month-limited user, gifted user, usage overridden user
+		// Additional quota from users
+		// Overused users can't use their whole quota due to usage rollback from last month
+		// MainCommonUserQuota = ((w.ctrl.BandwidthAvelable + predata.savings) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
 		// overused user can't just use their whole quota (due adding usage rollback from lastmonth,  this month initial usage = lastmonth excess usage - last month his quota  ),  so it's like increase of bandwidth but finnaly it's same
 		//MainCommonUserQuota = ((w.ctrl.BandwidthAvelable + predata.savings) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
 		
@@ -432,7 +430,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 	// this value used to calculate the old ratio between config quota and old maincommonquota
 	// new config quota will calculate based on this ratio
-	// don think much about english
 	oldCommonQuota := w.ctrl.CommonQuota.Swap(MainCommonUserQuota.Int64())
 	w.ctrl.Overview.Mu.Lock()
 	w.ctrl.Overview.QuotaForEach = MainCommonUserQuota
@@ -648,7 +645,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			user.UsedQuota = usedquota
 			
 
-			if oldUsage == user.MonthUsage && user.Verified(){ //which means user did n't use the config for last refresh cycle
+			if oldUsage == user.MonthUsage && user.Verified() && docount { //which means user did n't use the config for last refresh cycle
 				//TODO:
 				//increase empty cycle count
 				//
@@ -691,7 +688,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					}
 				}
 
-			} else {
+			} else if docount {
 				user.EmptyCycle = 0
 			}
 
@@ -779,7 +776,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						user.Configs[i].Download = 0
 					}
 				}
-				user.WarnRatio = w.ctrl.Metaconfig.GetWarnRate()
+				user.WarnRatio = w.ctrl.GetWarnRate()
 				user.Templimited = false
 				user.IsDistributedUser = false
 			}
