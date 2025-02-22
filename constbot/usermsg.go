@@ -125,6 +125,8 @@ var (
 	MsgcapUsage string = "⚠️ You have already used the cap you entered. Please enter a cap higher than your usage."
 
 	MsgcapRecalFail string = "⚠️ Recalculation Failed, You'r quota will update in next db refresh"
+
+	MsgCannotCap string = "MsgCannotCap"
 )
 
 // User Distribute
@@ -408,5 +410,6 @@ func overide() {
 	MsgTempMonthLimited = "MsgTempMonthLimited"
 	MsgTempNoLimit = "MsgTempNoLimit"
 	MsgTempLimitAlert = "MsgTempLimitAlert"
+	MsgCannotCap = "MsgCannotCap"
 }
 

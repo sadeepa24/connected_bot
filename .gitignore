@@ -1,3 +1,4 @@
+.next/
 .env
 connected.db
 tables.txt

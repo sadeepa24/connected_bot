@@ -683,7 +683,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 	oldQuota := user.CalculatedQuota
 	user.CalculatedQuota = C.Bwidth(c.CommonQuota.Load()) + user.GiftQuota
 
-	if user.IsCapped {
+	if user.IsCapped && user.CappedQuota <= user.CalculatedQuota {
 		user.CalculatedQuota = user.CappedQuota
 	}
 

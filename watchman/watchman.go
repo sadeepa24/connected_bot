@@ -455,8 +455,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			//recalcuted the gift quota according to new ratio
 			if oldCommonQuota > 0 && user.GiftQuota != 0 {
 
-				k := float64(oldCommonQuota) / float64(user.GiftQuota)
-				user.GiftQuota = C.Bwidth(MainCommonUserQuota.Float64() / k)
+				k := C.Bwidth(oldCommonQuota) / C.Bwidth(user.GiftQuota)
+				user.GiftQuota = MainCommonUserQuota / k
 
 			}
 
@@ -646,9 +646,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			
 
 			if oldUsage == user.MonthUsage && user.Verified() && docount { //which means user did n't use the config for last refresh cycle
-				//TODO:
-				//increase empty cycle count
-				//
 				user.EmptyCycle++
 				if user.EmptyCycle == user.WarnRatio && user.WarnRatio != 0 {
 					user.Templimited = true	// hecan't use the service until he remove this war manually

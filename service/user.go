@@ -957,6 +957,11 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 
 	capble_quota := (Usersession.GetUser().CalculatedQuota - Usersession.GetFullUsage().Full())
 
+	if capble_quota <= 0 {
+		Messagesession.SendAlert(C.GetMsg(C.MsgCannotCap), nil)
+		return nil
+	}
+
 	Messagesession.Edit(struct {
 		Leftquota    string
 		CapbleQuouta string
@@ -1022,7 +1027,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 		
 
 		if C.Bwidth(newCap).GbtoByte() > capble_quota {
-			Messagesession.SendAlert(C.GetMsg(C.MsgcapAlready), nil)
+			Messagesession.SendAlert(C.GetMsg(C.MsgcapThan), nil)
 			continue
 		}
 		// if C.Bwidth(newCap).GbtoByte() > Usersession.TotalUsage() {
@@ -1038,7 +1043,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	btns.Addbutton(C.BtnConform, C.BtnConform, "")
 	btns.Addcancle()
 
-	Messagesession.EditText(C.GetMsg(C.MsgcapAlready), btns)
+	Messagesession.EditText(C.GetMsg(C.MsgcapConform), btns)
 
 	answer, err = u.callback.GetcallbackContext(upx.Ctx, btns.ID())
 	if err != nil {
@@ -1049,7 +1054,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	switch answer.Data {
 	case C.BtnCancle:
 		Messagesession.DeleteAllMsg()
-		Messagesession.SendAlert(C.GetMsg(C.MsgcapAlready), nil)
+		Messagesession.SendAlert(C.GetMsg(C.MsgcapCancle), nil)
 		return nil
 
 	}

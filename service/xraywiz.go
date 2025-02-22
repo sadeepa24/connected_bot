@@ -23,7 +23,7 @@ type Xraywiz struct {
 	ctx        context.Context
 	callback   *Callback
 	logger     *zap.Logger
-	admin      *Adminsrv
+	//admin      *Adminsrv
 	defaultsrv *Defaultsrv
 
 	ctrl   *controller.Controller
