@@ -101,16 +101,18 @@ func (c *Callback) Getcallback(uniqid int64) (*tgbotapi.CallbackQuery, error) {
 func (c *Callback) GetcallbackContext(ctx context.Context, uniqid int64) (*tgbotapi.CallbackQuery, error) {
 	cbackchan := make(chan *tgbotapi.CallbackQuery)
 	c.currentcall.Store(uniqid, cbackchan)
+	var (
+		err error
+		val *tgbotapi.CallbackQuery
+	)
 	select {
 	case <-ctx.Done():
-		c.currentcall.Delete(uniqid)
-		close(cbackchan)
-		return nil, C.ErrContextDead
-	case val := <-cbackchan:
-		c.currentcall.Delete(uniqid)
-		close(cbackchan)
-		return val, nil
+		err = C.ErrContextDead
+	case val = <-cbackchan:
 	}
+	c.currentcall.Delete(uniqid)
+	close(cbackchan)
+	return val, err
 
 }
 

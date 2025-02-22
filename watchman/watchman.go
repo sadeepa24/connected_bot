@@ -363,10 +363,6 @@ func (w *Watchman) messageBufSend(recivechan chan any)  {
 }
 
 func (w *Watchman) sendUsingBufChan(send chan any, msg string, id int64) {
-	//TODO: remove thease after testing
-	fmt.Println(msg)
-	return
-	
 	send <- &botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: id,

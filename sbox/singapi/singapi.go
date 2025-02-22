@@ -50,7 +50,7 @@ func NewsingAPI(ctx context.Context, optpath string, logger *zap.Logger) (*SingA
 
 	var opts option.Options
 	globalCtx := service.ContextWith(ctx, deprecated.NewStderrManager(log.StdLogger()))
-	globalCtx = box.Context(globalCtx, include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), include.DNSTransportRegistry())
+	globalCtx = box.Context(globalCtx, include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry())
 
 	opts, err = json.UnmarshalExtendedContext[option.Options](globalCtx,  filecont)
 	if err != nil {

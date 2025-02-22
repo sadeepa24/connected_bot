@@ -351,10 +351,17 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			if enduserupx.User.IsMonthLimited {
 				btns.AddBtcommon("Remove Monthlimit")
 			}
+			if enduserupx.User.Templimited {
+				btns.AddBtcommon("Remove Templimit")
+			}
 			btns.Addbutton("🔴 Distribute",  "Distribute","" )
 			btns.AddCloseBack()
 			tusage := endusersession.TotalUsage()
 			Messagesession.Edit(userinfo{
+				CappedQuota: upx.User.CappedQuota.BToString(),
+				IsTemplimited: upx.User.Templimited,
+				TempLimitRate: upx.User.WarnRatio,
+				IsVerified: upx.User.Verified(),
 				CommonUser: &botapi.CommonUser{
 					Name:     enduserupx.User.Name,
 					TgId:     enduserupx.User.TgID,
@@ -414,9 +421,30 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				}
 			case "Remove Monthlimit":
 				endusersession.GetUser().IsMonthLimited = false
-				endusersession.ActivateAll()
+				err = endusersession.ActivateAll()
+				if err != nil {
+					Messagesession.SendAlert("config activation failed" + err.Error(), nil)
+					endusersession.GetUser().IsMonthLimited = true
+					continue
+				}
 				endusermsg.SendAlert("🎉you'r monthlimitation removed by admin 🍾", nil)
 				Messagesession.SendAlert("make a db refresh to change bandiwdth, it will automatically change in next refresh cycle", nil)
+			case "Remove Templimit":
+				if endusersession.GetUser().WarnRatio != 0 {
+					Messagesession.SendAlert("Temporary limitation can be removed by himself. his war rate is n't zero", nil)
+					continue
+				}
+				endusersession.GetUser().Templimited = false
+				endusersession.GetUser().WarnRatio = a.ctrl.GetWarnRate()
+				err = endusersession.ActivateAll()
+				if err != nil {
+					Messagesession.SendAlert("config activation failed" + err.Error(), nil)
+					endusersession.GetUser().Templimited = true
+					endusersession.GetUser().WarnRatio = 0
+					continue
+				}
+				endusermsg.SendAlert("🎉 Your temporary limitation has been removed and warning rate reset by admin 🍾", nil)
+				Messagesession.SendAlert("Temporary limitation removed and warning rate reset successfully", nil)
 			}
 				
 		case 2:
