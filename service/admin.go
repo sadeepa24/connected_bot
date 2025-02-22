@@ -353,18 +353,20 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			}
 			btns.Addbutton("🔴 Distribute",  "Distribute","" )
 			btns.AddCloseBack()
+			tusage := endusersession.TotalUsage()
 			Messagesession.Edit(userinfo{
 				CommonUser: &botapi.CommonUser{
 					Name:     enduserupx.User.Name,
 					TgId:     enduserupx.User.TgID,
 					Username: enduserupx.User.User.Username.String,
 				},
+				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota)).String(),
 				GiftQuota: enduserupx.User.GiftQuota.BToString(),
 				Joined:    enduserupx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: C.Bwidth(a.ctrl.CommonQuota.Load()).BToString(),
 				TQuota:    (endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota).BToString(),
 				LeftQuota: endusersession.LeftQuota().BToString(),
-				TUsage:    endusersession.TotalUsage().BToString(),
+				TUsage:    tusage.BToString(),
 				ConfCount: endusersession.GetUser().ConfigCount,
 				CapEndin:  upx.User.Captime.AddDate(0, 0, 30).String(),
 

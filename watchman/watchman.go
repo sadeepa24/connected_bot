@@ -363,6 +363,10 @@ func (w *Watchman) messageBufSend(recivechan chan any)  {
 }
 
 func (w *Watchman) sendUsingBufChan(send chan any, msg string, id int64) {
+	//TODO: remove thease after testing
+	fmt.Println(msg)
+	return
+	
 	send <- &botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: id,
@@ -909,7 +913,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 				preData.restricted++
 			}
 
-			if user.Verified() && user.Restricted || user.IsDistributedUser || user.IsMonthLimited || user.Templimited {
+			if user.Verified() && (user.Restricted || user.IsDistributedUser || user.IsMonthLimited || user.Templimited) {
 				if user.IsCapped {
 					preData.unUsedUser--
 					if user.GiftQuota > 0 && user.CappedQuota < C.Bwidth(w.ctrl.CommonQuota.Load()) {
@@ -921,8 +925,6 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 				preData.unUsedUser++
 				preData.UsedByLimitedUsers += user.MonthUsage
 			}
-
-
 			preData.totaladdtional += user.AdditionalQuota
 			preData.savings += user.SavedQuota
 

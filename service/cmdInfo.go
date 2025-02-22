@@ -97,14 +97,14 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 					TgId:     upx.User.TgID,
 					Username: upx.FromChat().UserName,
 				},
-
+				UsagePercentage: ((tusage * 100)/(Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota)).String(),
 				GiftQuota: upx.User.GiftQuota.BToString(),
 				Joined:    upx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: C.Bwidth(u.ctrl.CommonQuota.Load()).BToString(),
 				TQuota:    (Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota).BToString(),
 				LeftQuota: Usersession.LeftQuota().BToString(),
 				TUsage:    tusage.BToString(),
-				AlltimeUsage: (tusage+upx.User.MonthUsage).BToString(),
+				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 				ConfCount: Usersession.GetUser().ConfigCount,
 				CapEndin:  upx.User.Captime.AddDate(0, 0, 30).String(),
 

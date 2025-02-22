@@ -1,6 +1,7 @@
 .env
 connected.db
 tables.txt
+bot_run
 botapi-local/telegram-bot-api
 botapi-local/*
 ./botapi-local/*

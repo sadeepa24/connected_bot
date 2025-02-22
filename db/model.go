@@ -99,7 +99,7 @@ func (u *User) Iscaptimeover() bool {
 	return u.Captime.AddDate(0, 0, 30).Compare(time.Now()) <= 0
 }
 func (u *User) Verified() bool {
-	return u.Captime.AddDate(0, 0, 30).Compare(time.Now()) <= 0
+	return u.IsInChannel && u.IsInGroup
 }
 
 type Config struct {

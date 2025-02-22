@@ -92,6 +92,7 @@ type userinfo struct {
 	Disendin     int32
 	UsageResetIn int32
 	AlltimeUsage string
+	UsagePercentage string
 
 	Iscapped       bool
 	Isgifted       bool
