@@ -20,7 +20,7 @@ import (
 )
 
 type BotAPI interface {
-	Makerequest(ctx context.Context, method, endpoint string, body io.ReadCloser) (*tgbotapi.APIResponse, error)
+	Makerequest(ctx context.Context, method, endpoint string, body *BotReader) (*tgbotapi.APIResponse, error)
 	SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error)
 	SendContext(ctx context.Context, msg *Msgcommon) (*tgbotapi.Message, error)
 	AnswereCallbackCtx(ctx context.Context, Callbackanswere *Callbackanswere) error
@@ -41,7 +41,6 @@ type Botapi struct {
 	Client *http.Client
 	//tgapi *tgbotapi.BotAPI
 	mainurl string
-
 	mgstore *MessageStore
 }
 
@@ -101,12 +100,12 @@ func (b *Botapi) SetWebhook(webhookurl, secret, ip_addr string, allo_updates []s
 		Secret_token:         secret,
 	}
 
-	reply, err := b.Makerequest(b.ctx, http.MethodPost, "setWebhook", &setwebhook)
+	reply, err := b.Makerequest(b.ctx, http.MethodPost, "setWebhook", &BotReader{RealOb: setwebhook})
 	if err != nil {
-		return err
+		return errors.Join(errors.New("request for Webhook set, sent failed "), err)
 	}
 	if !reply.Ok {
-		return errors.New("setting web hook failed")
+		return C.ErrWebhookSetFailed
 	}
 	return nil
 }
@@ -116,22 +115,14 @@ func (b *Botapi) CreateFullUrl(endpoint string) string {
 }
 
 // Endpoint should be without slash "/"
-func (b *Botapi) Makerequest(reqctx context.Context, method, endpoint string, body io.ReadCloser) (*tgbotapi.APIResponse, error) {
+func (b *Botapi) Makerequest(reqctx context.Context, method, endpoint string, body *BotReader) (*tgbotapi.APIResponse, error) {
 	if reqctx == nil {
 		reqctx = b.ctx
 	}
-
-	//TODO: remove thease line later
-	// buf := bytes.NewBuffer([]byte{})
-	// buf.ReadFrom(body)
-	// showslice := make([]byte, buf.Len())
-	// buf.Read(showslice)
-	// buf.Write(showslice)
-	// fmt.Println(string(showslice), endpoint)
-
 	req, err := http.NewRequestWithContext(reqctx, method, b.mainurl+b.token+"/"+endpoint, body)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.ContentLength = int64(body.Len())
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +132,7 @@ func (b *Botapi) Makerequest(reqctx context.Context, method, endpoint string, bo
 
 func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 	if req == nil {
-		return nil, errors.New("request is nil")
+		return nil, C.ErrNilRequest
 	}
 	res, err := b.Client.Do(req)
 	if err != nil {
@@ -151,14 +142,11 @@ func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 		return nil, C.ErrTgParsing
 	}
 	apires := &tgbotapi.APIResponse{}
-	resvody := make([]byte, res.ContentLength)
-	_, err = io.ReadFull(res.Body, resvody)
-	if err != nil {
-		return nil, C.ErrRead
-	}
-	if err = json.Unmarshal(resvody, apires); err != nil {
+	//var update tgbotapi.Update
+    decoder := json.NewDecoder(res.Body)
+    if err := decoder.Decode(&apires); err != nil {
 		return nil, C.ErrJsonopra
-	}
+    }
 	if !apires.Ok {
 		return nil, errors.Join(C.ErrApierror, fmt.Errorf("tgrrcode %d Discription %s", apires.ErrorCode, apires.Description))
 	}
@@ -170,7 +158,6 @@ func (b *Botapi) GetMgStore() *MessageStore {
 }
 
 func (b *Botapi) AnswereInlineQuary(ctx context.Context) error {
-	
 	return nil
 }
 
@@ -198,7 +185,7 @@ func (b *Botapi) SendContext(ctx context.Context, msg *Msgcommon) (*tgbotapi.Mes
 		endpoint = msg.Endpoint
 	}
 
-	apires, err := b.Makerequest(ctx, http.MethodPost, endpoint, msg)
+	apires, err := b.Makerequest(ctx, http.MethodPost, endpoint, &BotReader{RealOb: msg})
 
 	if err != nil {
 		return nil, err
@@ -213,7 +200,7 @@ func (b *Botapi) SendContext(ctx context.Context, msg *Msgcommon) (*tgbotapi.Mes
 
 
 func (b *Botapi) AnswereCallbackCtx(ctx context.Context, Callbackanswere *Callbackanswere) error {
-	_, err := b.Makerequest(ctx, http.MethodPost, "answerCallbackQuery", Callbackanswere)
+	_, err := b.Makerequest(ctx, http.MethodPost, "answerCallbackQuery", &BotReader{RealOb: Callbackanswere})
 	return err
 
 }
@@ -226,7 +213,7 @@ func (b *Botapi) GetchatmemberCtx(ctx context.Context, Userid int64, Chatid int6
 			ChatId:  Chatid,
 		},
 	}
-	apires, err := b.Makerequest(ctx, http.MethodPost, "getChatMember", sendchamem)
+	apires, err := b.Makerequest(ctx, http.MethodPost, "getChatMember",  &BotReader{RealOb: sendchamem})
 
 	if err != nil {
 		return nil, false, err
@@ -258,12 +245,12 @@ func (b *Botapi) SendError(err error, UserID int64) {
 }
 
 func (b *Botapi) DeleteMsg(ctx context.Context, msgid int64, chatid int64) error {
-	_, err := b.Makerequest(ctx, http.MethodPost, "deleteMessage", &Msgcommon{
+	_, err := b.Makerequest(ctx, http.MethodPost, "deleteMessage", &BotReader{RealOb: &Msgcommon{
 		Infocontext: &Infocontext{
 			ChatId: chatid,
 		},
 		Message_id: msgid,
-	})
+	}})
 	return err
 }
 
@@ -331,92 +318,7 @@ func (m *Msgsession) SetPrimeLast() {
 	}
 }
 
-/*
-//Old one Deprecated
-//Edit Last Message If thereis'nt last msg it will send new message
-func (m *Msgsession) Edit(msg string, buttons *Buttons) (*tgbotapi.Message, error) {
-
-	var parsemode string
-	if msg != "" {
-		switch msg[:4] {
-		case C.ParseHtml:
-			msg = msg[4:]
-			parsemode = "HTML"
-		case C.ParseMarkdown:
-			msg = msg[4:]
-			parsemode = "Markdown"
-		case C.ParseMarkdownv2:
-			msg = msg[4:]
-			parsemode = "MarkdownV2"
-		}
-
-	} else {
-		parsemode = ""
-	}
-
-
-
-	sendmsg := &Msgcommon{
-		Infocontext: &m.infoctx,
-		Text: msg,
-		Parse_mode: parsemode,
-
-
-	}
-
-	if buttons != nil {
-		rkeyboard, err := Createkeyboard(&InlineKeyboardMarkup{
-			InlineKeyboard: buttons.InlineKeyboard,
-		})
-		if err != nil {
-			return nil, err
-		}
-		sendmsg.Reply_markup = json.RawMessage(rkeyboard)
-	}
-
-	if m.MessageID != 0 {
-		sendmsg.Message_id = int64(m.MessageID)
-	}
-	if m.Prime != 0 {
-		sendmsg.Message_id = m.Prime
-	}
-
-
-	replymsg, err := m.api.SendContext(m.mainctx, sendmsg)
-	if err != nil {
-		switch {
-		case errors.Is(err, C.ErrClientRequestFail), errors.Is(err, C.ErrApierror), errors.Is(err, C.ErrRead):
-			if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
-				return nil, err
-			}
-		case errors.Is(err, C.ErrJsonopra):
-			return nil, err
-		default:
-			return nil, err
-		}
-
-	}
-
-	if m.MessageID == 0 {
-		m.sentmsg = append(m.sentmsg, int64(replymsg.MessageID))
-	}
-
-	if m.sendfirst {
-		m.MessageID = replymsg.MessageID
-	}
-
-
-	m.sendfirst = false
-	return replymsg, err
-}
-*/
-
 type Htmlstring string
-
-
-func (m *Msgsession) continueMeadia() {
-
-}
 
 // Many types supported by this method msg parameter can be Upmessage, struct with template name, or string
 func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Message, error) {
@@ -779,7 +681,7 @@ func (m *Msgsession) ForwardMgTo(to int64, mgid, fromchat int64) error {
 		Message_id:   mgid,
 		From_chat_id: m.ChatID,
 	}
-	_, err := m.api.Makerequest(m.mainctx, http.MethodPost, "forwardMessage", forward)
+	_, err := m.api.Makerequest(m.mainctx, http.MethodPost, "forwardMessage", &BotReader{RealOb: forward})
 	return err
 }
 
@@ -789,7 +691,7 @@ func (m *Msgsession) CopyMessageTo(to int64, mgid int64) error {
 		Message_id:   mgid,
 		From_chat_id: m.ChatID,
 	}
-	_, err := m.api.Makerequest(m.mainctx, http.MethodPost, "copyMessage", copymg)
+	_, err := m.api.Makerequest(m.mainctx, http.MethodPost, "copyMessage", &BotReader{RealOb: copymg})
 	return err
 }
 
@@ -799,7 +701,7 @@ func (m *Msgsession) CopyMessageRawTo(to, mgid, fromchat int64) error {
 		Message_id:   mgid,
 		From_chat_id: fromchat,
 	}
-	_, err := m.api.Makerequest(m.mainctx, http.MethodPost, "copyMessage", copymg)
+	_, err := m.api.Makerequest(m.mainctx, http.MethodPost, "copyMessage", &BotReader{RealOb: copymg})
 	return err
 }
 
@@ -948,11 +850,9 @@ func (m *Msgsession) SendTmpl(name string, obj any, btns *Buttons) (*tgbotapi.Me
 		}
 
 		if btns != nil {
-
 			commonmg.Reply_markup = Keyboard{
 				Inline_keyboard: btns.InlineKeyboard,
 			}
-
 		}
 
 		replymg, err := m.api.SendContext(m.mainctx, commonmg)

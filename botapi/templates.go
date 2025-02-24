@@ -408,7 +408,7 @@ func TemplateInit(sender BotAPI, sudoadminID int64, logger *zap.Logger, template
 					endpoint = C.ApiMethodSendVid
 				}
 				forcheck = template.AltMediaUrl
-				toreq = mg
+				toreq = &BotReader{RealOb: mg}
 
 			} else {
 				continue tmplLoop
