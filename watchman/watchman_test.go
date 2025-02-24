@@ -961,7 +961,7 @@ type TestBotapiWatchman struct {
 	dotrace bool
 }
 
-func (t *TestBotapiWatchman) Makerequest(ctx context.Context, method, endpoint string, body io.ReadCloser) (*tgbotapi.APIResponse, error){
+func (t *TestBotapiWatchman) Makerequest(ctx context.Context, method, endpoint string, body *botapi.BotReader) (*tgbotapi.APIResponse, error){
 	if t.dotrace {
 		zLogger.Debug("call to botapi's makerequest", zap.Stack("trace"))
 	}

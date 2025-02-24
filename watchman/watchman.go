@@ -281,6 +281,7 @@ type preprosessd struct {
 	monthlimiteduser  int64
 	distributeduser   int64
 	restricted 		  int64
+	templimiteduser   int64
 
 	captotal          C.Bwidth //total bandwidth capped
 	totaladdtional    C.Bwidth
@@ -288,7 +289,7 @@ type preprosessd struct {
 	userdbyTemplimitedUser C.Bwidth
 	
 	UsedByLimitedUsers C.Bwidth
-	unUsedUser 		  int64
+	unUsedUser 		  int64 //to calculate mainquota
 
 
 }
@@ -502,8 +503,10 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		
 			user.ConfigCount = int16(len(user.Configs))
 
-			var usedquota C.Bwidth
-			var oldUsage = user.MonthUsage
+			var (
+				usedquota C.Bwidth
+				oldUsage = user.MonthUsage
+			)
 			//configs:
 			for i := range user.Configs {
 				newConfigQuota := C.Bwidth(0)
@@ -619,7 +622,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						
 						if status.FullUsage() > 0 {
 							user.Configs[i].UpdateUsages(status)
-							user.MonthUsage = status.FullUsage()
+							user.MonthUsage += status.FullUsage()
 						}
 
 						tx.Create(&db.UsageHistory{
@@ -644,8 +647,9 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			}
 			user.UsedQuota = usedquota
 			
+			
 
-			if oldUsage == user.MonthUsage && user.Verified() && docount { //which means user did n't use the config for last refresh cycle
+			if oldUsage == user.MonthUsage && user.Verified() && docount && user.MonthUsage <= user.CalculatedQuota { //which means user did n't use the config for last refresh cycle
 				user.EmptyCycle++
 				if user.EmptyCycle == user.WarnRatio && user.WarnRatio != 0 {
 					user.Templimited = true	// hecan't use the service until he remove this war manually
@@ -685,7 +689,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					}
 				}
 
-			} else if docount {
+			} else if docount && user.MonthUsage <= user.CalculatedQuota  {
 				user.EmptyCycle = 0
 			}
 
@@ -892,7 +896,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 				}
 			}
 			
-			
+			// for overview
 			if user.Verified() {
 				preData.verifiedusercount++
 			}
@@ -905,6 +909,10 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 			if user.Restricted {
 				preData.restricted++
 			}
+			if user.Templimited {
+				preData.templimiteduser++
+			}
+			
 
 			if user.Verified() && (user.Restricted || user.IsDistributedUser || user.IsMonthLimited || user.Templimited) {
 				if user.IsCapped {
@@ -952,6 +960,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 
 	overview.Mu.Lock()
 	overview.CappedUser = preData.cappeduser
+	overview.TempLimitedUser = preData.templimiteduser
 	overview.DistributedUser = preData.distributeduser
 	overview.VerifiedUserCount = preData.verifiedusercount
 	overview.TotalUser = w.ctrl.Dbusercount.Load()
