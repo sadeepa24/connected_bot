@@ -257,6 +257,7 @@ type Overview struct {
 	DistributedUser int64
 	QuotaForEach C.Bwidth
 	Restricted int64
+	TempLimitedUser int64
 
 
 

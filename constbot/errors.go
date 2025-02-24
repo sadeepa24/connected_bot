@@ -84,3 +84,5 @@ var (
 )
 
 
+var ErrWebhookSetFailed = errors.New("setting web hook failed")
+var ErrNilRequest = errors.New("request is nil pointer")

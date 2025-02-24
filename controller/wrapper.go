@@ -30,9 +30,9 @@ type Controller struct {
 	db     *db.Database
 	botapi botapi.BotAPI
 	logger *zap.Logger
-	// mu sync.Mutex
 
 	Lockval    *atomic.Int32
+	wLockCounter *atomic.Int32
 	Metaconfig *MetadataConf
 	//sboxio     *SboxIO
 	*Metadata
@@ -46,7 +46,7 @@ type Controller struct {
 	//lockctx context.Context
 
 	//cond *sync.Cond
-	lockchanbuf []chan struct{}
+	lockchan chan struct{}
 
 	basectx    context.Context    //parent context for all ongoing upx
 	basecancle context.CancelFunc //cancle function for basecontext all upx will down
@@ -83,6 +83,7 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		basecancle:     basecanc,
 		signals:         make(chan any, metaconf.WatchMgbuf),
 		Usermgrsession: &sync.Map{},
+		lockchan: make(chan struct{}),
 		Metadata: &Metadata{
 			Inbounds:      []sbox.Inboud{},
 			Outbounds:     []sbox.Outbound{},
@@ -99,6 +100,7 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		Metaconfig: metaconf,
 		botapi:     btapi,
 		Lockval:    new(atomic.Int32),
+		wLockCounter: new(atomic.Int32),
 		// sboxio: &SboxIO{
 		// 	Inbounds:  boxopts.Inbounds,
 		// 	outbounds: boxopts.Outbounds,
@@ -941,18 +943,14 @@ func (c *Controller) startbox() error {
 
 func (c *Controller) WatchmanLock() {
 	c.Lockval.Swap(1)
-
 }
 
 func (c *Controller) WatchmanUnlock() {
 	c.Lockval.Swap(0)
-	time.Sleep(1 * time.Millisecond) //make sure value swaped so that no more chan add to list
-
-	for _, chans := range c.lockchanbuf {
-		close(chans)
+	waiters := c.wLockCounter.Swap(0)
+	for i := 0; i < int(waiters); i++ {
+		c.lockchan <- struct{}{}
 	}
-	c.lockchanbuf = []chan struct{}{}
-
 }
 
 // check is that controller locked by watchman
@@ -961,14 +959,9 @@ func (c *Controller) CheckLock() bool {
 	if c.Lockval.Load() == 0 {
 		return false
 	}
-	tmpchan := make(chan struct{})
-	c.addlockchan(tmpchan)
-	<-tmpchan
+	c.wLockCounter.Add(1)
+	<-c.lockchan
 	return true
-}
-
-func (c *Controller) addlockchan(lockchan chan struct{}) {
-	c.lockchanbuf = append(c.lockchanbuf, lockchan)
 }
 
 func (c *Controller) Close() error { return c.sbox.Close() }

@@ -424,7 +424,7 @@ func (c *CtrlSession) GetUsage() (C.Bwidth, C.Bwidth) {
 	}
 	return (status.Download + status.Upload), c.user.MonthUsage
 }
-
+// return all config's full usage for not
 func (c *CtrlSession) GetFullUsage() bottype.FullUsage {
 
 	bf := bottype.FullUsage{}

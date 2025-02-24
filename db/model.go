@@ -87,14 +87,6 @@ func (u User) String() string {
 }
 
 
-// retuns sum of addtional + gift +
-func (u *User) GenaralQuotSum() C.Bwidth {
-	if u.IsCapped {
-		return u.CappedQuota
-	}
-	return u.CalculatedQuota
-}
-
 func (u *User) Iscaptimeover() bool {
 	return u.Captime.AddDate(0, 0, 30).Compare(time.Now()) <= 0
 }

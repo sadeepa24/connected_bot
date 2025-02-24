@@ -89,6 +89,14 @@ func ReciveInt(call Tgcalls, max, min int) (int, error) {
 		if replymeassage == nil {
 			continue
 		}
+		if replymeassage.IsCommand() {
+			if replymeassage.Command() == C.CmdCancel {
+				call.Alertsender("canceld")
+				return 0, errors.New("user canceld value sending")
+			}
+			call.Alertsender("send valid value or cancel command")
+			continue
+		}
 		if out, err = strconv.Atoi(replymeassage.Text); err != nil {
 			call.Alertsender(C.GetMsg(C.MsgValidInt))
 			continue
@@ -126,7 +134,11 @@ func ReciveBandwidth(call Tgcalls, max, min C.Bwidth) (C.Bwidth, error) {
 			return 0, err
 		}
 		if replymg.IsCommand() {
-			call.Alertsender("send valid value not commands")
+			if replymg.Command() == C.CmdCancel {
+				call.Alertsender("canceld")
+				return 0, errors.New("user canceld value sending")
+			}
+			call.Alertsender("send valid value or cancel command")
 			continue
 		}
 		bwith, err = C.ParserBwidth(replymg.Text)

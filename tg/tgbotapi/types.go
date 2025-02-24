@@ -2977,34 +2977,8 @@ type ForwardMessage struct {
 	Protect_content      bool  `json:"protect_content,omitempty"`
 	Message_id           int64 `json:"message_id,omitempty"`
 
-	content []byte `json:"-"` //for Read method
-	called  bool   `json:"-"` // for Read method
+
 }
-
-func (m *ForwardMessage) Read(p []byte) (int, error) {
-	var err error
-	if !m.called {
-
-		m.content, err = json.Marshal(m)
-
-		if err != nil {
-			return 0, err
-		}
-		m.called = true
-	}
-	n := copy(p, m.content)
-	m.content = m.content[n:]
-
-	if len(m.content) == 0 {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-func (m *ForwardMessage) Close() error {
-	return nil
-}
-
 type CopyMessage struct {
 	Chat_id              int64 `json:"chat_id,omitempty"`
 	Message_thread_id    int   `json:"message_thread_id,omitempty"`
@@ -3012,31 +2986,5 @@ type CopyMessage struct {
 	Disable_notification bool  `json:"disable_notification,omitempty"`
 	Protect_content      bool  `json:"protect_content,omitempty"`
 	Message_id           int64 `json:"message_id,omitempty"`
-
-	content []byte `json:"-"` //for Read method
-	called  bool   `json:"-"` // for Read method
 }
 
-func (m *CopyMessage) Read(p []byte) (int, error) {
-	var err error
-	if !m.called {
-
-		m.content, err = json.Marshal(m)
-
-		if err != nil {
-			return 0, err
-		}
-		m.called = true
-	}
-	n := copy(p, m.content)
-	m.content = m.content[n:]
-
-	if len(m.content) == 0 {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-func (m *CopyMessage) Close() error {
-	return nil
-}
