@@ -170,7 +170,7 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 	// reduce will be that deleted config's usage
 	if upx.User.MonthUsage+fusage.Downloadtd+fusage.Uploadtd != fusage.Download+fusage.Upload {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCrQuotaNote), nil)
-		reduce = upx.User.MonthUsage + fusage.Downloadtd + fusage.Uploadtd - fusage.Download + fusage.Upload
+		reduce = upx.User.MonthUsage + fusage.Downloadtd + fusage.Uploadtd - (fusage.Download + fusage.Upload)
 	}
 
 	if Usersession.LeftQuota() - reduce <= 0 {
@@ -190,6 +190,8 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 
 	quotafroconfig, err := common.ReciveBandwidth(opts.Tgcalls, (Usersession.LeftQuota() - reduce), 0 )
 	if err != nil {
+		Messagesession.DeleteAllMsg()
+		Messagesession.SendAlert("Bandwidth Recive Failed", nil)
 		return err
 	}
 

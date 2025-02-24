@@ -32,7 +32,6 @@ func (u *Xraywiz) commandCreate(upx *update.Updatectx) error {
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		return nil
 	}
 	defer Usersession.Close()
@@ -391,7 +390,6 @@ func (u *Xraywiz) commandConfigure(upx *update.Updatectx) error {
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		Messagesession = nil
 		Usersession = nil
 		return nil

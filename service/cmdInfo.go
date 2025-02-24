@@ -27,9 +27,6 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 		if errors.Is(err, C.ErrSessionExcit) {
 			Messagesession.EditText(C.GetMsg(C.MsgSessionExcist), nil)
 		}
-		upx = nil
-		Messagesession = nil
-		Usersession = nil
 		return nil
 	}
 	defer Usersession.Close()
@@ -101,6 +98,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				IsTemplimited: upx.User.Templimited,
 				TempLimitRate: upx.User.WarnRatio,
 				IsVerified: upx.User.Verified(),
+				NonUseCycle: upx.User.EmptyCycle,
 
 
 				UsagePercentage: ((tusage * 100)/(Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota)).String(),
@@ -116,6 +114,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 
 				Disendin:     ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,
 				UsageResetIn: ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,
+				
 
 				Iscapped:       upx.User.IsCapped,
 				IsMonthLimited: upx.User.IsMonthLimited,

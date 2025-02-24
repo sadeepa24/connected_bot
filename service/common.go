@@ -94,6 +94,7 @@ type userinfo struct {
 	TempLimitRate int16
 	AlltimeUsage string
 	UsagePercentage string
+	NonUseCycle int16
 
 	CappedQuota string
 

@@ -50,7 +50,6 @@ func (d *Defaultsrv) Init() error {
 func (d *Defaultsrv) Exec(upx *update.Updatectx) error {
 	if upx.FromChat() == nil || upx.FromUser() == nil || upx.Drop() {
 		// prosess this later
-		upx = nil
 		return nil
 	}
 
@@ -60,12 +59,10 @@ func (d *Defaultsrv) Exec(upx *update.Updatectx) error {
 	)
 
 	if val, ok = d.msgpool.Load(upx.FromChat().ID + upx.FromUser().ID); !ok {
-		upx = nil
 		return nil
 	}
 	var sendchan chan *tgbotapi.Message
 	if sendchan, ok = val.(chan *tgbotapi.Message); !ok {
-		upx = nil
 		return nil
 	}
 	sendchan <- upx.Update.Message
@@ -120,7 +117,6 @@ func (d *Defaultsrv) Droper(upx *update.Updatectx) error {
 	upx.User.User = nil
 	upx.User = nil
 	upx.Update = nil
-	upx = nil
 
 	return nil
 }

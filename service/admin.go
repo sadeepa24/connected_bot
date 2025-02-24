@@ -46,6 +46,8 @@ type Adminsrv struct {
 	adminuserbtype bottype.User
 
 	modeUser *atomic.Bool // true mode- user false - admin
+
+	inspecifcUse *atomic.Bool  // remove in future after implmenting callback with id
 }
 
 func NewAdminsrv(
@@ -69,6 +71,7 @@ func NewAdminsrv(
 		msgstore: msgstore,
 		templateEditin: new(atomic.Bool),
 		modeUser: new(atomic.Bool),
+		inspecifcUse: new(atomic.Bool),
 	}
 
 }
@@ -218,9 +221,6 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 	if err != nil {
 		return err
 	}
-	Messagesession.SendAlert("broadcasting message", nil,)
-	Messagesession.Edit("📣", nil, "")
-
 	var userlist = []int64{}
 	switch callback.Data {
 	case "to verified":
@@ -237,6 +237,8 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 		Messagesession.SendAlert("fetching user list failed try again", nil)
 		return err
 	}
+	Messagesession.SendAlert("broadcasting message", nil,)
+	Messagesession.Edit("📣", nil, "")
 
 	var sendrfunc func(to int64, mgid int64) error
 	if message.IsForwaded() {
@@ -259,7 +261,11 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 }
 
 func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msgsession, calls common.Tgcalls) error {
-	
+	if a.inspecifcUse.Swap(true) {
+		calls.Alertsender("Already in getuser close it first and use this")
+		return nil
+	}
+	defer a.inspecifcUse.Swap(false)
 	alertsender := calls.Alertsender
 	sendreciver := calls.Sendreciver
 	callbackreciver := calls.Callbackreciver
@@ -358,16 +364,17 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			btns.AddCloseBack()
 			tusage := endusersession.TotalUsage()
 			Messagesession.Edit(userinfo{
-				CappedQuota: upx.User.CappedQuota.BToString(),
-				IsTemplimited: upx.User.Templimited,
-				TempLimitRate: upx.User.WarnRatio,
-				IsVerified: upx.User.Verified(),
+				CappedQuota: enduserupx.User.CappedQuota.BToString(),
+				IsTemplimited: enduserupx.User.Templimited,
+				TempLimitRate: enduserupx.User.WarnRatio,
+				IsVerified: enduserupx.User.Verified(),
 				CommonUser: &botapi.CommonUser{
 					Name:     enduserupx.User.Name,
 					TgId:     enduserupx.User.TgID,
 					Username: enduserupx.User.User.Username.String,
 				},
-				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota)).String(),
+				NonUseCycle: upx.User.EmptyCycle,
+				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota)).String(),
 				GiftQuota: enduserupx.User.GiftQuota.BToString(),
 				Joined:    enduserupx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: C.Bwidth(a.ctrl.CommonQuota.Load()).BToString(),
@@ -375,7 +382,8 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				LeftQuota: endusersession.LeftQuota().BToString(),
 				TUsage:    tusage.BToString(),
 				ConfCount: endusersession.GetUser().ConfigCount,
-				CapEndin:  upx.User.Captime.AddDate(0, 0, 30).String(),
+				CapEndin:  enduserupx.User.Captime.AddDate(0, 0, 30).String(),
+				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 
 				Disendin:     ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
 				UsageResetIn: ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
@@ -383,6 +391,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				Iscapped:       enduserupx.User.IsCapped,
 				IsMonthLimited: enduserupx.User.IsMonthLimited,
 				Isdisuser:      enduserupx.User.IsDistributedUser,
+			
 
 				
 
@@ -757,7 +766,7 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 		Text: "admin created chat session with you, you can't use any command or anything until he ends the session ",
 	})
 
-	calls.Alertsender("chat started")
+	calls.Alertsender("chat started if you want to end chat you must /cancel session, if not it will hold for 30 min")
 
 
 	canclechan := make(chan any)
@@ -766,6 +775,9 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 		mgcopy:
 		for {
 			select {
+			case <- upx.Ctx.Done():
+				upx.Cancle()
+				break mgcopy
 			case <-canclechan:
 				break mgcopy
 			default:
@@ -820,6 +832,7 @@ func (a *Adminsrv) overview(upx *update.Updatectx) error {
 			BandwidthAvailable string
 			MonthTotal string
 			AllTime string
+			TempLimitedUser int64
 			VerifiedUserCount int64
 			TotalUser int32
 			CappedUser int64
@@ -835,6 +848,7 @@ func (a *Adminsrv) overview(upx *update.Updatectx) error {
 			TotalUser: overview.TotalUser,
 			CappedUser: overview.CappedUser,
 			Restricte: overview.Restricted,
+			TempLimitedUser: overview.TempLimitedUser,
 			DistributedUser: overview.DistributedUser,
 			LastRefresh: overview.LastRefresh,
 			VerifiedUserCount: overview.VerifiedUserCount,
@@ -1275,6 +1289,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 func (a *Adminsrv) SwapMode() {
 	a.modeUser.Store(!a.modeUser.Load()) //this is okay with this, no heavy concurrent calls to this
 }
+
 func (a *Adminsrv) AdminMode() bool {
 	return !a.modeUser.Load()
 }

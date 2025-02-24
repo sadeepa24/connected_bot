@@ -242,7 +242,7 @@ func (c *configState) action() error {
 	
 	case C.BtnChangeLogin:
 		c.Alertsender("send new login limit count (0 < x <= 5)") 
-		limit, err := common.ReciveInt(c.Tgcalls, 0, 5)
+		limit, err := common.ReciveInt(c.Tgcalls, 5, 0)
 		if err != nil {
 			return nil
 		}
@@ -447,7 +447,6 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx,  Messagesession *bot
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		Messagesession = nil
 		Usersession = nil
 		return nil

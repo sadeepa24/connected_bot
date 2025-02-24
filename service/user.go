@@ -868,7 +868,6 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 		} else {
 			Messagesession.EditText(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		return nil
 
 	}
@@ -887,6 +886,7 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 	if ok, err := closeback(replcallback.ID, Messagesession.DeleteAllMsg, func() error {
 		return nil
 	}); ok {
+		Messagesession.Edit("Distribution Canceld", nil, "")
 		return err
 	}
 

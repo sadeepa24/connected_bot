@@ -117,8 +117,6 @@ func (u *Xraywiz) Commandhandler(cmd string, upx *update.Updatectx) error {
 		return u.commandBuildV2(upx, Messagesession)
 	default:
 		u.logger.Warn("unknown CMD Recived" + upx.Update.Info())
-		upx.Cancle()
-		upx = nil //drop
 		return nil
 	}
 }
@@ -136,7 +134,6 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx, Messagesession *botapi.
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		return nil
 	}
 	defer Usersession.Close()
@@ -309,9 +306,5 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 		}
 
 	}
-
-	//Usersession = nil
-	//upx = nil
-	Messagesession = nil
 	return u.defaultsrv.Droper(upx)
 }

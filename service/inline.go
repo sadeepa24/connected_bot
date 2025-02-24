@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/sadeepa24/connected_bot/botapi"
@@ -36,11 +37,11 @@ func NewInline(
 
 func (a *InlineService) Exec(upx *update.Updatectx) error {
 	if upx.Update.InlineQuery == nil {
-		return nil
+		return errors.New("no inline quary found")
 	}
 
 	if upx.Update.InlineQuery.Query != "" {
-		return nil
+		return errors.New("empty inline quary")
 	}
 	quary := upx.Update.InlineQuery
 
@@ -48,9 +49,6 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 	answere := tgbotapi.AnswerInlineQuery{
 		InlineQueryId: quary.ID,
 	}
-
-	a.ctrl.GetInlinePost()
-
 
 	posts := a.ctrl.GetInlinePost()
 	btns := botapi.NewButtons([]int16{2, 1})
@@ -96,7 +94,7 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 		}
 	}
 
-	a.botapi.Makerequest(upx.Ctx, "POST", constbot.ApiMethodAnswereInline, &answere)
+	a.botapi.Makerequest(upx.Ctx, "POST", constbot.ApiMethodAnswereInline, &botapi.BotReader{RealOb: &answere})
 
 	return nil
 }
@@ -105,11 +103,6 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 func (a *InlineService) Name() string {
 	return constbot.InlineServiceName
 }
-
-
-
-
-
 
 
 func (a *InlineService) Init() error {
