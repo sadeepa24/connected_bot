@@ -36,6 +36,8 @@ type Parser struct {
 
 	GetBaseCtx func() context.Context
 
+	serviceNames map[string]string //service names according to cmd
+
 	//usrservice  map[string]bool //for fututre
 	//xrayservice map[string]bool
 }
@@ -61,13 +63,43 @@ func New(
 		//baseCtxforUpx: basectx,
 		//baseCancle:    basecancle,
 
-		//xrayservice: make(map[string]bool, 10), //TODO: create a beter way to select service
+		//xrayservice: make(map[string]bool, 10),
 		//usrservice:  make(map[string]bool, 10),
 	}
 	return parser
 }
 
 func (p *Parser) Init() error {
+	user_service_cmd:= []string{	
+		C.CmdStart, 
+		C.CmdFree,  
+		C.CmdHelp, 
+		C.CmdGift, 
+		C.CmdRecheck, 
+		C.CmdCap, 
+		C.CmdDistribute, 
+		C.CmdRefer, 
+		C.CmdEvents, 
+		C.CmdSugess, 
+		C.CmdPoints, 
+		C.CmdContact, 
+		C.CmdSource,
+	}
+
+	xray_service_cmd := []string{
+		C.CmdCreate, 
+		C.CmdStatus, 
+		C.CmdConfigure, 
+		C.CmdInfo, 
+		C.CmdBuild,
+	}
+	p.serviceNames = make(map[string]string, len(user_service_cmd)+ len(xray_service_cmd))
+	for _, cmd := range user_service_cmd {
+		p.serviceNames[cmd] = C.Userservicename
+	}
+	for _, cmd := range xray_service_cmd {
+		p.serviceNames[cmd] = C.Xraywizservicename
+	}
 	return p.registerservice(p.srvs)
 }
 
@@ -106,14 +138,17 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 
 	if p.ctrl.CheckLock() {
 		p.logger.Debug("watchman locked when proc update " + tgbotapimsg.Info())
-		//TODO: replace upx context to add addtinal deadline due to Db refresh time,
-		// Crucial FOr Updates Like CHatmember
+		// Crucial for handling updates like ChatMember
 		if upx.Update.ChatMember != nil {
 			upx.Ctx, upx.Cancle = context.WithTimeout(p.GetBaseCtx(), 2 * time.Second) //replace old context because chatmember update must be proceed
 		}
 	}
 
-	defer upx.Cancle()
+	defer func ()  {
+		if upx != nil {
+			upx.Cancle()
+		}	
+	}()
 	
 	if upx.Update.CallbackQuery != nil {
 		upx.Setcallback()
@@ -123,14 +158,13 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	if upx.Update.InlineQuery != nil {
 		return p.InlineService.Exec(upx)
 	}
-
 	if upx.Update.Message != nil {
 		if p.Defaulsrv.Ismsgrequired(upx.FromUser().ID, upx.FromChat().ID) {
 			return p.Defaulsrv.Exec(upx)
 		}
 	}
 	if upx.FromChat().ID == p.ctrl.SudoAdmin {
-		if upx.Update.Message.Command() == "switch" {
+		if upx.Update.Message.Command() == C.CmdSwitch {
 			p.AdminSrc.SwapMode()
 			var mode string 
 			if p.AdminSrc.AdminMode() {
@@ -164,15 +198,12 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 		p.logger.Info("Cannot Continue With Update " +  upx.User.Info())
 		return nil
 	}
-
+	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
+		upx.Setservice(C.Userservicename)
+	}
 	if upx.Serviceset {
 		return p.addtoservice(upx)
 	}
-
-	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
-		return p.chatmemberparse(upx)
-	}
-
 	upx.SetDrop(true)
 	return p.addtoservice(upx)
 
@@ -209,7 +240,6 @@ func (u *Parser) addtoservice(upx *update.Updatectx) error {
 	if upx.Drop() {
 		u.logger.Warn("Dropping update not a valid update context")
 		upx.Cancle()
-		upx = nil
 		return nil
 	}
 
@@ -354,23 +384,20 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 	return true, nil
 }
 
-func (p *Parser) chatmemberparse(upx *update.Updatectx) error {
-	if upx.Update.ChatMember != nil || upx.Update.MyChatMember != nil {
-		upx.Setservice(C.Userservicename)
-		return p.addtoservice(upx)
-	}
-	return errors.New("upx passed to chat member, chatmember objects are empty(nil)")
-}
-
 // return command, service, error
 func (p *Parser) commandparser(msg *tgbotapi.Message) (string, string, error) {
-	//TODO: remove this switch and create good way to select service
-	switch msg.Command() {
-	case C.CmdStart, C.CmdFree,  C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact, C.CmdSource:
-		return msg.Command(), C.Userservicename, nil
-	case C.CmdCreate, C.CmdStatus, C.CmdConfigure, C.CmdInfo, C.CmdBuild:
-		return msg.Command(), C.Xraywizservicename, nil
-	default:
-		return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
+	if serviceName, ok := p.serviceNames[msg.Command()]; ok {
+		return msg.Command(), serviceName, nil
 	}
+	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
+
+
+	// switch msg.Command() {
+	// case C.CmdStart, C.CmdFree,  C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact, C.CmdSource:
+	// 	return msg.Command(), C.Userservicename, nil
+	// case C.CmdCreate, C.CmdStatus, C.CmdConfigure, C.CmdInfo, C.CmdBuild:
+	// 	return msg.Command(), C.Xraywizservicename, nil
+	// default:
+	// 	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
+	// }
 }
