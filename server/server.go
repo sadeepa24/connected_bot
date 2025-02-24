@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -162,7 +163,11 @@ type webhookls struct {
 }
 
 func newwhls(lsopts ListenOption) (*webhookls, error) {
-	ls, err := net.Listen("tcp", lsopts.Addr)
+	tcpAddr,err := net.ResolveTCPAddr("tcp", lsopts.Addr)
+	if err != nil {
+		return nil, errors.New("listen address fault")
+	}
+	ls, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +207,7 @@ func (w *webhookls) Accept() (net.Conn, error) {
 		return nil, err
 	}
 	if w.allowdip != nil {
-		if !w.allowdip.Contains(net.ParseIP(conn.RemoteAddr().Network())) {
+		if !w.allowdip.Contains(net.ParseIP(GetIP(conn))) {
 			conn.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
 			conn.Write(w.rejectMessage)
 			conn.Close()
@@ -213,4 +218,12 @@ func (w *webhookls) Accept() (net.Conn, error) {
 		conn = tls.Server(conn, w.tlsconfig)
 	}
 	return conn, err
+}
+
+func GetIP(conn net.Conn) string {
+	//all connections are tcp so it's allright
+	if addr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
+		return addr.IP.String()
+	}
+	return ""
 }
