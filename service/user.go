@@ -1024,7 +1024,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 		},
 	}
 
-	Newcap, err := common.ReciveBandwidth(cls, upx.User.CalculatedQuota, fullUsage.Full().GbtoByte())
+	Newcap, err := common.ReciveBandwidth(cls, upx.User.CalculatedQuota, fullUsage.Full())
 	if err != nil {
 		cls.Alertsender("cap setting canceld")
 		return nil

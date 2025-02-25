@@ -1366,8 +1366,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 		switch state {
 		case 0:
 			btns.AddBtcommon("🔴 Change Config Settings")
-			btns.AddBtcommon("🔴 Reset Usage")
-			btns.Addbutton("🔴 Reset Usage", "Reset Usage", "")
+			btns.Addbutton("🔴 Reset Usage", "reset-usage", "")
 			btns.Addbutton("🔴 Restart", "Restart", "")
 			btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
 			btns.AddClose(true)
@@ -1377,8 +1376,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 			}
 
 			switch callback.Data {
-			case "Reset Usage":
-
+			case "reset-usage":
 				calls.Alertsender("warning: If you Reset Usages New 30Days Cycle Begin From Here")
 				reply, err := calls.Sendreciver("if you want to continue send ok")
 				if err != nil {
@@ -1391,7 +1389,6 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 				calls.Alertsender("Usage Reset Added, If you want to undo this You have backup DB")
 				a.ctrl.Addquemg(a.ctx, controller.ForceResetUsage(1))
 				break mainloop
-
 			case "Change Config Settings":
 				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴")
 				alertsender("very carefull when you changing the config, if you make something wrong program will not restart correctly")
