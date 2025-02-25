@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -14,8 +13,6 @@ import (
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 	"go.uber.org/zap"
 )
-
-//TODO: db saving configurecurrently always save after closing usersession
 
 // Ctrlsession is not theadsafe use in single thread
 type CtrlSession struct {
@@ -28,7 +25,7 @@ type CtrlSession struct {
 
 	configmap map[int64]*db.Config
 
-	oprations *atomic.Int32
+	//oprations *atomic.Int32
 	olduser   db.User
 
 	closed bool
@@ -58,14 +55,13 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 			return nil, C.ErrSessionExcit
 		}
 	}
-
 	session := &CtrlSession{
 		ctx:       upx.Ctx,
 		cancle:    upx.Cancle,
 		ctrl:      ctrl,
 		user:      user,
 		//config:    []*db.Config{},
-		oprations: new(atomic.Int32),
+		// oprations: new(atomic.Int32),
 		closed:    false,
 
 		//tx: ctrl.db.Begin(),
@@ -92,12 +88,12 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 }
 
 func (c *CtrlSession) AddNewConfig(inboundid int16, outboundid int16, Quota C.Bwidth, login int16, name string) (*sbox.Userconfig, error) {
-
+	c.ctrl.IncCriticalOp()
+	defer c.ctrl.DecCriticalOp()
 	if c.ctx.Err() != nil {
 		return nil, C.ErrContextDead
 	}
-	c.add()
-	defer c.done()
+
 
 	
 	var (
@@ -199,8 +195,7 @@ func (c *CtrlSession) AddNewConfig(inboundid int16, outboundid int16, Quota C.Bw
 
 func (c *CtrlSession) ActivateConfig(confid int64) (sbox.Sboxstatus, error) {
 	conf, dbconf, err := c.getsboxconf(confid)
-	c.add()
-	defer c.done()
+
 	var stsatus sbox.Sboxstatus
 	if err != nil {
 		return stsatus, err
@@ -220,15 +215,13 @@ func (c *CtrlSession) ConfigCloseConn(confid int64) error {
 	if err != nil {
 		return err
 	}
-	c.add()
-	defer c.done()
+
 	return c.ctrl.sbox.CloseConns(conf)
 }
 
 func (c *CtrlSession) ReActivateConfig(confid int64) (sbox.Sboxstatus, error) {
 	conf, dbconf, err := c.getsboxconf(confid)
-	c.add()
-	defer c.done()
+
 
 	var stsatus sbox.Sboxstatus
 
@@ -266,9 +259,6 @@ func (c *CtrlSession) ChangeLoginLimit(confid int64, newlimit int32) (sbox.Sboxs
 	if err != nil {
 		return sbox.Sboxstatus{}, err
 	}
-	c.add()
-	defer c.done()
-
 	conf.LoginLimit = newlimit
 	dbconf.LoginLimit = int16(newlimit)
 	return c.ReActivateConfig(confid)
@@ -280,8 +270,7 @@ func (c *CtrlSession) ActivateAll() error {
 	if c.user.IsRemoved || !(c.user.IsInChannel && c.user.IsInGroup) || c.user.IsMonthLimited || c.user.Restricted || c.user.IsDistributedUser  ||c.user.Templimited{
 		return errors.New("cannot activate configs user is not verified")
 	}
-	c.add()
-	defer c.done()
+
 	var err error
 	for _, conf := range c.user.Configs {
 		if _, errr := c.ActivateConfig(conf.Id); errr != nil {
@@ -297,8 +286,6 @@ func (c *CtrlSession) DeactivateConfig(configID int64) (sbox.Sboxstatus, error) 
 	if c.ctx.Err() != nil {
 		return sbox.Sboxstatus{}, C.ErrContextDead
 	}
-	c.add()
-	defer c.done()
 	conf, dbconf, err := c.getsboxconf(configID)
 
 	if err != nil {
@@ -329,8 +316,6 @@ func (c *CtrlSession) DeactivateConfig(configID int64) (sbox.Sboxstatus, error) 
 
 func (c *CtrlSession) DeactivateAll() error {
 	var err error
-	c.add()
-	defer c.done()
 	for _, conf := range c.user.Configs {
 		if _, errr := c.DeactivateConfig(conf.Id); errr != nil {
 			err = errors.Join(err, errr)
@@ -341,11 +326,12 @@ func (c *CtrlSession) DeactivateAll() error {
 }
 
 func (c *CtrlSession) DeleteConfig(configID int64) error {
+	
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
-	c.add()
-	defer c.done()
+	c.ctrl.IncCriticalOp()
+	defer c.ctrl.DecCriticalOp()
 
 	var err error
 	if _, err = c.DeactivateConfig(configID); err != nil {
@@ -392,8 +378,6 @@ func (c *CtrlSession) DeleteConfig(configID int64) error {
 
 func (c *CtrlSession) GetConfig(confid int64) (*db.Config, error) {
 	conf, ok := c.configmap[confid]
-	c.add()
-	defer c.done()
 	if !ok {
 		return nil, C.ErrConfigNotFound
 	}
@@ -556,8 +540,6 @@ func (c *CtrlSession) ChangeInbound(confid, inboundid int64) error {
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
-	c.add()
-	defer c.done()
 	conf, dbconf, err := c.getsboxconf(confid)
 	if err != nil {
 		return err
@@ -600,8 +582,6 @@ func (c *CtrlSession) ChangeOutbound(confid, inboundid int64) error {
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
-	c.add()
-	defer c.done()
 
 	conf, dbconf, err := c.getsboxconf(confid)
 	if err != nil {
@@ -705,20 +685,19 @@ func (c *CtrlSession) saveConfigs() error {
 }
 
 func (c *CtrlSession) Close() error {
+	
 	if c.closed {
 		return nil
 	}
 
 	var err error
 	c.ctrl.RemoveSesion(c.user.TgID)
-	c.wait()
 	c.closed = true
 	if err = c.Save(); err != nil {
 		//c.ctrl.logger.Error(err.Error())
 		return err
 	}
 	c.configmap = nil
-	//c.tx = nil
 	return nil
 }
 
@@ -727,11 +706,7 @@ func (c *CtrlSession) GetUser() *db.User {
 }
 
 func (c *CtrlSession) ForceClose() error {
-	c.cancle()
-	c.wait()
-	err := c.save()
-	c.ctrl.RemoveSesion(c.user.TgID)
-
+	err := c.Close()
 	c.ctrl.logger.Info("force closed usersession")
 	return err
 }
@@ -822,18 +797,4 @@ func (c *CtrlSession) getsboxconf(confid int64) (*sbox.Userconfig, *db.Config, e
 	}, config, nil
 }
 
-func (c *CtrlSession) add() {
-	c.oprations.Add(1)
-}
 
-func (c *CtrlSession) done() {
-	c.oprations.Add(-1)
-}
-
-func (c *CtrlSession) wait() {
-	for {
-		if c.oprations.Load() == 0 {
-			break
-		}
-	}
-}

@@ -51,9 +51,11 @@ type Controller struct {
 	basectx    context.Context    //parent context for all ongoing upx
 	basecancle context.CancelFunc //cancle function for basecontext all upx will down
 
-	lastDbRefresh time.Time // this value only changed by watchman, all other routing read it so no race condition occure,
-
+	lastDbRefresh *atomic.Value // this value only changed by watchman, all other routing read it so no race condition occure,
 	signals chan any // share signals and message types to watchman (*botapi.Msgcommon, botapi.Upmessage, controller.UserCount, //TODO: forcedbrefresh signal) 
+	oprations *atomic.Int32
+	waitCritical *atomic.Bool
+	mu sync.RWMutex //mutext only use to read context I tried to create completly with out sync.bottlenext but i had to add this for small opration and it's allright
 }
 
 func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
@@ -101,6 +103,10 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		botapi:     btapi,
 		Lockval:    new(atomic.Int32),
 		wLockCounter: new(atomic.Int32),
+		oprations: new(atomic.Int32),
+		waitCritical: new(atomic.Bool),
+		mu: sync.RWMutex{},
+		lastDbRefresh: &atomic.Value{},
 		// sboxio: &SboxIO{
 		// 	Inbounds:  boxopts.Inbounds,
 		// 	outbounds: boxopts.Outbounds,
@@ -114,7 +120,7 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 }
 
 type ForceResetUsage uint16 //use to send Newrefresh signal wit force reset all usage database checkcount will reset
-type UserCount int //sending usercount updates
+type UserCount uint16 //sending usercount updates
 type RefreshSignal uint16 //use to send Newrefresh signal 
 type BroadcastSig string //use to send Broadcast signal with broadcast msg 
 
@@ -502,16 +508,6 @@ func (c *Controller) Init() error {
 }
 
 
-func (c *Controller) GetBaseContext() context.Context {
-	return c.basectx
-}
-
-// canceling all ongoing upx
-func (c *Controller) CancleUpdateContexs() {
-	c.basecancle()
-	c.basectx, c.basecancle = context.WithCancel(c.ctx)
-}
-
 func (c *Controller) GetUser(user *tgbotapi.User) (*bottype.User, bool, error) {
 	if user == nil {
 		return nil, false, errors.New("cannot fetch user from nil user object")
@@ -726,10 +722,8 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 			c.DirectMg("config adding failed you may need to contact admin with error err - " + err.Error(), user.TgID, user.TgID)
 		}
 
-		user.Configs[i].Usage += (status.Download + status.Upload)
+		user.Configs[i].UpdateUsages(status)
 		user.MonthUsage += (status.Download + status.Upload)
-		user.Configs[i].Download += status.Download
-		user.Configs[i].Upload += status.Upload
 
 		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || user.IsDistributedUser || (user.IsCapped && user.CappedQuota > C.Bwidth(c.CommonQuota.Load())) || (user.MonthUsage >= user.CalculatedQuota) {
 
@@ -752,7 +746,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 				TgId: user.TgID,
 			})
 		}
-		if err == nil && !user.IsDistributedUser {
+		if err == nil && !user.IsDistributedUser && status.FullUsage() > 0 {
 			c.db.Create(&db.UsageHistory{
 				Usage:    status.Download + status.Upload,
 				Download: status.Download,
@@ -858,7 +852,6 @@ func (c *Controller) Addsession(closefunc ForceCloser, UserId int64) {
 	c.Usermgrsession.Store(UserId, closefunc)
 
 }
-
 func (c *Controller) RemoveSesion(UserId int64) {
 	c.Usermgrsession.Delete(UserId)
 }
@@ -939,30 +932,7 @@ func (c *Controller) startbox() error {
 	return c.sbox.Start()
 }
 
-//func (c *Controller) Getinbounds() ([]sbox.Inboud) { return c.Metadata.Inbounds }
 
-func (c *Controller) WatchmanLock() {
-	c.Lockval.Swap(1)
-}
-
-func (c *Controller) WatchmanUnlock() {
-	c.Lockval.Swap(0)
-	waiters := c.wLockCounter.Swap(0)
-	for i := 0; i < int(waiters); i++ {
-		c.lockchan <- struct{}{}
-	}
-}
-
-// check is that controller locked by watchman
-// if locked this function wait for it to unlock
-func (c *Controller) CheckLock() bool {
-	if c.Lockval.Load() == 0 {
-		return false
-	}
-	c.wLockCounter.Add(1)
-	<-c.lockchan
-	return true
-}
 
 func (c *Controller) Close() error { return c.sbox.Close() }
 
@@ -978,7 +948,6 @@ func (c *Controller) RemoveUserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, err
 func (c *Controller) GetstatusUserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, error) {
 	return c.sbox.GetstatusUser(conf)
 }
-
 func (c *Controller) UrlTestOut(tag string) (int16, error) {
 	return c.sbox.UrlTest(tag)
 
@@ -1075,13 +1044,11 @@ func (c *Controller) CreateSboxConf(userId int64, name string) (db.SboxConfigs, 
 	return *conf, nil
 
 }
-
 // this give configs according to server not from builder
 func (c *Controller) GetUserConfigs(userID int64) ([]db.Config, error) {
 	var confs []db.Config
 	return confs, c.db.Model(&db.Config{}).Where("user_id = ?", userID).Find(&confs).Error
 }
-
 // Deletes buildconfig not releted to server configs
 func (c *Controller) DeleteConf(confId int64) error {
 	return c.db.Model(&db.SboxConfigs{}).Delete(&db.SboxConfigs{
@@ -1168,36 +1135,6 @@ func (c *Controller) UpdatePoint(newpointCount int64, userId int64) error {
 	return nil
 }
 
-func (c *Controller) IncCriticalOp() {
-	c.critical.Add(1)
-}
-
-func (c *Controller) DecCriticalOp() {
-	if c.critical.Add(-1) == 0 && c.critchan != nil {
-		c.critchan <- struct{}{}
-	}
-}
-
-func (c *Controller) WaitCriticalop() {
-	if c.critical.Load() == 0 {
-		return
-	}
-	c.critchan = make(chan interface{})
-	<-c.critchan
-	c.critchan = nil
-}
-
-func (c *Controller) GetLastRefreshtime() time.Time {
-	c.CheckLock()
-	return c.lastDbRefresh
-}
-
-// only use In watchman,
-// Do not use elsewhere
-func (c *Controller) SetLastRefreshtime() {
-	c.lastDbRefresh = time.Now()
-}
-
 func (c *Controller) SendMsgContext(ctx context.Context, msg any) (*tgbotapi.Message, error) {
 	var (
 		repmg *tgbotapi.Message
@@ -1243,4 +1180,96 @@ func (c *Controller) SendMsgContext(ctx context.Context, msg any) (*tgbotapi.Mes
 		return nil, C.ErrNotMsgType
 	}
 	return repmg, err
+}
+
+func (c *Controller) RemoveAllLimits() error {
+	c.IncCriticalOp()
+	tx := c.db.Begin()
+	err := tx.Model(&db.User{}).Where("1 = 1").Update("is_month_limited", "false").Error
+	if err != nil {
+		tx.Rollback()
+		c.DecCriticalOp()
+		return err
+	}
+	tx.Commit()
+	c.DecCriticalOp()
+	if c.CheckLock() {
+		return nil
+	}
+	c.signals <- RefreshSignal(1)
+	return nil
+}
+
+
+
+
+//func (c *Controller) Getinbounds() ([]sbox.Inboud) { return c.Metadata.Inbounds }
+//concurrent area
+func (c *Controller) WatchmanLock() {
+	c.Lockval.Swap(1)
+}
+
+func (c *Controller) WatchmanUnlock() {
+	c.Lockval.Swap(0)
+	waiters := c.wLockCounter.Swap(0)
+	for i := 0; i < int(waiters); i++ {
+		c.lockchan <- struct{}{}
+	}
+}
+
+// check is that controller locked by watchman
+// if locked this function wait for it to unlock
+func (c *Controller) CheckLock() bool {
+	if c.Lockval.Load() == 0 {
+		return false
+	}
+	c.wLockCounter.Add(1)
+	<-c.lockchan
+	return true
+}
+
+func (c *Controller) IncCriticalOp() {
+	c.critical.Add(1)
+}
+
+func (c *Controller) DecCriticalOp() {
+	if c.critical.Add(-1) == 0  {
+		if c.waitCritical.Load() {
+			c.critchan <- struct{}{}
+		}
+	}
+}
+
+//only call ones by watchman do not call elsewhere
+func (c *Controller) WaitCriticalop() {
+	if c.critical.Load() == 0 {
+		return
+	}
+	c.waitCritical.Swap(true)
+	<-c.critchan
+	c.waitCritical.Swap(false)
+}
+
+func (c *Controller) SetLastRefreshtime() {
+	c.lastDbRefresh.Store(time.Now())
+}
+
+func (c *Controller) GetLastRefreshtime() time.Time {
+	return c.lastDbRefresh.Load().(time.Time)
+	
+}
+
+func (c *Controller) GetBaseContext() context.Context {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.basectx
+	
+}
+
+// canceling all ongoing upx
+func (c *Controller) CancleUpdateContexs() {
+	c.mu.Lock()
+	c.basecancle()
+	c.basectx, c.basecancle = context.WithCancel(c.ctx)
+	c.mu.Unlock()
 }

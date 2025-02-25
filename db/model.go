@@ -31,6 +31,7 @@ type User struct {
 	IsCapped          bool `gorm:"column:is_capped"`
 	IsMonthLimited    bool `gorm:"column:is_month_limited"`
 	RecheckVerificity bool `gorm:"column:recheck_verificity"`
+	CapDays 		  int32 `gorm:"column:cap_days"`
 
 	Points int64
 
@@ -87,7 +88,7 @@ func (u User) String() string {
 }
 
 
-func (u *User) Iscaptimeover() bool {
+func (u *User) Iscaptimeover(days int) bool {
 	return u.Captime.AddDate(0, 0, 30).Compare(time.Now()) <= 0
 }
 func (u *User) Verified() bool {

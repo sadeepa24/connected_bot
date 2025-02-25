@@ -30,6 +30,9 @@ type SimpleRangeCheck struct {
 }
 
 func (s *SimpleRangeCheck) Contains(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
 	for _, s := range s.nets {
 		if s.Contains(ip) {
 			return true
@@ -180,6 +183,9 @@ func (c *IPNode) addRange2(byteIndex int, network *net.IPNet) {
 
 
 func (c *CIDRRange) Contains(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
 	ip = ip.To4()
 	if ip == nil {
 		return false

@@ -1,3 +1,5 @@
+//go:build ignore
+
 package service
 
 import (
@@ -9,6 +11,7 @@ import (
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
+
 
 type Groupsrv struct {
 	ctx      context.Context

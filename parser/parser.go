@@ -145,9 +145,9 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	}
 
 	defer func ()  {
-		if upx != nil {
+		if upx != nil && upx.Cancle != nil {
 			upx.Cancle()
-		}	
+		}
 	}()
 	
 	if upx.Update.CallbackQuery != nil {
@@ -239,10 +239,8 @@ func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, e
 func (u *Parser) addtoservice(upx *update.Updatectx) error {
 	if upx.Drop() {
 		u.logger.Warn("Dropping update not a valid update context")
-		upx.Cancle()
 		return nil
 	}
-
 	if service, ok := u.services[upx.Service]; ok {
 		return service.Exec(upx)
 	}

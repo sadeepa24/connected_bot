@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sadeepa24/connected_bot/botapi"
+	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
@@ -928,7 +928,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 		Messagesession.SendExtranal(struct {
 			EndDate string
 		}{
-			EndDate: upx.User.Captime.AddDate(0, 0, 30).Format("2006-01-02 15:04:05"),
+			EndDate: upx.User.Captime.AddDate(0, 0, int(upx.User.CapDays)).Format("2006-01-02 15:04:05"),
 		}, nil, C.TmpcapQuota, true)
 		return nil
 	}
@@ -955,7 +955,9 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	btns.Addbutton(C.BtnContinue, C.BtnContinue, "")
 	btns.AddClose(false)
 
-	capble_quota := (Usersession.GetUser().CalculatedQuota - Usersession.GetFullUsage().Full())
+	fullUsage := Usersession.GetFullUsage()
+
+	capble_quota := (Usersession.GetUser().CalculatedQuota - fullUsage.Full())
 
 	if capble_quota <= 0 {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCannotCap), nil)
@@ -965,9 +967,11 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	Messagesession.Edit(struct {
 		Leftquota    string
 		CapbleQuouta string
+		CapRange string
 	}{
 		Leftquota:    Usersession.LeftQuota().BToString(),
-		CapbleQuouta: capble_quota.BToString(),
+		CapbleQuouta: fullUsage.Full().String(),
+		CapRange: fullUsage.Full().BToString() + " -- " + upx.User.CalculatedQuota.BToString() ,
 	}, btns, C.TmpcapWarn)
 
 	answer, err := u.callback.GetcallbackContext(upx.Ctx, btns.ID())
@@ -986,59 +990,45 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	Messagesession.Edit(struct {
 		LeftQuota    string
 		CapbleQuouta string
+		CapRange string
 	}{
 		LeftQuota:    Usersession.LeftQuota().BToString(),
-		CapbleQuouta: capble_quota.BToString(),
+		CapbleQuouta: fullUsage.Full().BToString(),
+		CapRange: fullUsage.Full().BToString() + " -- " + upx.User.CalculatedQuota.BToString(),
 	}, nil, C.Tmpcapreply)
 
-	Newcap := C.Bwidth(0)
-	var retry = 0
-	for {
 
-		if upx.Ctx.Err() != nil {
-			return C.ErrContextDead
-		}
-
-		if retry > 5 {
-			Messagesession.SendAlert(C.GetMsg(C.Msgretryfail), nil)
-			return nil
-		}
-		replymg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.Id, upx.Chat_ID)
-		if err != nil {
-			return err
-		}
-		if replymg == nil {
-			Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-			continue
-		}
-		Messagesession.Addreply(replymg.MessageID)
-
-		newCap, err := strconv.Atoi(replymg.Text)
-		retry++
-		if err != nil {
-			Messagesession.SendAlert(C.GetMsg(C.MsgValidInt), nil)
-			continue
-		}
-		if newCap <= 0 {
-			Messagesession.SendAlert(C.GetMsg(C.Msgcapzerod), nil)
-			continue
-		}
-
-		
-
-		if C.Bwidth(newCap).GbtoByte() > capble_quota {
-			Messagesession.SendAlert(C.GetMsg(C.MsgcapThan), nil)
-			continue
-		}
-		// if C.Bwidth(newCap).GbtoByte() > Usersession.TotalUsage() {
-		// 	Messagesession.SendAlert(C.Getmsg(MsgcapUsage), nil)
-		// 	continue
-		// }
-		Newcap = C.Bwidth(newCap).GbtoByte()
-		break
-
+	cls := common.Tgcalls{
+		Alertsender: func(msg string) {
+			Messagesession.SendAlert(msg, nil)
+		},
+		Sendreciver: func(msg any) (*tgbotapi.Message, error) {
+			if msg != nil {
+				_, err := Messagesession.Edit(msg, nil, "")
+				if err != nil {
+					return nil, err
+				}
+			}
+			mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
+			if err == nil {
+				Messagesession.Addreply(mg.MessageID)
+			}
+			return mg, err
+		},
+		Callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
+			_, err := Messagesession.Edit(msg, btns, "")
+			if err != nil {
+				return nil, err
+			}
+			return u.callback.GetcallbackContext(upx.Ctx, btns.ID())
+		},
 	}
 
+	Newcap, err := common.ReciveBandwidth(cls, upx.User.CalculatedQuota, fullUsage.Full().GbtoByte())
+	if err != nil {
+		cls.Alertsender("cap setting canceld")
+		return nil
+	}
 	btns.Reset([]int16{1, 1})
 	btns.Addbutton(C.BtnConform, C.BtnConform, "")
 	btns.Addcancle()
@@ -1060,8 +1050,17 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	}
 
 	Usersession.GetUser().IsCapped = true
-	Usersession.GetUser().CappedQuota = Newcap
+	Usersession.GetUser().CappedQuota = Newcap.GbtoByte()
 	Usersession.GetUser().Captime = time.Now()
+
+
+	Messagesession.Edit("send how much time do you want to set this cap ?", nil, "")
+	days, err := common.ReciveInt(cls, 60, 3)
+	if err != nil {
+		days = 30
+	}
+	Usersession.GetUser().CapDays = int32(days)
+
 
 	if err = u.ctrl.RecalculateConfigquotas(upx.User.User); err != nil {
 		Messagesession.SendAlert(C.GetMsg(C.MsgcapRecalFail), nil)
@@ -1349,6 +1348,7 @@ func (u *Usersrv) cmdFree(upx *update.Updatectx, Messagesession *botapi.Msgsessi
 		}
 		upx.User.EmptyCycle = 0
 		upx.User.Templimited = false
+		u.ctrl.IncreaseUserCount(1)
 		Usersession.ActivateAll()
 		Messagesession.SendAlert(C.GetMsg(C.MsgFree), nil)
 	case upx.User.IsMonthLimited:

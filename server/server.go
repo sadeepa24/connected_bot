@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -207,7 +208,7 @@ func (w *webhookls) Accept() (net.Conn, error) {
 		return nil, err
 	}
 	if w.allowdip != nil {
-		if !w.allowdip.Contains(net.ParseIP(GetIP(conn))) {
+		if !w.allowdip.Contains(GetIP(conn)) {
 			conn.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
 			conn.Write(w.rejectMessage)
 			conn.Close()
@@ -220,10 +221,11 @@ func (w *webhookls) Accept() (net.Conn, error) {
 	return conn, err
 }
 
-func GetIP(conn net.Conn) string {
+func GetIP(conn net.Conn) net.IP {
 	//all connections are tcp so it's allright
 	if addr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
-		return addr.IP.String()
+		fmt.Println(addr.IP)
+		return addr.IP
 	}
-	return ""
+	return nil
 }

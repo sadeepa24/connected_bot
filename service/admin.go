@@ -360,6 +360,9 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			if enduserupx.User.Templimited {
 				btns.AddBtcommon("Remove Templimit")
 			}
+			if enduserupx.User.IsCapped {
+				btns.AddBtcommon("Remove Cap")
+			}
 			btns.Addbutton("🔴 Distribute",  "Distribute","" )
 			btns.AddCloseBack()
 			tusage := endusersession.TotalUsage()
@@ -382,7 +385,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				LeftQuota: endusersession.LeftQuota().BToString(),
 				TUsage:    tusage.BToString(),
 				ConfCount: endusersession.GetUser().ConfigCount,
-				CapEndin:  enduserupx.User.Captime.AddDate(0, 0, 30).String(),
+				CapEndin:  enduserupx.User.Captime.AddDate(0, 0, int(enduserupx.User.CapDays)).String(),
 				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 
 				Disendin:     ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
@@ -454,6 +457,13 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				}
 				endusermsg.SendAlert("🎉 Your temporary limitation has been removed and warning rate reset by admin 🍾", nil)
 				Messagesession.SendAlert("Temporary limitation removed and warning rate reset successfully", nil)
+			case "Remove Cap":
+				enduserupx.User.IsCapped = false
+				enduserupx.User.CappedQuota = 0
+				if err = a.ctrl.RecalculateConfigquotas(endusersession.GetUser()); err != nil {
+					Messagesession.SendAlert(C.GetMsg(C.MsgcapRecalFail), nil)
+				}
+				endusermsg.SendAlert("🎉 Your Cap Removed By Admin🍾", nil)
 			}
 				
 		case 2:
@@ -993,7 +1003,10 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 			}
 
 			replymg, err = calls.Sendreciver("send new file name for the file name with extetion ex - example.mp4")
-
+			if err != nil {
+				calls.Alertsender("fileName Recive Error")
+				return err
+			}
 			filename := replymg.Text
 
 			file, err := a.botapi.GetFile(fileid)
@@ -1354,11 +1367,12 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 		case 0:
 			btns.AddBtcommon("🔴 Change Config Settings")
 			btns.AddBtcommon("🔴 Reset Usage")
+			btns.Addbutton("🔴 Reset Usage", "Reset Usage", "")
 			btns.Addbutton("🔴 Restart", "Restart", "")
+			btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
 			btns.AddClose(true)
 			
 			if callback, err = callbackreciver("select", btns); err != nil {
-				alertsender("select within 1 minitue next time ")
 				break mainloop
 			}
 
@@ -1389,6 +1403,35 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					Messagesession.SendAlert("Restart Signal Sending Failed "+ err.Error(), nil)
 				}
 				break mainloop
+			case "remlimit":
+				
+				btns.Reset([]int16{2})
+				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴 do thease if you realy want")
+				btns.Addcancle()
+				btns.AddBtcommon("proceed")
+				if callback, err = callbackreciver("this will remove everyone's monthlimitations do you want to continue ?", btns); err != nil {
+					break mainloop
+				}
+
+				if callback.Data != "proceed" {
+					continue
+				}
+				Messagesession.DeleteAllMsg()
+				err = a.ctrl.RemoveAllLimits()
+				if err != nil {
+					Messagesession.SendAlert("db update err "+ err.Error(), nil)
+					continue
+				}
+				a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+					Infocontext: &botapi.Infocontext{
+						User_id: a.ctrl.SudoAdmin,
+						ChatId: a.ctrl.SudoAdmin,
+					},
+					Text: "Month Limitation Remove And Db Refreshed",
+				})
+				return nil
+			
+
 			case C.BtnClose:
 				Messagesession.DeleteAllMsg()
 				alertsender("manager closed")

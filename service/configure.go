@@ -242,7 +242,7 @@ func (c *configState) action() error {
 	
 	case C.BtnChangeLogin:
 		c.Alertsender("send new login limit count (0 < x <= 5)") 
-		limit, err := common.ReciveInt(c.Tgcalls, 5, 0)
+		limit, err := common.ReciveInt(c.Tgcalls, int(c.wiz.ctrl.LoginLimit), 0)
 		if err != nil {
 			return nil
 		}

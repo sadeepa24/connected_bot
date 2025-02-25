@@ -110,7 +110,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				TUsage:    tusage.BToString(),
 				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 				ConfCount: Usersession.GetUser().ConfigCount,
-				CapEndin:  upx.User.Captime.AddDate(0, 0, 30).String(),
+				CapEndin:  upx.User.Captime.AddDate(0, 0, int(upx.User.CapDays)).String(),
 
 				Disendin:     ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,
 				UsageResetIn: ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,

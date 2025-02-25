@@ -210,7 +210,7 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 		return err
 	}
 
-	LoginLimit, err := common.ReciveInt(opts.Tgcalls, C.MaxLoginLimit, 0)
+	LoginLimit, err := common.ReciveInt(opts.Tgcalls, int(opts.Ctrl.LoginLimit), 0)
 
 	if err != nil {
 		return err
