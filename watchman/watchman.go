@@ -45,7 +45,14 @@ type Watchman struct {
 	//simplelog *simplelog.SimpleLog
 
 	mgstore *botapi.MessageStore
-	lastUserCount int32 //User count on db when running function RefreshDb last time
+	//lastUserCount int32 //User count on db when running function RefreshDb last time
+	
+	
+	// When a new UserCount signal is received, the updater checks the following condition:
+	// If lastRefreshActiveUser + (lastRefreshActiveUser / 4) < activeUser, a new refresh cycle is triggered.
+	activeUser int64             // Real-time count of users currently using the service.
+	lastRefreshActiveUser int64  // User count at the time of the last database refresh.
+
 
 	//msgque chan *botapi.Msgcommon
 
@@ -150,11 +157,9 @@ func (w *Watchman) Close() error {
 
 func (w *Watchman) startAutoupdater() {
 	w.logger.Info("started watch mand autoupdater")
-	w.lastUserCount = w.ctrl.Dbusercount.Load()
 update:
 	for {
 		select {
-
 		case <-w.ctx.Done():
 
 			w.logger.Warn("context Cancled autoupdater closing")
@@ -162,12 +167,10 @@ update:
 			break update
 
 		case <-w.close:
-			
 			w.logger.Sync()
 			w.logger.Info("Closing Auto Updater close call recived")
 			w.close <- struct{}{}
 			break update
-
 		case tick := <-w.ticker.C:
 			w.logger.Info("db refresh starting", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
 			go func () {
@@ -190,9 +193,7 @@ update:
 			}
 			w.logger.Info("db refresh done", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
 			w.logger.Sync()
-
 		case mg := <-w.ctrl.Getmgque():
-			currentcount := w.ctrl.Dbusercount.Load()
 			switch unwrapedmg := mg.(type) {
 			case controller.RefreshSignal:
 				w.ctrl.DirectMg("force refresh added", w.ctrl.SudoAdmin, w.ctrl.SudoAdmin)
@@ -220,9 +221,7 @@ update:
 					}
 				}()
 			case controller.ForceResetUsage:
-				refreshctx, cancle := context.WithCancel(w.ctx)
-
-					
+				refreshctx, cancle := context.WithCancel(w.ctx)			
 				err := w.RefreshDb(refreshctx, false, true)
 				cancle()
 				if err != nil {
@@ -231,10 +230,11 @@ update:
 				}
 				w.logger.Info("db refresh done")
 			case controller.UserCount:
+				w.activeUser += int64(unwrapedmg)
 				if w.ctrl.CheckLock() {
 					continue	
 				}
-				if float32(w.lastUserCount)+(float32(w.lastUserCount)/4)*3 < float32(currentcount) {
+				if float32(w.lastRefreshActiveUser)+((float32(w.lastRefreshActiveUser)/4)*3) < float32(w.activeUser) {
 					refreshctx, cancle := context.WithCancel(w.ctx)
 					err := w.RefreshDb(refreshctx, false, false)
 					cancle()
@@ -258,7 +258,6 @@ update:
 				}
 			}
 		}
-
 	}
 }
 
@@ -684,7 +683,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					}
 
 					if user.WarnRatio == 0 {
-						user.IsMonthLimited = true
 						w.sendUsingBufChan(msgchan, C.GetMsg(C.MsgTempOver), user.TgID)
 					}
 				}
@@ -826,8 +824,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 	}
 
-	w.lastUserCount = w.ctrl.Dbusercount.Load()
-
+	w.activeUser = predata.verifiedusercount-predata.unUsedUser
+	w.lastRefreshActiveUser = predata.verifiedusercount-predata.unUsedUser
 	// it's safe to send backup here
 	// because any other goroutine can't access this db while this function is running
 	w.sendDbBackup()
@@ -882,7 +880,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 			// 	continue
 			// }
 			if user.IsCapped {
-				if user.Iscaptimeover() {
+				if user.Iscaptimeover(int(user.CapDays)) {
 					user.IsCapped = false
 					w.logger.Debug("cap time over user capped quota resets " + user.Name)
 					user.CappedQuota = 0

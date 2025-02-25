@@ -1066,3 +1066,15 @@ func (t *TestBotapiWatchman) GetFile(file_Id string) (io.ReadCloser, error){
 	}
 	return io.ReadCloser(nil), nil
 }
+
+
+func TestUserCountIncrease(t *testing.T) {
+	count := 3000
+	lasrefreshCount := 0
+	for i := 0; i < count; i++ {
+		if float32(lasrefreshCount) + (float32(lasrefreshCount)/4)*3 < float32(i) {
+			fmt.Println(i)
+			lasrefreshCount = i
+		}
+	}
+}
