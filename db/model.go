@@ -89,7 +89,7 @@ func (u User) String() string {
 
 
 func (u *User) Iscaptimeover(days int) bool {
-	return u.Captime.AddDate(0, 0, 30).Compare(time.Now()) <= 0
+	return u.Captime.AddDate(0, 0, days).Compare(time.Now()) <= 0
 }
 func (u *User) Verified() bool {
 	return u.IsInChannel && u.IsInGroup

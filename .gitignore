@@ -3,6 +3,7 @@
 connected.db
 tables.txt
 bot_run
+connected_bot
 botapi-local/telegram-bot-api
 botapi-local/*
 ./botapi-local/*

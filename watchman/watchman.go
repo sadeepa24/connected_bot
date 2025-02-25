@@ -294,7 +294,7 @@ type preprosessd struct {
 }
 
 // TODO: remove after testings
-func (p *preprosessd) String() (s string) {
+func (p preprosessd) String() (s string) {
 	s = fmt.Sprintf(`
 	cappeduser %v
 	captotal %v 
@@ -840,7 +840,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 
 
-func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any) (*preprosessd, error) {
+func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any) (preprosessd, error) {
 
 	/*
 		var (
@@ -860,7 +860,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 	*/
 
 	var (
-		preData = &preprosessd{}
+		preData = preprosessd{}
 	)
 	
 	// var checkcount = w.ctrl.CheckCount.Load()
