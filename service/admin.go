@@ -83,13 +83,13 @@ func (a *Adminsrv) Exec(upx *update.Updatectx) error {
 	if upx.Update == nil {
 		return nil
 	}
-	upx.Ctx, upx.Cancle = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
+	upx.Ctx, upx.Cancle  = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
 	switch {
 	case upx.Update.Message != nil:
 		return a.handleMessage(upx)
 	}
 
-	return fmt.Errorf("admin exec not implemented")
+	return errors.New("admin exec not implemented")
 }
 
 func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
@@ -183,9 +183,9 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 	case C.CmdChatSession:
 		return a.createchat(upx, Messagesession, calls)
 	case C.CmdOverview:
-		return a.overview(upx)
+		return a.overview(calls)
 	case C.CmdRefreshDb:
-		a.ctrl.Addquemg(upx.Ctx, controller.RefreshSignal(1))
+		a.ctrl.Addquemg(controller.RefreshSignal(1))
 		upx.Cancle()
 		return nil
 	case "manage":
@@ -579,7 +579,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				TemplateName: C.TmpConfigInfo,
 				Lang: "en",
 			}, btns); err != nil {
-				a.logger.Error(err.Error())
+				a.logger.Error("admin userinfo send failed ", zap.Error(err))
 				continue
 
 			}
@@ -623,7 +623,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			}
 			a.xraywiz.builds.Delete(enduserupx.User.TgID)
 			if err != nil {
-				a.logger.Error(err.Error())
+				a.logger.Error("admin: builder run failed ", zap.Error(err))
 				if errors.Is(err, C.ErrContextDead) {
 					tmpctx, cancle := context.WithTimeout(a.ctx, 10*time.Second)
 					Messagesession.SetNewcontext(tmpctx)
@@ -677,7 +677,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 
 			configState.run()
 			if err != nil {
-				a.logger.Error(err.Error())
+				a.logger.Error("admin: configure run failed ", zap.Error(err))
 				if errors.Is(err, C.ErrContextDead) {
 					tmpctx, cancle := context.WithTimeout(a.ctx, 10*time.Second)
 					Messagesession.SetNewcontext(tmpctx)
@@ -732,7 +732,7 @@ func (a *Adminsrv) getserverinfo(upx *update.Updatectx) error {
 	memorystate.Frees,
 
 )
-	a.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+	a.ctrl.Addquemg( &botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: a.ctrl.SudoAdmin,
 		},
@@ -769,50 +769,46 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 		calls.Alertsender("You can't chat weith your self 😅")
 		return nil
 	}
-	a.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+	a.ctrl.Addquemg(&botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: dbuser.TgID,
 		},
 		Text: "admin created chat session with you, you can't use any command or anything until he ends the session ",
 	})
-
 	calls.Alertsender("chat started if you want to end chat you must /cancel session, if not it will hold for 30 min")
-
-
-	canclechan := make(chan any)
+	chatctx, chatcancel := context.WithTimeout(a.ctx, 30 * time.Minute)
+	Messagesession.SetNewcontext(chatctx)
 
 	mgcoping := func (src, dst int64, admin bool)  {
 		mgcopy:
 		for {
 			select {
-			case <- upx.Ctx.Done():
-				upx.Cancle()
-				break mgcopy
-			case <-canclechan:
+			case <- chatctx.Done():
 				break mgcopy
 			default:
 			}
-			mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, src, src) // this will check context automatically
-			if err != nil && admin{
-				a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
-					Infocontext: &botapi.Infocontext{
-						ChatId: upx.User.TgID,
-					},
-					Text: "chat session ended",
-				})
+			mg, err := a.defaultsrv.ExcpectMsgContext(chatctx, src, src) // this will check context automatically
+			if err != nil{
+				if admin {
+					a.ctrl.Addquemg(&botapi.Msgcommon{
+						Infocontext: &botapi.Infocontext{
+							ChatId: upx.User.TgID,
+						},
+						Text: "chat session ended",
+					})
+				}
 				break
 			}
 			if mg.IsCommand() {
 				if mg.Command() == "cancel" && admin {
-					upx.Cancle()
-					canclechan <- struct{}{}
+					chatcancel()
 					break
 				}
 			}
 			Messagesession.CopyMessageRawTo(dst, int64(mg.MessageID), src)
 		}
 		if !admin {
-			a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+			a.ctrl.Addquemg(&botapi.Msgcommon{
 				Infocontext: &botapi.Infocontext{
 					ChatId: dbuser.TgID,
 				},
@@ -824,50 +820,11 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 	
 	go mgcoping(upx.User.TgID, dbuser.TgID, true)
 	go mgcoping(dbuser.TgID, upx.User.TgID, false)
-	
-	
 	return nil
 }
 
-func (a *Adminsrv) overview(upx *update.Updatectx) error {
-	overview := a.ctrl.Overview
-	overview.Mu.RLock()
-	defer overview.Mu.RUnlock()
-
-
-	a.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
-		DestinatioID: upx.User.TgID,
-		TemplateName: "overview",
-		Template: struct{
-			BandwidthAvailable string
-			MonthTotal string
-			AllTime string
-			TempLimitedUser int64
-			VerifiedUserCount int64
-			TotalUser int32
-			CappedUser int64
-			DistributedUser int64
-			Restricte int64
-			QuotaForEach string
-			LastRefresh time.Time
-		}{
-			BandwidthAvailable: overview.BandwidthAvailable.BToString(),
-			AllTime: overview.AllTime.BToString(),
-			QuotaForEach: overview.QuotaForEach.BToString(),
-			MonthTotal: overview.MonthTotal.BToString(),
-			TotalUser: overview.TotalUser,
-			CappedUser: overview.CappedUser,
-			Restricte: overview.Restricted,
-			TempLimitedUser: overview.TempLimitedUser,
-			DistributedUser: overview.DistributedUser,
-			LastRefresh: overview.LastRefresh,
-			VerifiedUserCount: overview.VerifiedUserCount,
-			
-		},
-		Lang: "en",
-	})
-
-
+func (a *Adminsrv) overview(calls common.Tgcalls ) error {
+	calls.Alertsender(a.ctrl.Overview.String())
 	return nil
 }
 
@@ -1387,7 +1344,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					continue mainloop
 				}
 				calls.Alertsender("Usage Reset Added, If you want to undo this You have backup DB")
-				a.ctrl.Addquemg(a.ctx, controller.ForceResetUsage(1))
+				a.ctrl.Addquemg(controller.ForceResetUsage(1))
 				break mainloop
 			case "Change Config Settings":
 				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴")
@@ -1419,7 +1376,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					Messagesession.SendAlert("db update err "+ err.Error(), nil)
 					continue
 				}
-				a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+				a.ctrl.Addquemg( &botapi.Msgcommon{
 					Infocontext: &botapi.Infocontext{
 						User_id: a.ctrl.SudoAdmin,
 						ChatId: a.ctrl.SudoAdmin,

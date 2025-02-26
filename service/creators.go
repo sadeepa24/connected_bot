@@ -9,6 +9,7 @@ import (
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"go.uber.org/zap"
 )
 
 type creator interface {
@@ -219,7 +220,7 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 	config, err := Usersession.AddNewConfig(int16(inID), int16(outID), C.Bwidth(quotafroconfig).GbtoByte(), int16(LoginLimit), confName)
 
 	if err != nil {
-		opts.Logger.Error("Error When Config Create - " +  err.Error())
+		opts.Logger.Error("Error When Config Create - ", zap.Error(err))
 		switch {
 		case errors.Is(err, C.ErrInboundNotFound), errors.Is(err, C.ErrDatabaseCreate), errors.Is(err, C.ErrTypeMissmatch), errors.Is(err, C.ErrContextDead):
 			Messagesession.SendAlert(C.GetMsg(C.MsgCrFailed), nil)

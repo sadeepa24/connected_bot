@@ -62,7 +62,6 @@ func NewuserService(ctx context.Context,
 }
 
 func (u *Usersrv) Exec(upx *update.Updatectx) error {
-	u.logger.Info("executing user service " + upx.User.Info() )
 	switch {
 	case upx.Update.Message != nil:
 		if upx.Update.Message.IsCommand() {
@@ -186,7 +185,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		//newly joined group
 		
 		case updatedchat == C.Group && !NewUser.IsRemoved:
-			u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			u.ctrl.Addquemg(botapi.UpMessage{
 				Template: struct {
 					*botapi.CommonUser
 					Chat         string
@@ -251,7 +250,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 
 			if upx.User.IsInGroup {
 
-				u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+				u.ctrl.Addquemg(botapi.UpMessage{
 					Template: struct {
 						*botapi.CommonUser
 						Chat string
@@ -307,7 +306,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		// left and joined again channel
 		case updatedchat == C.Channel:
 
-			u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			u.ctrl.Addquemg( botapi.UpMessage{
 				Template: struct {
 					*botapi.CommonUser
 					Chat string
@@ -344,7 +343,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 
 		// left and joined again group
 		case updatedchat == C.Group:
-			u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			u.ctrl.Addquemg(botapi.UpMessage{
 				Template: struct {
 					botapi.CommonUser
 					Chat         string
@@ -462,13 +461,13 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 	case C.CmdFree:
 		return u.cmdFree(upx, Messagesession)
 	default:
-		u.logger.Warn("unknown cmd recived by userservice - " + cmd)
+		u.logger.Warn("unknown cmd recived by userservice - ", zap.String("cmd", cmd), zap.String("user", upx.User.Info()))
 		return u.defaultsrv.FromserviceExec(upx)
 
 	}
 
 	if upx.User.IsDistributedUser {
-		u.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+		u.ctrl.Addquemg(&botapi.Msgcommon{
 			Infocontext: &botapi.Infocontext{
 				ChatId: upx.User.TgID,
 			},
@@ -811,7 +810,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 	btns.Reset([]int16{2})
 	btns.AddUrlbutton("Thanks Him", fmt.Sprintf("tg://user?id=%v", upx.User.TgID))
 
-	u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+	u.ctrl.Addquemg(botapi.UpMessage{
 		Template: struct {
 			*botapi.CommonUser
 			Gift     string
@@ -896,7 +895,7 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 		Messagesession.DeleteAllMsg()
 		Messagesession.SendAlert(C.GetMsg(C.MsgDisSucsess), nil)
 
-		u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+		u.ctrl.Addquemg( botapi.UpMessage{
 			Template: struct {
 				*botapi.CommonUser
 				Disquota string
@@ -1246,7 +1245,7 @@ func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.
 			break
 		}
 		//Messagesession.ForwardMgTo(u.ctrl.SudoAdmin, int64(msg.MessageID))
-		u.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+		u.ctrl.Addquemg(&botapi.Msgcommon{
 			Infocontext: &botapi.Infocontext{
 				ChatId: u.ctrl.SudoAdmin,
 			},
@@ -1258,7 +1257,7 @@ func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.
 		
 	}
 
-	u.ctrl.Addquemg(u.ctx, &botapi.Msgcommon{
+	u.ctrl.Addquemg(&botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: upx.User.TgID,
 		},
@@ -1279,7 +1278,7 @@ func (u *Usersrv) commandSuggesion(upx *update.Updatectx , Messagesession *botap
 		return err
 	}
 
-	u.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+	u.ctrl.Addquemg(&botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: u.ctrl.SudoAdmin,
 		},

@@ -116,7 +116,7 @@ func (u *Xraywiz) Commandhandler(cmd string, upx *update.Updatectx) error {
 	case C.CmdBuild:
 		return u.commandBuildV2(upx, Messagesession)
 	default:
-		u.logger.Warn("unknown CMD Recived" + upx.Update.Info())
+		u.logger.Warn("unknown CMD Recived config service" + upx.Update.Info())
 		return nil
 	}
 }

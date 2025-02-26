@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -62,9 +61,9 @@ func New(ctx context.Context, srvopt *ServerOption, parser parser.Parserwrap, lo
 	if srvopt == nil {
 		return nil
 	}
-	ls, err := newwhls(srvopt.ListenOption)
+	ls, err := newwhls(srvopt.ListenOption, logger)
 	if err != nil {
-		logger.Error("Webhook Server Listner Creating Failed ", zap.Error(err))
+		logger.Error("webhook server listner failed ", zap.Error(err))
 		return nil
 	}
 	if srvopt.Custom_Message == "" {
@@ -76,7 +75,6 @@ func New(ctx context.Context, srvopt *ServerOption, parser parser.Parserwrap, lo
 		ctx:     ctx,
 		Server: http.Server{
 			Addr: ls.Addr().String(),
-			//ErrorLog: ,
 			BaseContext: func(l net.Listener) context.Context {
 				return ctx
 			},
@@ -116,7 +114,6 @@ func (w *Webhookserver) Close() error {
 }
 
 func (w *BotHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
-	w.logger.Debug("request recived from " + req.RemoteAddr)
 	if req.Method != "POST" {
 		w.logger.Warn("Unsupported Http Method " + req.Method + " Recived from " + req.RemoteAddr)
 		writer.WriteHeader(http.StatusMethodNotAllowed)
@@ -149,11 +146,9 @@ func (w *BotHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 
 // remove this after testings
 func (w *BotHandler) parsertimetgmsg(tg *tgbotapi.Update) {
-	st := time.Now()
 	if err := w.parser.Parse(tg); err != nil {
-		w.logger.Error("updated errored",  zap.Error(err))
+		w.logger.Error("updated errored", zap.Int("id", tg.UpdateID), zap.Error(err))
 	}
-	w.logger.Info("elpsed time for processing request ⏳ " + time.Since(st).String())
 }
 
 type webhookls struct {
@@ -161,9 +156,10 @@ type webhookls struct {
 	allowdip RangeCheck
 	tlsconfig *tls.Config
 	rejectMessage []byte
+	logger *zap.Logger
 }
 
-func newwhls(lsopts ListenOption) (*webhookls, error) {
+func newwhls(lsopts ListenOption, logger *zap.Logger) (*webhookls, error) {
 	tcpAddr,err := net.ResolveTCPAddr("tcp", lsopts.Addr)
 	if err != nil {
 		return nil, errors.New("listen address fault")
@@ -198,6 +194,7 @@ func newwhls(lsopts ListenOption) (*webhookls, error) {
 		Listener: ls,
 		rejectMessage: []byte(lsopts.ConnRejectMessage),
 		tlsconfig: tlsconf,
+		logger: logger,
 		allowdip: rangeChecker,
 	}, err
 }
@@ -205,11 +202,13 @@ func newwhls(lsopts ListenOption) (*webhookls, error) {
 func (w *webhookls) Accept() (net.Conn, error) {
 	conn, err := w.Listener.Accept()
 	if err != nil {
+		w.logger.Error("connection Failed ", zap.Error(err))
 		return nil, err
 	}
 	if w.allowdip != nil {
 		if !w.allowdip.Contains(GetIP(conn)) {
 			conn.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
+			w.logger.Warn("Unknow Remote Connection Rehected " + conn.RemoteAddr().String())
 			conn.Write(w.rejectMessage)
 			conn.Close()
 			return nil, net.UnknownNetworkError("unknown remote addr " + conn.RemoteAddr().Network(), )
@@ -224,7 +223,6 @@ func (w *webhookls) Accept() (net.Conn, error) {
 func GetIP(conn net.Conn) net.IP {
 	//all connections are tcp so it's allright
 	if addr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
-		fmt.Println(addr.IP)
 		return addr.IP
 	}
 	return nil

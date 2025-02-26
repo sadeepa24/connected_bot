@@ -515,7 +515,7 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx,  Messagesession *bot
 	}
 
 	if err = configState.run(); err !=nil {
-		u.logger.Error("configuration state errored", zap.Error(err))
+		u.logger.Error("run configure failed: ", zap.Error(err))
 	}
 	if upx.Ctx.Err() != nil {
 		tempctx, closetemp := context.WithTimeout(u.ctx, 15*time.Second)

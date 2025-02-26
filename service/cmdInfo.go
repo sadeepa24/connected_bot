@@ -122,7 +122,6 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 
 				JoinedPlace: upx.User.CheckID,
 			}, btns, C.TmpUserInfo); err != nil {
-				u.logger.Error(err.Error())
 				state = 0
 				continue info
 			}

@@ -43,7 +43,6 @@ func NewDefaulsrv(
 }
 
 func (d *Defaultsrv) Init() error {
-	d.logger.Debug("not implemented yet")
 	return nil
 }
 

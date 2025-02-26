@@ -50,8 +50,6 @@ func New(
 	logger *zap.Logger,
 
 ) *Parser {
-
-	// basectx, _ := context.WithCancelCause(ctx)
 	parser := &Parser{
 		ctx:        ctx,
 		ctrl:       ctrl,
@@ -60,8 +58,6 @@ func New(
 		srvs:       services,
 		botapi:     botapi,
 		GetBaseCtx: ctrl.GetBaseContext, //TODO: change later
-		//baseCtxforUpx: basectx,
-		//baseCancle:    basecancle,
 
 		//xrayservice: make(map[string]bool, 10),
 		//usrservice:  make(map[string]bool, 10),
@@ -172,7 +168,7 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 			} else {
 				mode = "from Admin to User"
 			}
-			p.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+			p.ctrl.Addquemg(&botapi.Msgcommon{
 				Infocontext: &botapi.Infocontext{
 					ChatId: p.ctrl.SudoAdmin,
 					User_id: p.ctrl.SudoAdmin,
@@ -195,7 +191,6 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 		return err
 	}
 	if !cannprocUpdate {
-		p.logger.Info("Cannot Continue With Update " +  upx.User.Info())
 		return nil
 	}
 	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
@@ -287,7 +282,7 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 
 	}
 	if upx.User.IsMonthLimited && (upx.Update.Message != nil) && !upx.IsCommand(C.CmdBuild) {
-		p.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+		p.ctrl.Addquemg(&botapi.Msgcommon{
 			Infocontext: &botapi.Infocontext{
 				ChatId: upx.User.TgID,
 			},
@@ -297,8 +292,6 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 	}
 
 	if upx.Dbuser().RecheckVerificity {
-		p.logger.Info("rechecking verificty " + upx.User.Info())
-
 		var (
 			err1 error
 			err2 error
@@ -330,7 +323,7 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 		}
 		if upx.User.Templimited {
 			//return C.ErrUserTempLimited
-			p.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+			p.ctrl.Addquemg(&botapi.Msgcommon{
 				Infocontext: &botapi.Infocontext{
 					ChatId: upx.User.TgID,
 				},
@@ -339,7 +332,7 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 			return false, nil
 		}
 		if upx.User.Restricted {
-			p.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			p.ctrl.Addquemg(botapi.UpMessage{
 				DestinatioID: upx.User.TgID,
 				TemplateName: "restricted",
 				Lang:         upx.User.Lang,
@@ -356,7 +349,7 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 			return false, nil
 		}
 		if !upx.User.Isverified() {
-			p.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			p.ctrl.Addquemg(botapi.UpMessage{
 				DestinatioID: upx.User.TgID,
 				TemplateName: C.TmplCommonUnverified,
 				Lang:         upx.User.Lang,
