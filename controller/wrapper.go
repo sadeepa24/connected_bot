@@ -120,7 +120,7 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 }
 
 type ForceResetUsage uint16 //use to send Newrefresh signal wit force reset all usage database checkcount will reset
-type UserCount uint16 //sending usercount updates
+type UserCount uint16 //sending Active usercount updates
 type RefreshSignal uint16 //use to send Newrefresh signal 
 type BroadcastSig string //use to send Broadcast signal with broadcast msg 
 
@@ -132,10 +132,7 @@ func (c *Controller) Getmgque() chan any {
 
 // msg should be type controller.UserCount, *botapi.Msgcommon, botapi.UpMessage:
 // remove ctx argument later
-func (w *Controller) Addquemg(upxctx context.Context, msg any) {
-	if upxctx.Err() != nil {
-		return
-	}
+func (w *Controller) Addquemg(msg any) {
 	w.signals <- msg
 }
 
@@ -461,13 +458,13 @@ func (c *Controller) Init() error {
 	}
 
 	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
-		c.logger.Info("Defaul Domain Changed")
+		c.logger.Info("Default Domain Changed")
 		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.Metaconfig.DefaultDomain)
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
 	}
 
 	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
-		c.logger.Info("Defaul Public Ip Changed")
+		c.logger.Info("Default Public Ip Changed")
 		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
 	}

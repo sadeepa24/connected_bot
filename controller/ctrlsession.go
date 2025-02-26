@@ -11,7 +11,6 @@ import (
 	"github.com/sadeepa24/connected_bot/sbox"
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
-	"go.uber.org/zap"
 )
 
 // Ctrlsession is not theadsafe use in single thread
@@ -49,7 +48,7 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 				if err := closer.ForceClose(); err != nil {
 					return nil, C.ErrSessionExcit
 				}
-				ctrl.logger.Warn("Force closed old session")
+				ctrl.logger.Info("Force closed old session")
 			}
 		} else {
 			return nil, C.ErrSessionExcit
@@ -66,16 +65,12 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 
 		//tx: ctrl.db.Begin(),
 	}
-
-	st := time.Now()
 	if user.ConfigCount != 0 {
 		err := ctrl.db.Model(&db.Config{}).Preload("Inbound").Preload("Outbound").Where("user_id = ?", user.TgID).Find(&session.user.Configs).Error
 		if err != nil {
 			return nil, C.ErrOnDb
 		}
 	}
-	ctrl.logger.Debug("Elpsed time for fetching configs 😀", zap.Duration("duration", time.Since(st)))
-
 	session.configmap = make(map[int64]*db.Config, ctrl.Maxconfigcount+1)
 	for i, conf := range session.user.Configs {
 		session.configmap[conf.Id] = &session.user.Configs[i]
@@ -190,6 +185,9 @@ func (c *CtrlSession) AddNewConfig(inboundid int16, outboundid int16, Quota C.Bw
 	//c.user.Configs = append(c.user.Configs, *c.config[len(c.config)-1])
 	//c.tx.Save(c.config[len(c.config)-1])
 	_, err = c.ctrl.AdduserSbox(newconfig)
+	if err != nil && c.user.ConfigCount == 1 {
+		c.ctrl.Addquemg(UserCount(1))
+	}
 	return newconfig, err
 }
 
@@ -706,9 +704,7 @@ func (c *CtrlSession) GetUser() *db.User {
 }
 
 func (c *CtrlSession) ForceClose() error {
-	err := c.Close()
-	c.ctrl.logger.Info("force closed usersession")
-	return err
+	return  c.Close()
 }
 
 // this returns left quota for user
