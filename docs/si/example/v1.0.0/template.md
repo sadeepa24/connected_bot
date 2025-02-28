@@ -837,36 +837,13 @@ setcap_already:
     media_id: ""
     continue_media: false
     disabled: false
-setcap_reply:
+setcap_get:
   en:
     msg_template: |
       🚀 Hi!
       Please provide the quota you'd like to cap, ensuring it's below 🛑 {{.CapbleQuouta}}.
-
       This quota will apply for 🛑 30 days, and changes can't be reverted during this period.
-
       💡 Tip: Be precise while setting your cap to align with your needs.
-    parse_mode: ""
-    include_media: false
-    media_type: ""
-    media_id: ""
-    continue_media: false
-    disabled: false
-setcap_get:
-  en:
-    msg_template: |
-      📢 <b>Important Notice</b>
-
-      ⚠️ You are requested to send a new capped quota.
-      🔒 <b>Note:</b> The new capped quota must be below <b>{{.CapbleQuouta}}</b>.
-
-      🛠️ All your configurations' quotas will be adjusted based on the new main quota.
-      ⏳ This change will remain in effect for <b>30 days</b>.
-      ❌ <b>During this period, you cannot undo the change.</b>
-
-      📆 After 30 days, your main quota will be automatically updated.
-
-      ✨ Please proceed carefully to ensure your requirements are met!
 
     parse_mode: "HTML"
     include_media: false
@@ -975,9 +952,13 @@ getinfo_user:
       🎯 <b>Dedicated:</b> {{.Dedicated}}
       📊 <b>Total Quota:</b> {{.TQuota}}
       🔋 <b>Left Quota:</b> {{.LeftQuota}}
+
       📝 <b>Configurations Count:</b> {{.ConfCount}}
       📈 <b>Total Usage:</b> {{.TUsage}}
+      📊 <b>UsagePercentage:</b> {{.UsagePercentage}}
+         <b>Un Used Cycle:</b> {{.NonUseCycle}}
       📅 <b>Joined:</b> {{.Joined}}
+
       {{if .Isdisuser}}
       📉 <b>Distribution Ending In:</b> {{.Disendin}}
       {{end}}
@@ -992,6 +973,7 @@ getinfo_user:
 
       {{if .Iscapped}}
       ⚠️ <b>Cap Ending In:</b> {{.CapEndin}}
+      <b>Cap Days </b> {{.CapDays}}
       {{end}}
 
     parse_mode: "HTML"
@@ -1017,6 +999,7 @@ getinfo_usage:
       - <b>Upload:</b> {{.ConfigUpload}}
       - <b>Download:</b> {{.ConfigDownload}}
       - <b>Total Usage:</b> {{.ConfigUsage}}
+      -  📊 <b>UsagePercentage:</b> {{.UsagePercentage}}
 
       <b>🗓 Usage for the Last {{.UsageDuration}}</b>
       - 🔼 <b>Upload:</b> {{.ConfigUploadtd}}

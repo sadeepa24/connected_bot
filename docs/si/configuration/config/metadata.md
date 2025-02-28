@@ -23,7 +23,8 @@
     "cmd_pages": 7,
     "builder_pages": 1
   },
-  "inline_posts": []
+  "inline_posts": [],
+  "warn_rate": 24
 }
 ```
 
@@ -120,3 +121,9 @@ templates file එකේ දාන්න ඕනෙ. Info page අනුවනන
 
 මේ array එකට කැමති නම් දෙන්න පුලුවන් මේ array එකට chan_post කියලා නමක් දුන්නොත්. ඒ නමින් template එකක් හදන්න ඕනෙ templates file එකේ ඊට පස්සෙ ඒ post එක
 bot ගෙ inline mode එකෙන් share කරන්න පුලුවන්.
+
+### **`warn_rate`**
+
+This feature is new from v1.2.0
+
+user කෙනෙකුට config use කරන්නෙ නැතුව ඉන්න පුලුවන් උපරිම පැය ගණන, default 24 ( මේ පැය ගනන ගියාට පස්සෙ User ට temp limit එකක් වැටෙන ඒ එයාටම අයින් කරන්න පුලුවන් අයින් කරද්දි එයාට විතරක් මේ rate එක අඩු වෙනවා ඒ කියන්නෙ 24 එක 12 වෙනවා. මෙහෙම අඩු වෙවී ගිහින් 0 වුනොත් මාසෙම limit)

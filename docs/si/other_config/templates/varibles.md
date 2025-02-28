@@ -1,39 +1,39 @@
-#Template Varibles
+#Template Variables
 
 ## **`grp_welcome`**
 
-| Variable            | Value Type | Info                              |
-| ------------------- | ---------- | --------------------------------- |
-| `{{.Name}}`         | string     | user's Name                       |
-| `{{.Username}}`     | string     | user Telegram UserName            |
-| `{{.TgId}}`         | int64      | user Telegram ID                  |
-| `{{.IsInChannel}}`  | bool       | Whther user is in channel or not  |
-| `{{.IsBotStarted}}` | bool       | Whther user is started bot or not |
-| `{{.GroupLink}}`    | string     | Group link                        |
-| `{{.ChanLink}}`     | string     | Channel link                      |
+| Variable            | Value Type | Info                                 |
+| ------------------- | ---------- | ------------------------------------ |
+| `{{.Name}}`         | string     | User's name                          |
+| `{{.Username}}`     | string     | User's Telegram username             |
+| `{{.TgId}}`         | int64      | User's Telegram ID                   |
+| `{{.IsInChannel}}`  | bool       | Whether the user is in the channel   |
+| `{{.IsBotStarted}}` | bool       | Whether the user has started the bot |
+| `{{.GroupLink}}`    | string     | Group link                           |
+| `{{.ChanLink}}`     | string     | Channel link                         |
 
 ## **`grp_comeback`**
 
-| Variable            | Value Type | Info                              |
-| ------------------- | ---------- | --------------------------------- |
-| `{{.Name}}`         | string     | user's Name                       |
-| `{{.Username}}`     | string     | user Telegram UserName            |
-| `{{.TgId}}`         | int64      | user Telegram ID                  |
-| `{{.IsInChannel}}`  | bool       | Whther user is in channel or not  |
-| `{{.IsBotStarted}}` | bool       | Whther user is started bot or not |
-| `{{.GroupLink}}`    | string     | Group link                        |
-| `{{.ChanLink}}`     | string     | Channel link                      |
+| Variable            | Value Type | Info                                |
+| ------------------- | ---------- | ----------------------------------- |
+| `{{.Name}}`         | string     | user's Name                         |
+| `{{.Username}}`     | string     | user Telegram UserName              |
+| `{{.TgId}}`         | int64      | user Telegram ID                    |
+| `{{.IsInChannel}}`  | bool       | Whether user is in channel or not   |
+| `{{.IsBotStarted}}` | bool       | Whether user has started bot or not |
+| `{{.GroupLink}}`    | string     | Group link                          |
+| `{{.ChanLink}}`     | string     | Channel link                        |
 
 ## **`chan_welcome`**
 
-| Variable         | Value Type | Info                       |
-| ---------------- | ---------- | -------------------------- |
-| `{{.Name}}`      | string     | user's Name                |
-| `{{.Username}}`  | string     | user Telegram UserName     |
-| `{{.TgId}}`      | int64      | user Telegram ID           |
-| `{{.Chat}}`      | string     | wil be`group` or `channel` |
-| `{{.GroupLink}}` | string     | Group link                 |
-| `{{.ChanLink}}`  | string     | Channel link               |
+| Variable         | Value Type | Info                         |
+| ---------------- | ---------- | ---------------------------- |
+| `{{.Name}}`      | string     | user's Name                  |
+| `{{.Username}}`  | string     | user Telegram UserName       |
+| `{{.TgId}}`      | int64      | user Telegram ID             |
+| `{{.Chat}}`      | string     | Will be `group` or `channel` |
+| `{{.GroupLink}}` | string     | Group link                   |
+| `{{.ChanLink}}`  | string     | Channel link                 |
 
 ## **`chan_comeback`**
 
@@ -81,7 +81,7 @@
 | `{{.Name}}`      | string     | user's Name            |
 | `{{.Username}}`  | string     | user Telegram UserName |
 | `{{.TgId}}`      | int64      | user Telegram ID       |
-| `{{.LeftQuota}}` | string     |
+| `{{.LeftQuota}}` | string     | User's remaining quota |
 
 ## **`start_monthlimited`**
 
@@ -90,7 +90,7 @@
 | `{{.Name}}`       | string     | user's Name            |
 | `{{.Username}}`   | string     | user Telegram UserName |
 | `{{.TgId}}`       | int64      | user Telegram ID       |
-| `{{.LimitendIn}}` | int32      | Days To end Limit      |
+| `{{.LimitendIn}}` | int32      | Days until limit ends  |
 
 ## **`start_restricted`**
 
@@ -126,15 +126,15 @@
 
 ## **`start_regular`**
 
-| Variable               | Value Type | Info                                      |
-| ---------------------- | ---------- | ----------------------------------------- |
-| `{{.Name}}`            | string     | user's Name                               |
-| `{{.Username}}`        | string     | user Telegram UserName                    |
-| `{{.TgId}}`            | int64      | user Telegram ID                          |
-| `{{.AddtionalQuota}}`  | string     | Addtional quota                           |
-| `{{.CalculatedQuota}}` | string     | Calculated Quota For User At the movement |
-| `{{.MUsage}}`          | string     | User Month Usage                          |
-| `{{.Alltime}}`         | string     | User Alltime Usage                        |
+| Variable               | Value Type | Info                                    |
+| ---------------------- | ---------- | --------------------------------------- |
+| `{{.Name}}`            | string     | user's Name                             |
+| `{{.Username}}`        | string     | user Telegram UserName                  |
+| `{{.TgId}}`            | int64      | user Telegram ID                        |
+| `{{.AddtionalQuota}}`  | string     | Additional quota                        |
+| `{{.CalculatedQuota}}` | string     | Calculated quota for user at the moment |
+| `{{.MUsage}}`          | string     | User's monthly usage                    |
+| `{{.Alltime}}`         | string     | User's all-time usage                   |
 
 ## **`start_removed`**
 
@@ -153,7 +153,7 @@
 | `{{.Name}}`         | string     | user's Name                                |
 | `{{.Username}}`     | string     | user Telegram UserName                     |
 | `{{.TgId}}`         | int64      | user Telegram ID                           |
-| `{{.CreaterCount}}` | int16      | Available Creator Count (always 1 for now) |
+| `{{.CreaterCount}}` | int16      | Available creator count (always 1 for now) |
 
 ## **`create_conf_limit`**
 
@@ -168,7 +168,7 @@
 | `{{.InName}}`         | string     | Inbound Name (tag name)       |
 | `{{.InType}}`         | string     | Inbound Type `vless`          |
 | `{{.InPort}}`         | int        | Port                          |
-| `{{.InAddr}}`         | string     | Listen Addres                 |
+| `{{.InAddr}}`         | string     | Listen address                |
 | `{{.InInfo}}`         | string     | Inbound Info                  |
 | `{{.Domain}}`         | string     | Domain                        |
 | `{{.PublicIp}}`       | string     | Public IP                     |
@@ -182,13 +182,13 @@
 | `{{.OutName}}` | string     | Outbound Name    |
 | `{{.OutType}}` | string     | Outbound Type    |
 | `{{.OutInfo}}` | string     | Outbound Info    |
-| `{{.Latency}}` | int32      | Outbound Latancy |
+| `{{.Latency}}` | int32      | Outbound latency |
 
 ## **`create_available_quota`**
 
 | Variable | Value Type | Info            |
 | -------- | ---------- | --------------- |
-| `Quota`  | string     | Available Quota |
+| `Quota`  | string     | Available quota |
 
 ## **`create_result`**
 
@@ -279,18 +279,27 @@
 | -------------- | ---------- |
 | `{{.EndDate}}` | string     |
 
-## **`setcap_reply`**
+## **`setcap_warn`** (from v1.2.0)
+
+| Variable         | Value Type | Info                              |
+| ---------------- | ---------- | --------------------------------- |
+| `{{.LeftQuota}}` | string     | User's remaining quota            |
+| `{{.MinCap}}`    | string     | Minimum values that can be capped |
+| `{{.CapRange}}`  | string     | Range within which to cap         |
+
+## **`setcap_get`**
+
+| Variable         | Value Type | Info                                     |
+| ---------------- | ---------- | ---------------------------------------- |
+| `{{.LeftQuota}}` | string     | User's remaining quota v1.2.0            |
+| `{{.MinCap}}`    | string     | Minimum values that can be capped v1.2.0 |
+| `{{.CapRange}}`  | string     | Range within which to cap v1.2.0         |
+
+## **`setcap_reply`** removed from v1.2.0
 
 | Variable       | Value Type | Info               |
 | -------------- | ---------- | ------------------ |
 | `{{.EndDate}}` | string     | Cap Quota End Data |
-
-## **`setcap_get`**
-
-| Variable            | Value Type | Info                |
-| ------------------- | ---------- | ------------------- |
-| `{{.LeftQuota}}`    | string     | Available Quota     |
-| `{{.CapbleQuouta}}` | string     | Quota can be capped |
 
 ## **`gift_reciver`**
 
@@ -312,15 +321,15 @@
 
 Overall Usage For all config
 
-| Variable             | Value Type | Info                              |
-| -------------------- | ---------- | --------------------------------- |
-| `{{.TDownload}}`     | string     | Total download since last refresh |
-| `{{.TUpload}}`       | string     | Total upload since last refresh   |
-| `{{.UsageDuration}}` | string     | Time elpsed After Last Db refresh |
-| `{{.MDownload}}`     | string     | Total Download For Month          |
-| `{{.MUpload}}`       | string     | Total Download For Month          |
-| `{{.MonthAll}}`      | string     | Total Usage For Month             |
-| `{{.Alltime}}`       | string     | All Time Usage                    |
+| Variable             | Value Type | Info                               |
+| -------------------- | ---------- | ---------------------------------- |
+| `{{.TDownload}}`     | string     | Total download since last refresh  |
+| `{{.TUpload}}`       | string     | Total upload since last refresh    |
+| `{{.UsageDuration}}` | string     | Time elapsed after last DB refresh |
+| `{{.MDownload}}`     | string     | Total Download For Month           |
+| `{{.MUpload}}`       | string     | Total Download For Month           |
+| `{{.MonthAll}}`      | string     | Total Usage For Month              |
+| `{{.Alltime}}`       | string     | All Time Usage                     |
 
 ## **`status_callback`**
 
@@ -330,7 +339,7 @@ This is Specific to selectedt config
 | -------------------- | -------------------- | -------------------------------------------- |
 | `{{.TDownload}}`     | string               | Total download since last refresh            |
 | `{{.TUpload}}`       | string               | Total upload since last refresh              |
-| `{{.UsageDuration}}` | string               | Time elpsed After Last Db refresh            |
+| `{{.UsageDuration}}` | string               | Time elapsed after last DB refresh           |
 | `{{.MDownload}}`     | string               | Total download for the current month         |
 | `{{.MUpload}}`       | string               | Total upload for the current month           |
 | `{{.Online}}`        | int                  | Number of online users                       |
@@ -346,27 +355,32 @@ This is Specific to selectedt config
 
 ## **`getinfo_user`**
 
-| Variable              | Value Type | Info                        |
-| --------------------- | ---------- | --------------------------- |
-| `{{.Name}}`           | string     | user's Name                 |
-| `{{.Username}}`       | string     | user Telegram UserName      |
-| `{{.TgId}}`           | int64      | user Telegram ID            |
-| `{{.Dedicated}}`      | string     | Dedicated Quota info        |
-| `{{.TQuota}}`         | string     | Total quota                 |
-| `{{.LeftQuota}}`      | string     | Remaining quota             |
-| `{{.ConfCount}}`      | int16      | Configuration count         |
-| `{{.TUsage}}`         | string     | Total usage                 |
-| `{{.GiftQuota}}`      | string     | Gifted quota                |
-| `{{.Joined}}`         | string     | Join date                   |
-| `{{.CapEndin}}`       | string     | Cap end date                |
-| `{{.Disendin}}`       | int32      | Days until distribution end |
-| `{{.UsageResetIn}}`   | int32      | Days until usage reset      |
-| `{{.AlltimeUsage}}`   | string     | All-time usage              |
-| `{{.Iscapped}}`       | bool       | Whether user is capped      |
-| `{{.Isgifted}}`       | bool       | Whether user is gifted      |
-| `{{.Isdisuser}}`      | bool       | Whether user is disabled    |
-| `{{.IsMonthLimited}}` | bool       | Whether user is limited     |
-| `{{.JoinedPlace}}`    | uint       | Join place                  |
+| Variable               | Value Type | Info                                  |
+| ---------------------- | ---------- | ------------------------------------- |
+| `{{.Name}}`            | string     | user's Name                           |
+| `{{.Username}}`        | string     | user Telegram UserName                |
+| `{{.TgId}}`            | int64      | user Telegram ID                      |
+| `{{.Dedicated}}`       | string     | Dedicated Quota info                  |
+| `{{.TQuota}}`          | string     | Total quota                           |
+| `{{.LeftQuota}}`       | string     | Remaining quota                       |
+| `{{.ConfCount}}`       | int16      | Configuration count                   |
+| `{{.TUsage}}`          | string     | Total usage                           |
+| `{{.GiftQuota}}`       | string     | Gifted quota                          |
+| `{{.Joined}}`          | string     | Join date                             |
+| `{{.CapEndin}}`        | string     | Cap end date                          |
+| `{{.Disendin}}`        | int32      | Days until distribution end           |
+| `{{.UsageResetIn}}`    | int32      | Days until usage reset                |
+| `{{.AlltimeUsage}}`    | string     | All-time usage                        |
+| `{{.Iscapped}}`        | bool       | Whether user is capped                |
+| `{{.Isgifted}}`        | bool       | Whether user is gifted                |
+| `{{.Isdisuser}}`       | bool       | Whether user is disabled              |
+| `{{.IsMonthLimited}}`  | bool       | Whether user is limited               |
+| `{{.IsTemplimited}}`   | bool       | Whether user is tempory limited       |
+| `{{.TempLimitRate}}`   | int16      | Current Temp Limitation Ratio         |
+| `{{.JoinedPlace}}`     | uint       | Join place                            |
+| `{{.CapDays}}`         | int32      | User Capped Days                      |
+| `{{.UsagePercentage}}` | float64    | Usage Percentage for this month       |
+| `{{.NonUseCycle}}`     | int32      | Cycle count user didn't use in streak |
 
 ## **`getinfo_usage`**
 
@@ -386,7 +400,7 @@ This is Specific to selectedt config
 | `{{.UsageDuration}}`    | string     | time from last db refresh                                                |
 | `{{.ConfigUsage}}`      | string     | Config Full Usage (down + up)                                            |
 | `{{.ConfigUsagetd}}`    | string     | Config Full Usage (down + up) For last db refresh                        |
-| `{{.UsedPresenTage}}`   | float64    | Usage Presentage                                                         |
+| `{{.UsedPresenTage}}`   | float64    | Usage percentage (from v1.2.0)                                           |
 | `{{.ResetDays}}`        | int32      | Days to Renew Config (reset usages)                                      |
 | `{{.PublicIp}}`         | string     | Selected Config IP                                                       |
 | `{{.PublicDomain}}`     | string     | Selected Config Domain                                                   |
@@ -539,7 +553,7 @@ This is Specific to selectedt config
 | `{{.Username}}` | string     | Common User Info |
 | `{{.TgId}}`     | int64      |
 
-## **`overview`**
+## **`overview`** ( removed from v1.2.0)
 
 This is for admins
 

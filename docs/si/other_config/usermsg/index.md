@@ -134,6 +134,13 @@
   "MsgQuotawarnlow": "⚠️ Your quota must be greater than you'r current usage",
   "MsgQuotawarnzero": "⚠️ Value must be greater than zero",
 
-  "MsgNoQuota": "You Don't Have Available Quota To create a new config, if you want to create a new config, you can change the quota of the existing config or delete"
+  "MsgNoQuota": "⚠️ You don't have available quota to create a new configuration. If you want to create a new configuration, you can change the quota of an existing configuration or delete one.",
+  "MsgTempOver": "🚫 You have reached the end of the line. Due to repeated non-usage and bandwidth wastage, you are completely limited for this month.",
+  "MsgTempMonth": "🚫 You can't be freed now because you have repeatedly not used the service and wasted bandwidth. You can't use the service until the next usage reset day.",
+  "MsgFree": "✅ You are now free from temporary limitations, and all your configurations are online.",
+  "MsgTempMonthLimited": "🚫 You are a month-limited user. This limitation cannot be undone. Please contact the admin to release this.",
+  "MsgTempNoLimit": "✅ You don't have any limitations yet. You are as free as a bird.",
+  "MsgTempLimitAlert": "⚠️ You are temporarily limited. Use /free to see whether you can be freed or not.",
+  "MsgCannotCap": "🚫 You can't cap quota because you have already used it all."
 }
 ```
