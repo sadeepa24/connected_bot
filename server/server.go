@@ -211,7 +211,7 @@ func (w *webhookls) Accept() (net.Conn, error) {
 			w.logger.Warn("Unknow Remote Connection Rehected " + conn.RemoteAddr().String())
 			conn.Write(w.rejectMessage)
 			conn.Close()
-			return nil, net.UnknownNetworkError("unknown remote addr " + conn.RemoteAddr().Network(), )
+			return nil, UnknownRemote("unknown remote addr " + conn.RemoteAddr().Network(), )
 		}
 	}
 	if w.tlsconfig != nil {

@@ -216,3 +216,8 @@ func (n *IPNode) isValid(ip net.IP, byteIndex int) bool {
 	return false
 }
 
+type UnknownRemote string
+
+func (e UnknownRemote) Error() string   { return "unknown remote " + string(e) }
+func (e UnknownRemote) Timeout() bool   { return false }
+func (e UnknownRemote) Temporary() bool { return true }
