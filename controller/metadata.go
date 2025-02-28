@@ -49,6 +49,7 @@ type MetadataConf struct {
 	HelperInfo bottype.HelpCommandInfo `json:"help_cmd,omitempty"`
 
 	InlinePost []string `json:"inline_posts,omitempty"`
+	Langs []string  `json:"allowed_langs,omitempty"`
 
 	CommonWarnRatio int16  `json:"warn_rate,omitempty"`
 }
@@ -262,6 +263,7 @@ type Overview struct {
 	TempLimitedUser int64
 	TotalConfCount int64
 	ActiveConfCount int64
+	TotalUpdates int64
 
 
 
@@ -290,6 +292,7 @@ func (o *Overview) String() string {
 			"Temp Limited User: %d\n\n"+
 			"Total Conf Count: %d\n"+
 			"Active Conf Count: %d\n\n"+
+			"Total Update Recived (until last refresh): %d\n"+
 			"Last Refresh: %s\n",
 		o.BandwidthAvailable.BToString(),
 		o.MonthTotal.BToString(),
@@ -304,6 +307,7 @@ func (o *Overview) String() string {
 		o.TempLimitedUser,
 		o.TotalConfCount,
 		o.ActiveConfCount,
+		o.TotalUpdates,
 		o.LastRefresh.Format(time.RFC3339),
 	)
 }

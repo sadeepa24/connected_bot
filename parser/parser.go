@@ -131,7 +131,7 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	if err != nil {
 		return errors.Join(errors.New("tg request read error from parser"), err)
 	}
-
+	p.ctrl.UpdateCounter.Add(1)
 	if p.ctrl.CheckLock() {
 		p.logger.Debug("watchman locked when proc update " + tgbotapimsg.Info())
 		// Crucial for handling updates like ChatMember

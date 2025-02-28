@@ -101,7 +101,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				NonUseCycle: upx.User.EmptyCycle,
 
 
-				UsagePercentage: ((tusage * 100)/(Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota)).String(),
+				UsagePercentage: ((tusage * 100)/(Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota)).Float64(),
 				GiftQuota: upx.User.GiftQuota.BToString(),
 				Joined:    upx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: C.Bwidth(u.ctrl.CommonQuota.Load()).BToString(),
@@ -111,6 +111,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 				ConfCount: Usersession.GetUser().ConfigCount,
 				CapEndin:  upx.User.Captime.AddDate(0, 0, int(upx.User.CapDays)).String(),
+				CapDays: upx.User.CapDays,
 
 				Disendin:     ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,
 				UsageResetIn: ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,

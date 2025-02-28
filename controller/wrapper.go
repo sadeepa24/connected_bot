@@ -33,6 +33,7 @@ type Controller struct {
 
 	Lockval    *atomic.Int32
 	wLockCounter *atomic.Int32
+	UpdateCounter *atomic.Int64
 	Metaconfig *MetadataConf
 	//sboxio     *SboxIO
 	*Metadata
@@ -104,6 +105,7 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		Lockval:    new(atomic.Int32),
 		wLockCounter: new(atomic.Int32),
 		oprations: new(atomic.Int32),
+		UpdateCounter: new(atomic.Int64),
 		waitCritical: new(atomic.Bool),
 		mu: sync.RWMutex{},
 		lastDbRefresh: &atomic.Value{},

@@ -964,13 +964,13 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	}
 
 	Messagesession.Edit(struct {
-		Leftquota    string
-		CapbleQuouta string
-		CapRange string
+		LeftQuota    string
+		MinCap string
+		CapRange     string
 	}{
-		Leftquota:    Usersession.LeftQuota().BToString(),
-		CapbleQuouta: fullUsage.Full().String(),
-		CapRange: fullUsage.Full().BToString() + " -- " + upx.User.CalculatedQuota.BToString() ,
+		LeftQuota:    Usersession.LeftQuota().BToString(),
+		MinCap: fullUsage.Full().BToString(),
+		CapRange:     fullUsage.Full().BToString() + " -- " + upx.User.CalculatedQuota.BToString(),
 	}, btns, C.TmpcapWarn)
 
 	answer, err := u.callback.GetcallbackContext(upx.Ctx, btns.ID())
@@ -988,11 +988,11 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 
 	Messagesession.Edit(struct {
 		LeftQuota    string
-		CapbleQuouta string
+		MinCap string
 		CapRange string
 	}{
 		LeftQuota:    Usersession.LeftQuota().BToString(),
-		CapbleQuouta: fullUsage.Full().BToString(),
+		MinCap: fullUsage.Full().BToString(),
 		CapRange: fullUsage.Full().BToString() + " -- " + upx.User.CalculatedQuota.BToString(),
 	}, nil, C.Tmpcapreply)
 

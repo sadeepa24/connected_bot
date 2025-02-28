@@ -235,6 +235,7 @@ type Metadata struct {
 
 	PublicDomain string
 	PublicIp string
+	TotalUpdates int64
 
 	CommonWarnRatio int16
 }

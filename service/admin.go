@@ -377,7 +377,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 					Username: enduserupx.User.User.Username.String,
 				},
 				NonUseCycle: upx.User.EmptyCycle,
-				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota)).String(),
+				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota)).Float64(),
 				GiftQuota: enduserupx.User.GiftQuota.BToString(),
 				Joined:    enduserupx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: C.Bwidth(a.ctrl.CommonQuota.Load()).BToString(),
@@ -386,6 +386,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				TUsage:    tusage.BToString(),
 				ConfCount: endusersession.GetUser().ConfigCount,
 				CapEndin:  enduserupx.User.Captime.AddDate(0, 0, int(enduserupx.User.CapDays)).String(),
+				CapDays: enduserupx.User.CapDays,
 				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 
 				Disendin:     ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
@@ -824,7 +825,7 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 }
 
 func (a *Adminsrv) overview(calls common.Tgcalls ) error {
-	calls.Alertsender(a.ctrl.Overview.String())
+	calls.Alertsender(a.ctrl.Overview.String() + fmt.Sprintf("Updates Since Last Refresh: %d", a.ctrl.UpdateCounter.Load()))
 	return nil
 }
 

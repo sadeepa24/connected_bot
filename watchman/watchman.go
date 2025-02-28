@@ -819,6 +819,11 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	dbmeta.Maxconfigcount = w.ctrl.Maxconfigcount
 	dbmeta.VerifiedUserCount = predata.verifiedusercount
 	dbmeta.CommonQuota = MainCommonUserQuota
+	dbmeta.TotalUpdates += w.ctrl.UpdateCounter.Swap(0)
+
+	w.ctrl.Overview.Mu.Lock()
+	w.ctrl.Overview.TotalUpdates = dbmeta.TotalUpdates
+	w.ctrl.Overview.Mu.Unlock()
 
 	if docount {
 		w.ctrl.CheckCount.Add(1)
