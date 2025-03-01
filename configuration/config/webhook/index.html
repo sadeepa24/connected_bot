@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#addr" class="md-skip">
+        <a href="#http_path" class="md-skip">
           අන්තර්ගතය වෙත යන්න
         </a>
       
@@ -84,9 +84,7 @@
     
       
 
-  
-
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="ශීර්ෂය">
     <a href="../../.." title="Connected Bot" class="md-header__button md-logo" aria-label="Connected Bot" data-md-component="logo">
       
@@ -198,8 +196,14 @@
     
   </nav>
   
+</header>
     
+    <div class="md-container" data-md-component="container">
       
+      
+        
+          
+            
 <nav class="md-tabs" aria-label="ටැබ්ස්" data-md-component="tabs">
   <div class="md-grid">
     <ul class="md-tabs__list">
@@ -283,16 +287,30 @@
   
 
       
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../example/" class="md-tabs__link">
+          
+  
+    
+  
+  Example Configs
+
+        </a>
+      </li>
+    
+  
+
+      
     </ul>
   </div>
 </nav>
-    
-  
-</header>
-    
-    <div class="md-container" data-md-component="container">
-      
-      
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -368,8 +386,6 @@
           
         
       
-        
-      
     
     
       
@@ -400,11 +416,6 @@
 
             </a>
             
-              
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
           </div>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
@@ -414,155 +425,6 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    Example Configs
-    
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2">
-            <span class="md-nav__icon md-icon"></span>
-            Example Configs
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../quickstart/example/config/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    bot config
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../quickstart/example/sing-box/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    sing-box config
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../quickstart/example/template/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    message template
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../quickstart/example/store/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    store
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
               
             
           </ul>
@@ -781,42 +643,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#addr" class="md-nav__link">
-    <span class="md-ellipsis">
-      addr
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cert" class="md-nav__link">
-    <span class="md-ellipsis">
-      cert
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key" class="md-nav__link">
-    <span class="md-ellipsis">
-      key
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#server_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      server_name
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#http_path" class="md-nav__link">
     <span class="md-ellipsis">
       http_path
@@ -844,6 +670,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#req_reject_message" class="md-nav__link">
+    <span class="md-ellipsis">
+      req_reject_message
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#allowed_updates" class="md-nav__link">
     <span class="md-ellipsis">
       allowed_updates
@@ -858,6 +693,75 @@
       disable_setwebhook
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listen_option" class="md-nav__link">
+    <span class="md-ellipsis">
+      listen_option
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="listen_option">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#addr" class="md-nav__link">
+    <span class="md-ellipsis">
+      addr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cert" class="md-nav__link">
+    <span class="md-ellipsis">
+      cert
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key" class="md-nav__link">
+    <span class="md-ellipsis">
+      key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      server_name
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#allowd_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      allowd_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reject_message" class="md-nav__link">
+    <span class="md-ellipsis">
+      reject_message
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1483,6 +1387,374 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../example/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Example Configs
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Example Configs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    v1.0.0
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            v1.0.0
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.0.0/config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    bot config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.0.0/sing-box/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    sing-box config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.0.0/template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    message template
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.0.0/store/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    store
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    v1.2.0
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            v1.2.0
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.2.0/config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    bot config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.2.0/sing-box/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    sing-box config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.2.0/template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    message template
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../example/v1.2.0/store/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    store
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -1506,42 +1778,6 @@
       පටුන
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#addr" class="md-nav__link">
-    <span class="md-ellipsis">
-      addr
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cert" class="md-nav__link">
-    <span class="md-ellipsis">
-      cert
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key" class="md-nav__link">
-    <span class="md-ellipsis">
-      key
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#server_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      server_name
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#http_path" class="md-nav__link">
@@ -1571,6 +1807,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#req_reject_message" class="md-nav__link">
+    <span class="md-ellipsis">
+      req_reject_message
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#allowed_updates" class="md-nav__link">
     <span class="md-ellipsis">
       allowed_updates
@@ -1585,6 +1830,75 @@
       disable_setwebhook
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listen_option" class="md-nav__link">
+    <span class="md-ellipsis">
+      listen_option
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="listen_option">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#addr" class="md-nav__link">
+    <span class="md-ellipsis">
+      addr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cert" class="md-nav__link">
+    <span class="md-ellipsis">
+      cert
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key" class="md-nav__link">
+    <span class="md-ellipsis">
+      key
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      server_name
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#allowd_cidr" class="md-nav__link">
+    <span class="md-ellipsis">
+      allowd_cidr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reject_message" class="md-nav__link">
+    <span class="md-ellipsis">
+      reject_message
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1610,22 +1924,43 @@
   <h1>webhook</h1>
 
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;addr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.0.0.0:88&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;cert&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./tls/origin.connectedbot.site/fullchain.pem&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./tls/origin.connectedbot.site/privkey.pem&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;server_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;origin.connectedbot.site&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;disable_setwebhook&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;http_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;full_url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://origin.connectedbot.site:88/&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;secret&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;3t6dsidt2hj6k2ns23jsah6ds52ndm32dchs&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;req_reject_message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Request From Unknown&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;allowed_updates&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="s2">&quot;message&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;callback_query&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;chat_member&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="s2">&quot;inline_query&quot;</span>
 <span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;disable_setwebhook&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">  </span><span class="nt">&quot;listen_option&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;server_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;origin.connectedbot.site&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;addr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.0.0.0:88&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;cert&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./tls/origin.connectedbot.site/fullchain.pem&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;./tls/origin.connectedbot.site/privkey.pem&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;allowd_cidr&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;149.154.160.0/20&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;91.108.4.0/22&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;reject_message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rejected conn&quot;</span>
+<span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
+<h3 id="http_path"><strong><code>http_path</code></strong></h3>
+<p>telegram එකට webhook rejister කරන්නෙ මේ path එකෙන් මේ path එක හරියටම දෙන්න full url එකේ</p>
+<h3 id="full_url"><strong><code>full_url</code></strong></h3>
+<p>ඔයා උඩ දීපු settings අනුව full url එක
+ex :=</p>
+<p>88 න් listen කරලා ඔයාගෙ domain එක example.com කියලා හිතුවොත් path එක / දුන්නොත් full url වෙන්නෙ
+https://example.com:88/</p>
+<h3 id="secret"><strong><code>secret</code></strong></h3>
+<p>මේක තමයි එන request verify කරන්නෙ අනිවාරෙන් මේක දාන්න string එකක් මොකක් හරි ඔයාගෙ Uniq දේක hash එකක් වගෙ use කරන්න</p>
+<h3 id="req_reject_message"><strong><code>req_reject_message</code></strong></h3>
+<p>අදාල නැති http req එකක් recive වුනහම. ඒකට අදාලව දෙන response message එක.</p>
+<h3 id="allowed_updates"><strong><code>allowed_updates</code></strong></h3>
+<p>තියෙන ටික එහෙමම තියන්න, වෙනස් කරන්න ඕනෙ නැ</p>
+<h3 id="disable_setwebhook"><strong><code>disable_setwebhook</code></strong></h3>
+<p>මේක true දාගන්න false දැම්මොත් webhook එක rejister කරන්නෙ නැ telegram වල.</p>
+<h2 id="listen_option"><strong>listen_option</strong></h2>
 <h3 id="addr"><strong><code>addr</code></strong></h3>
 <p>telegram එකෙන් request එන්නෙ මේ listen වෙන socket එකට, telegram port හතරක support කරනවා මේකට 80, 88, 443, 8443, 80 &amp; 443 use මෙතන use කරන්න එපා vpn inbound වලට එව්වා use කරන්න බරුව යනවා එතකොට. මෙතන දෙන port එකම හරියට <code>full_url</code> එකේ දාන්න ඕනෙ.</p>
 <h3 id="cert"><strong><code>cert</code></strong></h3>
@@ -1636,19 +1971,10 @@
 /root/etc/letsencrypt/live/yourdomain.com/privkey.pem</p>
 <h3 id="server_name"><strong><code>server_name</code></strong></h3>
 <p>ඔයාගෙ ssl cert ගත්ත domain එක මෙතනට දෙන්න</p>
-<h3 id="http_path"><strong><code>http_path</code></strong></h3>
-<p>telegram එකට webhook rejister කරන්නෙ මේ path එකෙන් මේ path එක හරියටම දෙන්න full url එකේ</p>
-<h3 id="full_url"><strong><code>full_url</code></strong></h3>
-<p>ඔයා උඩ දීපු settings අනුව full url එක
-ex :=</p>
-<p>88 න් listen කරලා ඔයාගෙ domain එක example.com කියලා හිතුවොත් path එක / දුන්නොත් full url වෙන්නෙ
-https://example.com:88/</p>
-<h3 id="secret"><strong><code>secret</code></strong></h3>
-<p>මේක තමයි එන request verify කරන්නෙ අනිවාරෙන් මේක දාන්න string එකක් මොකක් හරි ඔයාගෙ Uniq දේක hash එකක් වගෙ use කරන්න</p>
-<h3 id="allowed_updates"><strong><code>allowed_updates</code></strong></h3>
-<p>තියෙන ටික එහෙමම තියන්න, වෙනස් කරන්න ඕනෙ නැ</p>
-<h3 id="disable_setwebhook"><strong><code>disable_setwebhook</code></strong></h3>
-<p>මේක true දාගන්න false දැම්මොත් webhook එක rejister කරන්නෙ නැ telegram වල.</p>
+<h3 id="allowd_cidr"><strong><code>allowd_cidr</code></strong></h3>
+<p>මෙතනට දාලා තියෙන ip rangers වලට විතරක් webhook එකට req කරන්න පුලුවන්. Telegram වලින් req එන්නෙ <code>149.154.160.0/20</code> <code>91.108.4.0/22</code> මේ range වලින් විතරයි ඒ range දෙක දාන්න මෙතනට මෙතනට මුකුත් range දාලා නැත්තන් Ip filter එක off විදියට වැඩ කරන්නෙ. ip addres එක reject වුනොත් එතනින් එහාට tls handhsake එකටත් කලින් connection terminate වෙනවා.</p>
+<h3 id="reject_message"><strong><code>reject_message</code></strong></h3>
+<p>inbound connection එක allowd_cidr වල නැති ip addr එකකින් ආවොත් connection එක reject වෙද්දි connection එකට send කරන message එක.</p>
 
 
 
@@ -1709,7 +2035,7 @@ https://example.com:88/</p>
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.expand", "navigation.path", "navigation.sections", "header.autohide", "content.code.copy", "content.code.select", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "\u0d9a\u0ddc\u0db4\u0dd2 \u0d9a\u0dc5\u0dcf", "clipboard.copy": "\u0d9a\u0ddc\u0db4\u0dd2 \u0d9a\u0dbb\u0db1\u0dca\u0db1", "search.result.more.one": "\u0dad\u0dc0 1 \u0db4\u0dca\u200d\u0dbb\u0dad\u0dd2\u0db5\u0dbd\u0dba\u0d9a\u0dca", "search.result.more.other": "\u0dad\u0dc0 \u0db4\u0dca\u200d\u0dbb\u0dad\u0dd2\u0db5\u0dbd # \u0d9a\u0dca", "search.result.none": "\u0d9a\u0dd2\u0dc3\u0dd2\u0dc0\u0d9a\u0dca \u0dc4\u0db8\u0dd4 \u0db1\u0ddc\u0dc0\u0dd4\u0dab\u0dd2", "search.result.one": "1 \u0d9c\u0dd0\u0dbd\u0db4\u0dd9\u0db1 \u0d9c\u0ddc\u0db1\u0dd4\u0dc0\u0d9a\u0dca", "search.result.other": "\u0d9c\u0dd0\u0dbd\u0db4\u0dd9\u0db1 \u0d9c\u0ddc\u0db1\u0dd4 # \u0d9a\u0dca", "search.result.placeholder": "\u0dc3\u0dd9\u0dc0\u0dd3\u0db8\u0da7 \u0da7\u0dba\u0dd2\u0db4\u0dca \u0d9a\u0dbb\u0db1\u0dca\u0db1", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tracking", "navigation.tabs", "navigation.indexes", "navigation.expand", "navigation.path", "navigation.sections", "header.autohide", "content.code.copy", "content.code.select", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "\u0d9a\u0ddc\u0db4\u0dd2 \u0d9a\u0dc5\u0dcf", "clipboard.copy": "\u0d9a\u0ddc\u0db4\u0dd2 \u0d9a\u0dbb\u0db1\u0dca\u0db1", "search.result.more.one": "\u0dad\u0dc0 1 \u0db4\u0dca\u200d\u0dbb\u0dad\u0dd2\u0db5\u0dbd\u0dba\u0d9a\u0dca", "search.result.more.other": "\u0dad\u0dc0 \u0db4\u0dca\u200d\u0dbb\u0dad\u0dd2\u0db5\u0dbd # \u0d9a\u0dca", "search.result.none": "\u0d9a\u0dd2\u0dc3\u0dd2\u0dc0\u0d9a\u0dca \u0dc4\u0db8\u0dd4 \u0db1\u0ddc\u0dc0\u0dd4\u0dab\u0dd2", "search.result.one": "1 \u0d9c\u0dd0\u0dbd\u0db4\u0dd9\u0db1 \u0d9c\u0ddc\u0db1\u0dd4\u0dc0\u0d9a\u0dca", "search.result.other": "\u0d9c\u0dd0\u0dbd\u0db4\u0dd9\u0db1 \u0d9c\u0ddc\u0db1\u0dd4 # \u0d9a\u0dca", "search.result.placeholder": "\u0dc3\u0dd9\u0dc0\u0dd3\u0db8\u0da7 \u0da7\u0dba\u0dd2\u0db4\u0dca \u0d9a\u0dbb\u0db1\u0dca\u0db1", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
       <script src="../../../assets/javascripts/bundle.5090c770.min.js"></script>

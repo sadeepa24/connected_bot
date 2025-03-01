@@ -2,176 +2,230 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
         <loc>None./</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="None"/>
     </url>
     <url>
+        <loc>Nonechanges/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Nonechanges/"/>
+    </url>
+    <url>
+        <loc>Nonecmd/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Nonecmd/"/>
+    </url>
+    <url>
+        <loc>Nonecmd/admin/admin/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Nonecmd/admin/admin/"/>
+    </url>
+    <url>
+        <loc>Nonecmd/user/user/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Nonecmd/user/user/"/>
+    </url>
+    <url>
         <loc>Noneconfiguration/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/"/>
     </url>
     <url>
         <loc>Noneconfiguration/config/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/config/"/>
     </url>
     <url>
         <loc>Noneconfiguration/config/log/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/config/log/"/>
     </url>
     <url>
         <loc>Noneconfiguration/config/metadata/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/config/metadata/"/>
     </url>
     <url>
         <loc>Noneconfiguration/config/watchman/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/config/watchman/"/>
     </url>
     <url>
         <loc>Noneconfiguration/config/webhook/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/config/webhook/"/>
     </url>
     <url>
         <loc>Noneconfiguration/sing-box/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/sing-box/"/>
     </url>
     <url>
         <loc>Noneconfiguration/sing-box/inbounds/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/sing-box/inbounds/"/>
     </url>
     <url>
         <loc>Noneconfiguration/sing-box/outbounds/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/sing-box/outbounds/"/>
     </url>
     <url>
         <loc>Noneconfiguration/sing-box/routing/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneconfiguration/sing-box/routing/"/>
     </url>
     <url>
         <loc>Nonedeveloper_guide/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Nonedeveloper_guide/"/>
     </url>
     <url>
+        <loc>Noneexample/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.0.0/config/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.0.0/config/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.0.0/sing-box/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.0.0/sing-box/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.0.0/store/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.0.0/store/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.0.0/template/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.0.0/template/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.2.0/config/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.2.0/config/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.2.0/sing-box/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.2.0/sing-box/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.2.0/store/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.2.0/store/"/>
+    </url>
+    <url>
+        <loc>Noneexample/v1.2.0/template/</loc>
+        <lastmod>2025-03-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="si" href="Noneexample/v1.2.0/template/"/>
+    </url>
+    <url>
         <loc>Noneinstallation/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneinstallation/"/>
     </url>
     <url>
         <loc>Noneinstallation/build_from_source/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneinstallation/build_from_source/"/>
     </url>
     <url>
         <loc>Noneother_config/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/"/>
     </url>
     <url>
         <loc>Noneother_config/store/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/store/"/>
     </url>
     <url>
         <loc>Noneother_config/store/dns_servers/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/store/dns_servers/"/>
     </url>
     <url>
         <loc>Noneother_config/store/dnsrules/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/store/dnsrules/"/>
     </url>
     <url>
         <loc>Noneother_config/store/outbounds/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/store/outbounds/"/>
     </url>
     <url>
         <loc>Noneother_config/store/routerule/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/store/routerule/"/>
     </url>
     <url>
         <loc>Noneother_config/store/ruleset/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/store/ruleset/"/>
     </url>
     <url>
         <loc>Noneother_config/templates/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/templates/"/>
     </url>
     <url>
         <loc>Noneother_config/templates/varibles/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/templates/varibles/"/>
     </url>
     <url>
         <loc>Noneother_config/usermsg/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Noneother_config/usermsg/"/>
     </url>
     <url>
         <loc>Nonequickstart/</loc>
-        <lastmod>2025-02-08</lastmod>
+        <lastmod>2025-03-01</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="si" href="Nonequickstart/"/>
-    </url>
-    <url>
-        <loc>Nonequickstart/example/config/</loc>
-        <lastmod>2025-02-08</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="si" href="Nonequickstart/example/config/"/>
-    </url>
-    <url>
-        <loc>Nonequickstart/example/sing-box/</loc>
-        <lastmod>2025-02-08</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="si" href="Nonequickstart/example/sing-box/"/>
-    </url>
-    <url>
-        <loc>Nonequickstart/example/store/</loc>
-        <lastmod>2025-02-08</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="si" href="Nonequickstart/example/store/"/>
-    </url>
-    <url>
-        <loc>Nonequickstart/example/template/</loc>
-        <lastmod>2025-02-08</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="si" href="Nonequickstart/example/template/"/>
     </url>
 </urlset>
