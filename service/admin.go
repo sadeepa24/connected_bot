@@ -437,7 +437,6 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				err = endusersession.ActivateAll()
 				if err != nil {
 					Messagesession.SendAlert("config activation failed" + err.Error(), nil)
-					endusersession.GetUser().IsMonthLimited = true
 					continue
 				}
 				endusermsg.SendAlert("🎉you'r monthlimitation removed by admin 🍾", nil)
@@ -452,8 +451,6 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				err = endusersession.ActivateAll()
 				if err != nil {
 					Messagesession.SendAlert("config activation failed" + err.Error(), nil)
-					endusersession.GetUser().Templimited = true
-					endusersession.GetUser().WarnRatio = 0
 					continue
 				}
 				endusermsg.SendAlert("🎉 Your temporary limitation has been removed and warning rate reset by admin 🍾", nil)
