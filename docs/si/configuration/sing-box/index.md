@@ -42,7 +42,7 @@ outbound direct වෙලා torrent traffic එකක් නම් එන්න
 connection එක වෙන Outbound එකකින් නම් යන්නෙ (ex- warp, proxy, wireguard, or anyother) sniff වෙන්නෙ නැ. connection එක route කරනවා විතරයි. මෙහම කරන්නෙ memory usage අඩු කරගන්න.
 
 ##From v1.2.0
-**connected bot v1.2.0 වලදි sniffing & routing config එකේ configure කරලා තියෙන්න ඕනෙ, admin අවශ්‍ය විදියට මේ දේවල් කරන්න පුලුවන්. [උදාහරණ config බලන්න](../../example/)**
+**connected bot v1.2.0 වලදි sniffing & routing config එකේ configure කරලා තියෙන්න ඕනෙ, admin අවශ්‍ය විදියට මේ දේවල් කරන්න පුලුවන්. [උදාහරණ config බලන්න](../../example/index.md)**
 
 ### **අමතරව එකතු වුණ fields ටික පහලින් බලන්න. මේ fields අනිවාරෙන් add කරන්න ඕනෙ.**
 
