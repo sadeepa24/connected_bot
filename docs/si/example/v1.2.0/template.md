@@ -868,7 +868,7 @@ setcap_get:
       capble range {{.CapRange}}
 
       ⚠️ You are requested to send a new capped quota.
-      🔒 <b>Note:</b> The new capped quota must be higher <b>{{.CapbleQuouta}}</b>.
+      🔒 <b>Note:</b> The new capped quota must be in range {{.CapRange}}<b></b>.
 
       🛠️ All your configurations' quotas will be adjusted based on the new main quota.
       ⏳ This change will remain in effect for <b>days you enter</b>.
