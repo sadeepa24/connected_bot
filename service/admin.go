@@ -155,9 +155,10 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 			Messagesession.SendAlert(msg, nil)
 		},
 		Sendreciver: func(msg any) (*tgbotapi.Message, error) {
-			_, err := Messagesession.Edit(msg, nil, "")
-			if err != nil {
-				return nil, err
+			if msg != nil {
+				if _, err := Messagesession.Edit(msg, nil, ""); err != nil {
+					return nil, err
+				}
 			}
 			mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin)
 			if err == nil {
@@ -673,7 +674,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				}
 			}
 
-			configState.run()
+			err = configState.run()
 			if err != nil {
 				a.logger.Error("admin: configure run failed ", zap.Error(err))
 				if errors.Is(err, C.ErrContextDead) {
