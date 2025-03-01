@@ -864,9 +864,6 @@ setcap_get:
   en:
     msg_template: |
       📢 <b>Important Notice</b>
-
-      capble range {{.CapRange}}
-
       ⚠️ You are requested to send a new capped quota.
       🔒 <b>Note:</b> The new capped quota must be in range {{.CapRange}}<b></b>.
 
