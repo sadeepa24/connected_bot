@@ -211,7 +211,7 @@ update:
 			case controller.BroadcastSig:
 				go func ()  {
 					userlist := []int64{}
-					if w.ctrl.GetUserList(&userlist) != nil {
+					if w.ctrl.GetAllUserList(&userlist) != nil {
 						w.logger.Error("error while feteching userlist to broadcast msg " + string(unwrapedmg) )
 						return
 					}
@@ -775,7 +775,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					}
 				}
 				user.WarnRatio = w.ctrl.GetWarnRate()
-				user.Templimited = false
 				user.IsDistributedUser = false
 			}
 			
@@ -979,6 +978,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 	overview.VerifiedUserCount = preData.verifiedusercount
 	overview.TotalUser = w.ctrl.Dbusercount.Load()
 	overview.MonthTotal = month_usage
+	overview.MonthLimitedUser = preData.monthlimiteduser
 	overview.AllTime = alltime+month_usage
 	overview.BandwidthAvailable = w.ctrl.BandwidthAvelable
 	overview.Restricte = preData.restricted

@@ -521,28 +521,90 @@ func (c *Controller) GetUser(user *tgbotapi.User) (*bottype.User, bool, error) {
 	gotuser := bottype.Newuser(user, dbUser)
 	return gotuser, true, nil
 }
-func (c *Controller) GetUserList(in *[]int64) error {
+func (c *Controller) GetAllUserList(in *[]int64) error {
 	if c.db.Model(&db.User{}).Pluck("tg_id", in).Error != nil {
 		return C.ErrDbopration
 	}
 	return nil
 }
-func (c *Controller) GetVerifiedUserList(in *[]int64) error { 
-	if err := c.db.Model(&db.User{}).
-		Where("is_in_group = ? AND is_in_channel = ?", true, true).
-		Pluck("tg_id", in).Error; err != nil {
-		return C.ErrDbopration
+
+func (c *Controller) GetUserList(listType string, in *[]int64) error  {
+	
+	switch listType {
+	
+	case C.UserLstAll:
+		return c.GetAllUserList(in)
+	case C.UserLstVerified:
+		if err := c.db.Model(&db.User{}).
+			Where("is_in_group = ? AND is_in_channel = ?", true, true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstUnVerified:
+		if err := c.db.Model(&db.User{}).
+			Where("is_in_group = ? OR is_in_channel = ?", false, false).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+
+	case C.UserLstTempLimited:
+		if err := c.db.Model(&db.User{}).
+			Where("temp_limited = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstMonthLimited:
+		if err := c.db.Model(&db.User{}).
+			Where("is_month_limited = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstDistributed:
+		if err := c.db.Model(&db.User{}).
+			Where("is_dis_user = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}		
+	case C.UserLstGroup:
+		if err := c.db.Model(&db.User{}).
+			Where("is_in_group = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}		
+	case C.UserLstActive:
+		if err := c.db.Model(&db.User{}).
+			Where("is_removed = ? AND is_month_limited = ? AND temp_limited = ?", false, false, false).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstRestricted:
+		if err := c.db.Model(&db.User{}).
+			Where("restricted = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	default:
+		return C.ErrUnknownUserListType
 	}
 	return nil
 }
-func (c *Controller) GetUnVerifiedUserList(in *[]int64) error {
-	if err := c.db.Model(&db.User{}).
-		Where("is_in_group = ? AND is_in_channel = ?", false, false).
-		Pluck("tg_id", in).Error; err != nil {
-		return C.ErrDbopration
-	}
-	return nil
+
+var availableuserList = []string{
+	C.UserLstAll,    
+	C.UserLstTempLimited,  
+	C.UserLstMonthLimited, 
+	C.UserLstActive,       
+	C.UserLstGroup,       
+	C.UserLstDistributed, 
+	C.UserLstVerified,    
+	C.UserLstUnVerified,   
+	C.UserLstRestricted,   
 }
+func (c *Controller) AvailableUserList() []string {
+	return availableuserList
+}
+
+
 func (c *Controller) GetUserById(userId int64) (*db.User, error) {
 	var user = &db.User{
 		TgID: userId,

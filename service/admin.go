@@ -180,7 +180,7 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 	case C.CmdBrodcast:
 		return a.broadcast(upx, Messagesession)
 	case C.CmdServerInfo:
-		return a.getserverinfo(upx)
+		return a.getserverinfo()
 	case C.CmdChatSession:
 		return a.createchat(upx, Messagesession, calls)
 	case C.CmdOverview:
@@ -210,30 +210,23 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 	Messagesession.Addreply(message.MessageID)
 	
 	btns := botapi.NewButtons([]int16{2})
-	btns.AddBtcommon("to verified")
-	btns.AddBtcommon("to all")
-	btns.AddBtcommon("to unverified")
-	btns.AddCloseBack()
+	
+	for _, btname := range a.ctrl.AvailableUserList() {
+		btns.AddBtcommon(btname)
+	}
 
-
+	btns.AddClose(true)
 	Messagesession.Edit("select target user type", btns, "")
-
 	callback, err := a.callback.GetcallbackContext(upx.Ctx, btns.ID())
 	if err != nil {
 		return err
 	}
-	var userlist = []int64{}
-	switch callback.Data {
-	case "to verified":
-		err = a.ctrl.GetVerifiedUserList(&userlist) 
-	case "to all":
-		err = a.ctrl.GetUserList(&userlist) 
-	case "to unverified":
-		err = a.ctrl.GetUnVerifiedUserList(&userlist)
-	default:
+	if callback.Data == C.BtnClose {
 		Messagesession.SendAlert("Broadcast Canceled", nil)
 		return nil
 	}
+	var userlist = []int64{}
+	err = a.ctrl.GetUserList(callback.Data, &userlist) 
 	if err != nil {
 		Messagesession.SendAlert("fetching user list failed try again", nil)
 		return err
@@ -696,7 +689,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 
 }
 
-func (a *Adminsrv) getserverinfo(upx *update.Updatectx) error {
+func (a *Adminsrv) getserverinfo() error {
 	var memorystate = runtime.MemStats{}
 	runtime.ReadMemStats(&memorystate)
 

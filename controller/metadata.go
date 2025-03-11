@@ -264,6 +264,7 @@ type Overview struct {
 	TotalConfCount int64
 	ActiveConfCount int64
 	TotalUpdates int64
+	MonthLimitedUser int64
 
 
 
@@ -289,6 +290,7 @@ func (o *Overview) String() string {
 			"Capped User: %d\n"+
 			"Distributed User: %d\n"+
 			"Restricted: %d\n"+
+			"MonthLimited: %d\n"+
 			"Temp Limited User: %d\n\n"+
 			"Total Conf Count: %d\n"+
 			"Active Conf Count: %d\n\n"+
@@ -304,6 +306,7 @@ func (o *Overview) String() string {
 		o.CappedUser,
 		o.DistributedUser,
 		o.Restricte,
+		o.MonthLimitedUser,
 		o.TempLimitedUser,
 		o.TotalConfCount,
 		o.ActiveConfCount,

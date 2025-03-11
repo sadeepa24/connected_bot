@@ -387,7 +387,6 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		
 		if NewUser.Isverified() {
 			Usersession.GetUser().IsRemoved = false
-			u.ctrl.IncreaseUserCount(1)
 		}
 		if err = Usersession.ActivateAll(); err != nil {
 			return errors.Join(errors.New("chat member parsing config activate failed user " + upx.User.Name), err)
