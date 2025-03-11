@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"

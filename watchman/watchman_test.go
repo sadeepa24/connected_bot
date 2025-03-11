@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"testing"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/gofrs/uuid"
 	connected "github.com/sadeepa24/connected_bot"
 	"github.com/sadeepa24/connected_bot/botapi"

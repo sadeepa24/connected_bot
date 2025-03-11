@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 
@@ -116,7 +116,10 @@ func TestUsersrv(t *testing.T) {
 	}
 	var err error
 	var ok bool
-	upxx := update.Newupdate(ctx, testupdate)
+	upxx := &update.Updatectx{
+		Update: testupdate,
+		Ctx: ctx,
+	}
 	upxx.User, ok, err = ctrl.GetUser(testupdate.Message.From)
 	if err != nil || !ok {
 		upxx.User, _ = ctrl.Newuser(testupdate.Message.From, testupdate.Message.Chat)
@@ -174,7 +177,10 @@ func TestXraywiz(t *testing.T) {
 	testupdate := &tgbotapi.Update{
 		Message: testmsg,
 	}
-	upxx := update.Newupdate(ctx, testupdate)
+	upxx := &update.Updatectx{
+		Update: testupdate,
+		Ctx: ctx,
+	}
 
 	t.Log("testing xray service")
 	Xrayserwiz := service.NewXraywiz(ctx, callbacksrv, zLogger,  ctrl, defaultsrv, nil, nil)
