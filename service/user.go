@@ -1346,7 +1346,9 @@ func (u *Usersrv) cmdFree(upx *update.Updatectx, Messagesession *botapi.Msgsessi
 		}
 		upx.User.EmptyCycle = 0
 		upx.User.Templimited = false
-		u.ctrl.IncreaseUserCount(1)
+		if upx.User.ConfigCount > 0 {
+			u.ctrl.IncreaseUserCount(1)
+		}
 		Usersession.ActivateAll()
 		Messagesession.SendAlert(C.GetMsg(C.MsgFree), nil)
 	case upx.User.IsMonthLimited:
