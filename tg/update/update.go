@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	//	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
@@ -30,19 +28,6 @@ type Updatectx struct {
 	Chat    *tgbotapi.Chat
 
 	Command string // only use inside setuser method in parser
-}
-
-func Newupdate(ctx context.Context, origin *tgbotapi.Update) *Updatectx {
-	
-	if origin.Message != nil {
-
-	}
-	
-	return &Updatectx{
-		Update:  origin,
-		Ctx:     ctx,
-		Command: C.CmdNull,
-	}
 }
 
 func (u Updatectx) IsCommand(cmd string) bool {
@@ -109,6 +94,3 @@ func (u *Updatectx) Drop() bool {
 	return u.drop
 }
 
-func (u *Updatectx) Close() {
-	u = nil //drop
-}

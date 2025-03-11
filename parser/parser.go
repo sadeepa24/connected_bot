@@ -30,6 +30,7 @@ type Parser struct {
 	AdminSrc  *service.Adminsrv
 	InlineService *service.InlineService
 	srvs      []service.Service
+	uctxPool  *update.UpdatePool
 	//baseCtxforUpx context.Context
 	//baseCancle    context.CancelCauseFunc
 	botapi botapi.BotAPI
@@ -58,6 +59,7 @@ func New(
 		srvs:       services,
 		botapi:     botapi,
 		GetBaseCtx: ctrl.GetBaseContext, //TODO: change later
+		uctxPool: update.NewupdatePool(),
 
 		//xrayservice: make(map[string]bool, 10),
 		//usrservice:  make(map[string]bool, 10),
@@ -141,8 +143,11 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	}
 
 	defer func ()  {
-		if upx != nil && upx.Cancle != nil {
-			upx.Cancle()
+		if upx != nil{
+			p.uctxPool.Put(upx)
+			if  upx.Cancle != nil {
+				upx.Cancle()
+			}
 		}
 	}()
 	
@@ -205,7 +210,9 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 }
 
 func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, error) {
-	upx := update.Newupdate(p.GetBaseCtx(), tgbotapimsg)
+	//upx := update.Newupdate(p.GetBaseCtx(), tgbotapimsg)
+
+	upx := p.uctxPool.Newupdate(p.GetBaseCtx(), tgbotapimsg)
 
 	if upx.Update.InlineQuery != nil {
 		return upx, nil
