@@ -5,12 +5,12 @@ import (
 	"strconv"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
-	"github.com/sadeepa24/connected_bot/update/bottype"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
+	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 )
 
 const (
@@ -181,6 +181,7 @@ func (h *HelpState) gotopage() error {
 
 func (u *Usersrv) commandHelpV2(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 5*time.Minute)
+	defer upx.Cancle()
 	Messagesession.SetNewcontext(upx.Ctx)
 	btns := botapi.NewButtons([]int16{1})
 

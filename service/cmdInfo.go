@@ -11,8 +11,8 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/sbox"
-	"github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sagernet/sing-vmess/vless"
 )
 
@@ -27,9 +27,6 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 		if errors.Is(err, C.ErrSessionExcit) {
 			Messagesession.EditText(C.GetMsg(C.MsgSessionExcist), nil)
 		}
-		upx = nil
-		Messagesession = nil
-		Usersession = nil
 		return nil
 	}
 	defer Usersession.Close()
@@ -97,19 +94,28 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 					TgId:     upx.User.TgID,
 					Username: upx.FromChat().UserName,
 				},
+				CappedQuota: upx.User.CappedQuota.BToString(),
+				IsTemplimited: upx.User.Templimited,
+				TempLimitRate: upx.User.WarnRatio,
+				IsVerified: upx.User.Verified(),
+				NonUseCycle: upx.User.EmptyCycle,
 
+
+				UsagePercentage: ((tusage * 100)/(Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota)).Float64(),
 				GiftQuota: upx.User.GiftQuota.BToString(),
 				Joined:    upx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: C.Bwidth(u.ctrl.CommonQuota.Load()).BToString(),
 				TQuota:    (Usersession.GetUser().CalculatedQuota + upx.User.AdditionalQuota).BToString(),
 				LeftQuota: Usersession.LeftQuota().BToString(),
 				TUsage:    tusage.BToString(),
-				AlltimeUsage: (tusage+upx.User.MonthUsage).BToString(),
+				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 				ConfCount: Usersession.GetUser().ConfigCount,
-				CapEndin:  upx.User.Captime.AddDate(0, 0, 30).String(),
+				CapEndin:  upx.User.Captime.AddDate(0, 0, int(upx.User.CapDays)).String(),
+				CapDays: upx.User.CapDays,
 
 				Disendin:     ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,
 				UsageResetIn: ((u.ctrl.ResetCount - u.ctrl.CheckCount.Load()) * u.ctrl.RefreshRate) / 24,
+				
 
 				Iscapped:       upx.User.IsCapped,
 				IsMonthLimited: upx.User.IsMonthLimited,
@@ -117,7 +123,6 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 
 				JoinedPlace: upx.User.CheckID,
 			}, btns, C.TmpUserInfo); err != nil {
-				u.logger.Error(err.Error())
 				state = 0
 				continue info
 			}

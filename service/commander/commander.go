@@ -1,6 +1,6 @@
 package commander
 
-import "github.com/sadeepa24/connected_bot/update"
+import "github.com/sadeepa24/connected_bot/tg/update"
 
 // This is optinal not using yet
 //Deprecated

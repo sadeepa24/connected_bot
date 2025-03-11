@@ -7,7 +7,7 @@ import (
 	"github.com/sadeepa24/connected_bot/common"
 	"github.com/sadeepa24/connected_bot/controller"
 
-	"github.com/sadeepa24/connected_bot/update"
+	"github.com/sadeepa24/connected_bot/tg/update"
 )
 
 //all events should implemet this interface after creating a event add it to GetallAvblkEvent

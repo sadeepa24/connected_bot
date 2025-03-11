@@ -11,8 +11,8 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -242,7 +242,7 @@ func (c *configState) action() error {
 	
 	case C.BtnChangeLogin:
 		c.Alertsender("send new login limit count (0 < x <= 5)") 
-		limit, err := common.ReciveInt(c.Tgcalls, 0, 5)
+		limit, err := common.ReciveInt(c.Tgcalls, int(c.wiz.ctrl.LoginLimit), 0)
 		if err != nil {
 			return nil
 		}
@@ -447,7 +447,6 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx,  Messagesession *bot
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		Messagesession = nil
 		Usersession = nil
 		return nil
@@ -516,7 +515,7 @@ func (u *Xraywiz) commandConfigureV2(upx *update.Updatectx,  Messagesession *bot
 	}
 
 	if err = configState.run(); err !=nil {
-		u.logger.Error("configuration state errored", zap.Error(err))
+		u.logger.Error("run configure failed: ", zap.Error(err))
 	}
 	if upx.Ctx.Err() != nil {
 		tempctx, closetemp := context.WithTimeout(u.ctx, 15*time.Second)

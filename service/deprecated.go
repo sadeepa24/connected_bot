@@ -10,14 +10,14 @@ import (
 	"strconv"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sagernet/sing-vmess/vless"
 )
 
@@ -32,7 +32,6 @@ func (u *Xraywiz) commandCreate(upx *update.Updatectx) error {
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		return nil
 	}
 	defer Usersession.Close()
@@ -391,7 +390,6 @@ func (u *Xraywiz) commandConfigure(upx *update.Updatectx) error {
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		Messagesession = nil
 		Usersession = nil
 		return nil

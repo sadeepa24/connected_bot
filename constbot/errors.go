@@ -29,7 +29,7 @@ var ErrRead = errors.New("body reading error")
 var ErrApierror = errors.New("request not resolverd by server ")
 
 var ErrJsonopra = errors.New("json marshling error")
-var ErrTgParsing = errors.New("json marshling error")
+var ErrTgParsing = errors.New("parsing error from telegram")
 // parser
 var ErrServiceNotFound = errors.New("service not found")
 
@@ -55,7 +55,12 @@ var (
 	ErrUserNotVerified    = errors.New("user is not verified user")
 	ErrUserIsNotinPrivate = errors.New("user is not private")
 	ErrUserIsRestricted = errors.New("restricted user")
+	ErrUserTempLimited = errors.New("templimited user")
+
+	ErrUpdateFaile = errors.New("recived updated has nothing to process")
 )
+
+
 
 // Messagesession
 var (
@@ -79,3 +84,8 @@ var (
 )
 
 
+var ErrWebhookSetFailed = errors.New("setting web hook failed")
+var ErrNilRequest = errors.New("request is nil pointer")
+var ErrUnknownUserListType = errors.New("user list type error")
+var ErrUserObNil = errors.New("user struct cannot be nil")
+var ErrNoService = errors.New("No service")

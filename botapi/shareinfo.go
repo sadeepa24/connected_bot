@@ -28,32 +28,6 @@ type Callbackanswere struct {
 	Show_alert        bool   `json:"show_alert,omitempty"`
 	Cache_time        int16  `json:"cache_time,omitempty"`
 	Text              string `json:"text,omitempty"`
-
-	content []byte `json:"-"` //for Read method
-	called  bool   `json:"-"` // for Read method
-
-}
-
-func (m *Callbackanswere) Read(p []byte) (int, error) {
-	var err error
-	if !m.called {
-		m.content, err = json.Marshal(m)
-		if err != nil {
-			return 0, err
-		}
-		m.called = true
-	}
-	n := copy(p, m.content)
-	m.content = m.content[n:]
-
-	if len(m.content) == 0 {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-func (m *Callbackanswere) Close() error {
-	return nil
 }
 
 type Meadiacommon struct {
@@ -113,35 +87,9 @@ type Msgcommon struct {
 
 	//meadia
 	*Meadiacommon
-
-	content  []byte `json:"-"` //for Read method
-	called   bool   `json:"-"` // for Read method
 	Endpoint string `json:"-"`
 }
 
-func (m *Msgcommon) Read(p []byte) (int, error) {
-	var err error
-	if !m.called {
-
-		m.content, err = json.Marshal(m)
-
-		if err != nil {
-			return 0, err
-		}
-		m.called = true
-	}
-	n := copy(p, m.content)
-	m.content = m.content[n:]
-
-	if len(m.content) == 0 {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-func (m *Msgcommon) Close() error {
-	return nil
-}
 
 // this struct used to send the msg to watman's mg que
 // also support by botapi's Message session, when use with msg session no need to provide destination & langs
@@ -153,13 +101,13 @@ type UpMessage struct {
 	Lang         string
 }
 
-
 type Filesend io.Reader
 
 type BotReader struct {
 	RealOb any
 	called bool
 	content []byte
+	len int
 }
 
 func (m *BotReader) Read(p []byte) (int, error) {
@@ -169,6 +117,7 @@ func (m *BotReader) Read(p []byte) (int, error) {
 		if err != nil {
 			return 0, err
 		}
+		m.len = len(m.content)
 		m.called = true
 	}
 	n := copy(p, m.content)
@@ -183,9 +132,12 @@ func (m *BotReader) Close() error {
 	return nil
 }
 
-func CreateReder(botob any) io.ReadCloser {
+func (m *BotReader) Len() int {
+	return m.len
+}
+
+func CreateReder(botob any) *BotReader {
 	return &BotReader{
 		RealOb: botob,
 	}
 }
-

@@ -1,12 +1,12 @@
 package service
 
 import (
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/service/events"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 )
 
 func (u *Usersrv) commandEvents(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {

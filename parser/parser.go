@@ -9,8 +9,8 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/service"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -30,11 +30,14 @@ type Parser struct {
 	AdminSrc  *service.Adminsrv
 	InlineService *service.InlineService
 	srvs      []service.Service
+	uctxPool  *update.UpdatePool
 	//baseCtxforUpx context.Context
 	//baseCancle    context.CancelCauseFunc
 	botapi botapi.BotAPI
 
 	GetBaseCtx func() context.Context
+
+	serviceNames map[string]string //service names according to cmd
 
 	//usrservice  map[string]bool //for fututre
 	//xrayservice map[string]bool
@@ -48,8 +51,6 @@ func New(
 	logger *zap.Logger,
 
 ) *Parser {
-
-	// basectx, _ := context.WithCancelCause(ctx)
 	parser := &Parser{
 		ctx:        ctx,
 		ctrl:       ctrl,
@@ -58,16 +59,45 @@ func New(
 		srvs:       services,
 		botapi:     botapi,
 		GetBaseCtx: ctrl.GetBaseContext, //TODO: change later
-		//baseCtxforUpx: basectx,
-		//baseCancle:    basecancle,
+		uctxPool: update.NewupdatePool(),
 
-		//xrayservice: make(map[string]bool, 10), //TODO: create a beter way to select service
+		//xrayservice: make(map[string]bool, 10),
 		//usrservice:  make(map[string]bool, 10),
 	}
 	return parser
 }
 
 func (p *Parser) Init() error {
+	user_service_cmd:= []string{	
+		C.CmdStart, 
+		C.CmdFree,  
+		C.CmdHelp, 
+		C.CmdGift, 
+		C.CmdRecheck, 
+		C.CmdCap, 
+		C.CmdDistribute, 
+		C.CmdRefer, 
+		C.CmdEvents, 
+		C.CmdSugess, 
+		C.CmdPoints, 
+		C.CmdContact, 
+		C.CmdSource,
+	}
+
+	xray_service_cmd := []string{
+		C.CmdCreate, 
+		C.CmdStatus, 
+		C.CmdConfigure, 
+		C.CmdInfo, 
+		C.CmdBuild,
+	}
+	p.serviceNames = make(map[string]string, len(user_service_cmd)+ len(xray_service_cmd))
+	for _, cmd := range user_service_cmd {
+		p.serviceNames[cmd] = C.Userservicename
+	}
+	for _, cmd := range xray_service_cmd {
+		p.serviceNames[cmd] = C.Xraywizservicename
+	}
 	return p.registerservice(p.srvs)
 }
 
@@ -103,32 +133,38 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	if err != nil {
 		return errors.Join(errors.New("tg request read error from parser"), err)
 	}
-
+	p.ctrl.UpdateCounter.Add(1)
 	if p.ctrl.CheckLock() {
 		p.logger.Debug("watchman locked when proc update " + tgbotapimsg.Info())
-		//TODO: replace upx context to add addtinal deadline due to Db refresh time,
-		// Crucial FOr Updates Like CHatmember
+		// Crucial for handling updates like ChatMember
 		if upx.Update.ChatMember != nil {
 			upx.Ctx, upx.Cancle = context.WithTimeout(p.GetBaseCtx(), 2 * time.Second) //replace old context because chatmember update must be proceed
 		}
 	}
+
+	defer func ()  {
+		if upx != nil{
+			p.uctxPool.Put(upx)
+			if  upx.Cancle != nil {
+				upx.Cancle()
+			}
+		}
+	}()
 	
 	if upx.Update.CallbackQuery != nil {
-		upx.Setcallback()
 		return p.Callback.Exec(upx)
 	}
 
 	if upx.Update.InlineQuery != nil {
 		return p.InlineService.Exec(upx)
 	}
-
 	if upx.Update.Message != nil {
 		if p.Defaulsrv.Ismsgrequired(upx.FromUser().ID, upx.FromChat().ID) {
 			return p.Defaulsrv.Exec(upx)
 		}
 	}
 	if upx.FromChat().ID == p.ctrl.SudoAdmin {
-		if upx.Update.Message.Command() == "switch" {
+		if upx.Update.Message.Command() == C.CmdSwitch {
 			p.AdminSrc.SwapMode()
 			var mode string 
 			if p.AdminSrc.AdminMode() {
@@ -136,7 +172,7 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 			} else {
 				mode = "from Admin to User"
 			}
-			p.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+			p.ctrl.Addquemg(&botapi.Msgcommon{
 				Infocontext: &botapi.Infocontext{
 					ChatId: p.ctrl.SudoAdmin,
 					User_id: p.ctrl.SudoAdmin,
@@ -151,70 +187,30 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 		}
 	}
 
-	if err = p.Setuser(upx); err != nil { //loads info from database
+	var cannprocUpdate bool
+	if cannprocUpdate, err = p.Setuser(upx); err != nil { //loads info from database
 		if upx.User != nil {
-			p.logger.Error("Error When Preprosess user " +  upx.User.Info(), zap.Error(err))
-		}
-		
-		if errors.Is(err, C.ErrUserMonthLimited) {
-			p.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
-				Infocontext: &botapi.Infocontext{
-					ChatId: upx.User.TgID,
-				},
-				Text: C.GetMsg(C.MsgUserMonthLimited),
-			})
-			return nil
-		}
-		if errors.Is(err, C.ErrUserNotVerified) {
-			p.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
-				DestinatioID: upx.User.TgID,
-				TemplateName: C.TmplCommonUnverified,
-				Lang:         upx.User.Lang,
-				Template: struct {
-					*botapi.CommonUser
-				}{
-					CommonUser: &botapi.CommonUser{
-						Name:     upx.User.Name,
-						Username: upx.Chat.UserName,
-						TgId:     upx.User.TgID,
-					},
-				},
-			})
-		}
-		if errors.Is(err, C.ErrUserIsRestricted) {
-			p.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
-				DestinatioID: upx.User.TgID,
-				TemplateName: "restricted",
-				Lang:         upx.User.Lang,
-				Template: struct {
-					*botapi.CommonUser
-				}{
-					CommonUser: &botapi.CommonUser{
-						Name:     upx.User.Name,
-						Username: upx.Chat.UserName,
-						TgId:     upx.User.TgID,
-					},
-				},
-			})
+			err = errors.New("Error When Preprosess user " +  upx.User.Info() + err.Error())
 		}
 		return err
 	}
-
+	if !cannprocUpdate {
+		return nil
+	}
+	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
+		upx.Setservice(C.Userservicename)
+	}
 	if upx.Serviceset {
 		return p.addtoservice(upx)
 	}
-
-	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
-		return p.chatmemberparse(upx)
-	}
-
-	upx.SetDrop(true)
-	return p.addtoservice(upx)
+	return C.ErrNoService
 
 }
 
 func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, error) {
-	upx := update.Newupdate(p.GetBaseCtx(), tgbotapimsg)
+	//upx := update.Newupdate(p.GetBaseCtx(), tgbotapimsg)
+
+	upx := p.uctxPool.Newupdate(p.GetBaseCtx(), tgbotapimsg)
 
 	if upx.Update.InlineQuery != nil {
 		return upx, nil
@@ -241,13 +237,6 @@ func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, e
 }
 
 func (u *Parser) addtoservice(upx *update.Updatectx) error {
-	if upx.Drop() {
-		u.logger.Warn("Dropping update not a valid update context")
-		upx.Cancle()
-		upx = nil
-		return nil
-	}
-
 	if service, ok := u.services[upx.Service]; ok {
 		return service.Exec(upx)
 	}
@@ -255,7 +244,7 @@ func (u *Parser) addtoservice(upx *update.Updatectx) error {
 
 }
 
-func (p *Parser) Setuser(upx *update.Updatectx) error {
+func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 	var (
 		ok  bool
 		err error
@@ -268,38 +257,32 @@ func (p *Parser) Setuser(upx *update.Updatectx) error {
 			var servicenm string
 			upx.Command, servicenm, err = p.commandparser(upx.Update.Message)
 			if err != nil {
-				upx.SetDrop(true)
-				return err
+				return false, err
 			}
 
 			upx.Setservice(servicenm)
 		} else {
 			//Already checked Is message required by Default service as reply to question
-			return errors.New("recived updated has nothing to process")
+			return false, C.ErrUpdateFaile
 		}
 	}
 
 	if upx.User, ok, err = p.ctrl.GetUser(upx.FromUser()); err != nil {
-		return err
+		return false, err
 	}
 
 	if !ok {
 		upx.User, err = p.ctrl.Newuser(upx.FromUser(), upx.FromChat())
 		if err != nil {
-			upx.SetDrop(true)
-			return err
+			return false, err
 		}
 		p.logger.Info("New user added to DB " + upx.User.Info() )
 		upx.Setservice(C.Userservicename)
 
 	}
-	if upx.User.IsMonthLimited && (upx.Update.Message != nil) && !upx.IsCommand(C.CmdBuild) {
-		return C.ErrUserMonthLimited
-	}
+
 
 	if upx.Dbuser().RecheckVerificity {
-		p.logger.Info("rechecking verificty " + upx.User.Info())
-
 		var (
 			err1 error
 			err2 error
@@ -322,41 +305,97 @@ func (p *Parser) Setuser(upx *update.Updatectx) error {
 	}
 
 	switch upx.Command {
-	case C.CmdStart, C.CmdHelp, C.CmdNull, C.CmdContact, C.CmdRecheck, C.CmdSource:
+	case C.CmdStart, C.CmdHelp, C.CmdNull, C.CmdContact, C.CmdRecheck, C.CmdSource, C.CmdFree:
 		break
 	default:
+		if upx.User == nil {
+			return false, C.ErrUserObNil
+		}
+		
 		if !upx.Update.FromChat().IsPrivate() {
-			return C.ErrUserIsNotinPrivate
+			//return C.ErrUserIsNotinPrivate
+			return false, nil
+		}
+		if !upx.User.Isverified() {
+			p.ctrl.Addquemg(botapi.UpMessage{
+				DestinatioID: upx.User.TgID,
+				TemplateName: C.TmplCommonUnverified,
+				Lang:         upx.User.Lang,
+				Template: struct {
+					*botapi.CommonUser
+				}{
+					CommonUser: &botapi.CommonUser{
+						Name:     upx.User.Name,
+						Username: upx.Chat.UserName,
+						TgId:     upx.User.TgID,
+					},
+				},
+			})
+			return false, nil
+			
 		}
 		if upx.User.Restricted {
-			return C.ErrUserIsRestricted
+			p.ctrl.Addquemg(botapi.UpMessage{
+				DestinatioID: upx.User.TgID,
+				TemplateName: "restricted",
+				Lang:         upx.User.Lang,
+				Template: struct {
+					*botapi.CommonUser
+				}{
+					CommonUser: &botapi.CommonUser{
+						Name:     upx.User.Name,
+						Username: upx.Chat.UserName,
+						TgId:     upx.User.TgID,
+					},
+				},
+			})
+			return false, nil
 		}
 
-		if !upx.User.Isverified() {
-			return C.ErrUserNotVerified
+		if upx.IsCommand(C.CmdBuild)  {
+			return true, nil
 		}
+
+		if upx.User.IsMonthLimited && (upx.Update.Message != nil){
+			p.ctrl.Addquemg(&botapi.Msgcommon{
+				Infocontext: &botapi.Infocontext{
+					ChatId: upx.User.TgID,
+				},
+				Text: C.GetMsg(C.MsgUserMonthLimited),
+			})
+			return false, nil
+		}
+
+		if upx.User.Templimited {
+			p.ctrl.Addquemg(&botapi.Msgcommon{
+				Infocontext: &botapi.Infocontext{
+					ChatId: upx.User.TgID,
+				},
+				Text: C.GetMsg(C.MsgTempLimitAlert),
+			})
+			return false, nil
+		}
+	
+
 	}
 
-	return nil
-}
-
-func (p *Parser) chatmemberparse(upx *update.Updatectx) error {
-	if upx.Update.ChatMember != nil || upx.Update.MyChatMember != nil {
-		upx.Setservice(C.Userservicename)
-		return p.addtoservice(upx)
-	}
-	return errors.New("upx passed to chat member, chatmember objects are empty(nil)")
+	return true, nil
 }
 
 // return command, service, error
 func (p *Parser) commandparser(msg *tgbotapi.Message) (string, string, error) {
-	//TODO: remove this switch and create good way to select service
-	switch msg.Command() {
-	case C.CmdStart, C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact, C.CmdSource:
-		return msg.Command(), C.Userservicename, nil
-	case C.CmdCreate, C.CmdStatus, C.CmdConfigure, C.CmdInfo, C.CmdBuild:
-		return msg.Command(), C.Xraywizservicename, nil
-	default:
-		return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
+	if serviceName, ok := p.serviceNames[msg.Command()]; ok {
+		return msg.Command(), serviceName, nil
 	}
+	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
+
+
+	// switch msg.Command() {
+	// case C.CmdStart, C.CmdFree,  C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact, C.CmdSource:
+	// 	return msg.Command(), C.Userservicename, nil
+	// case C.CmdCreate, C.CmdStatus, C.CmdConfigure, C.CmdInfo, C.CmdBuild:
+	// 	return msg.Command(), C.Xraywizservicename, nil
+	// default:
+	// 	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
+	// }
 }

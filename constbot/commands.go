@@ -14,6 +14,8 @@ const (
 	CmdPoints     = "points"
 	CmdRecheck    = "recheck"
 	CmdSource	  = "source"
+	CmdFree		  = "free"
+	CmdCancel     = "cancel"
 
 	//xraywiz
 	CmdInfo      = "getinfo"
@@ -32,4 +34,5 @@ const (
 	CmdChatSession = "chat"
 	CmdOverview = "overview"
 	CmdRefreshDb = "refreshdb"
+	CmdSwitch = "switch"
 )

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -9,7 +10,8 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
-	"github.com/sadeepa24/connected_bot/update/bottype"
+	"github.com/sadeepa24/connected_bot/tg/update/bottype"
+	"github.com/sagernet/sing-box/option"
 )
 
 type MetadataConf struct {
@@ -47,6 +49,13 @@ type MetadataConf struct {
 	HelperInfo bottype.HelpCommandInfo `json:"help_cmd,omitempty"`
 
 	InlinePost []string `json:"inline_posts,omitempty"`
+	Langs []string  `json:"allowed_langs,omitempty"`
+
+	CommonWarnRatio int16  `json:"warn_rate,omitempty"`
+}
+
+func (mn *Metadata) GetWarnRate() int16 {
+	return mn.CommonWarnRate/int16(mn.RefreshRate)
 }
 
 type Metadata struct {
@@ -72,6 +81,8 @@ type Metadata struct {
 
 	inboundasMap  map[int]sbox.Inboud
 	outboundasMap map[int]sbox.Outbound
+
+	rawoptions option.Options
 
 	defaultinbound  sbox.Inboud
 	defaultoutbound sbox.Outbound
@@ -99,6 +110,8 @@ type Metadata struct {
 	HelperInfo bottype.HelpCommandInfo
 
 	inlineposts []string
+
+	CommonWarnRate int16 
 
 	//mu *sync.RWMutex
 
@@ -138,6 +151,12 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 	if metaconf.SudoAdmin == 0 {
 		return errors.New("sudo admin not found")
 	}
+	m.RefreshRate = metaconf.RefreshRate
+	if metaconf.CommonWarnRatio == 0 {
+		metaconf.CommonWarnRatio = 24 //default for 2 days
+	}
+	
+	m.CommonWarnRate = metaconf.CommonWarnRatio
 	m.SudoAdmin = metaconf.SudoAdmin
 	return nil
 }
@@ -236,10 +255,16 @@ type Overview struct {
 
 	VerifiedUserCount int64
 	TotalUser int32
+	CUser int64 
 	CappedUser int64
 	DistributedUser int64
 	QuotaForEach C.Bwidth
-	Restricted int64
+	Restricte int64
+	TempLimitedUser int64
+	TotalConfCount int64
+	ActiveConfCount int64
+	TotalUpdates int64
+	MonthLimitedUser int64
 
 
 
@@ -247,6 +272,45 @@ type Overview struct {
 
 	LastRefresh time.Time
 
+}
 
-	Error error
+
+func (o *Overview) String() string {
+	o.Mu.RLock()
+	defer o.Mu.RUnlock()
+	return fmt.Sprintf(
+		"Overview:\n"+
+			"Server Bandwidth: %s\n"+
+			"Month Total Usage: %s\n"+
+			"All Time Usage: %s\n"+
+			"Quota For Each: %s\n\n"+
+			"User Who Can Acctualy Use The Config: %d\n"+
+			"Verified User Count: %d\n"+
+			"Total User: %d\n"+
+			"Capped User: %d\n"+
+			"Distributed User: %d\n"+
+			"Restricted: %d\n"+
+			"MonthLimited: %d\n"+
+			"Temp Limited User: %d\n\n"+
+			"Total Conf Count: %d\n"+
+			"Active Conf Count: %d\n\n"+
+			"Total Update Recived (until last refresh): %d\n"+
+			"Last Refresh: %s\n",
+		o.BandwidthAvailable.BToString(),
+		o.MonthTotal.BToString(),
+		o.AllTime.BToString(),
+		o.QuotaForEach.BToString(),
+		o.CUser,
+		o.VerifiedUserCount,
+		o.TotalUser,
+		o.CappedUser,
+		o.DistributedUser,
+		o.Restricte,
+		o.MonthLimitedUser,
+		o.TempLimitedUser,
+		o.TotalConfCount,
+		o.ActiveConfCount,
+		o.TotalUpdates,
+		o.LastRefresh.Format(time.RFC3339),
+	)
 }

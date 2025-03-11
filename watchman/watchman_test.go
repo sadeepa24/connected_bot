@@ -7,22 +7,19 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"net/netip"
 	"os"
 	"strconv"
 	"testing"
-	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/gofrs/uuid"
 	connected "github.com/sadeepa24/connected_bot"
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/watchman"
 	"go.uber.org/zap"
 )
@@ -111,8 +108,13 @@ type preconfdata struct {
 func preconfigure(ctx context.Context) (data preconfdata) {
 	data = preconfdata{}
 
-	options := testingfirst()
+	//options := testingfirst()
+	options := connected.Botoptions{}
 	options.Ctx = ctx
+
+	options.Metadata = &controller.MetadataConf{
+		WatchMgbuf: 100,
+	}
 
 	data.db = db.New(options.Ctx, options.Logger, options.Dbpath)
 	data.msgstore, _ = botapi.NewMessageStore("./store.json")
@@ -121,7 +123,7 @@ func preconfigure(ctx context.Context) (data preconfdata) {
 		dotrace: false,
 	}
 
-	data.ctrl, _ = controller.New(options.Ctx, data.db, options.Logger, options.Metadata, data.botapi, options.Sboxoption)
+	data.ctrl, _ = controller.New(options.Ctx, data.db, options.Logger, options.Metadata, data.botapi, "./sbox.json")
 	data.watchmaconfig = options.Watchman
 
 	err := data.db.InitDb()
@@ -450,6 +452,7 @@ func inserGiftcoupleV2(ctrl *controller.Controller, from, to int64) error {
 	//zLogger.Error(err.Error())
 	return nil
 }
+/* //TODO: update this test confgi to v1.12.0
 func testingfirst() connected.Botoptions {
 	addr, _ := netip.ParseAddr("0.0.0.0")
 	val := 1
@@ -678,7 +681,7 @@ func testingfirst() connected.Botoptions {
 
 	return newoption
 }
-
+*/
 
 type Randomizer struct {
 	db *db.Database
@@ -958,7 +961,7 @@ type TestBotapiWatchman struct {
 	dotrace bool
 }
 
-func (t *TestBotapiWatchman) Makerequest(ctx context.Context, method, endpoint string, body io.ReadCloser) (*tgbotapi.APIResponse, error){
+func (t *TestBotapiWatchman) Makerequest(ctx context.Context, method, endpoint string, body *botapi.BotReader) (*tgbotapi.APIResponse, error){
 	if t.dotrace {
 		zLogger.Debug("call to botapi's makerequest", zap.Stack("trace"))
 	}
@@ -1062,4 +1065,16 @@ func (t *TestBotapiWatchman) GetFile(file_Id string) (io.ReadCloser, error){
 		zLogger.Debug("call to botapi's GetFile", zap.Stack("trace"))
 	}
 	return io.ReadCloser(nil), nil
+}
+
+
+func TestUserCountIncrease(t *testing.T) {
+	count := 3000
+	lasrefreshCount := 0
+	for i := 0; i < count; i++ {
+		if float32(lasrefreshCount) + (float32(lasrefreshCount)/4)*3 < float32(i) {
+			fmt.Println(i)
+			lasrefreshCount = i
+		}
+	}
 }

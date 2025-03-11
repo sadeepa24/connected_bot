@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/netip"
 	"strconv"
 	"sync"
 	"testing"
@@ -15,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	connected "github.com/sadeepa24/connected_bot"
 	"github.com/sadeepa24/connected_bot/controller"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
 	"github.com/sadeepa24/connected_bot/watchman"
 	"go.uber.org/zap"
 )
@@ -25,75 +23,11 @@ var ctx = context.Background()
 var zLogger, _ = zap.NewDevelopment()
 
 func TestConnectedBot(t *testing.T) {
-	addr, _ := netip.ParseAddr("0.0.0.0")
-	val := 1
-	newopt := option.Options{
-		Log: &option.LogOptions{
-			Disabled: true,
-		},
-		DNS: &option.DNSOptions{
-			ReverseMapping: false,
-		},
-		Inbounds: []option.Inbound{
-			option.Inbound{
-				Type: "vless",
-				Tag:  "test_in",
-				Id:   &val,
-
-				VLESSOptions: option.VLESSInboundOptions{
-					Users: []option.VLESSUser{
-						option.VLESSUser{
-							Name:     "testt",
-							UUID:     "1c7a5143-bfeb-4cfd-b733-1f5e96edc949",
-							Maxlogin: 3,
-						},
-					},
-					ListenOptions: option.ListenOptions{
-						Listen:      option.NewListenAddress(addr),
-						ListenPort:  443,
-						TCPFastOpen: true,
-					},
-					Transport: &option.V2RayTransportOptions{
-						Type: "ws",
-						WebsocketOptions: option.V2RayWebsocketOptions{
-							Path: "/",
-						},
-					},
-				},
-			},
-		},
-		Outbounds: []option.Outbound{
-			option.Outbound{
-				Type: "direct",
-				Tag:  "direct",
-				Id:   &val,
-				DirectOptions: option.DirectOutboundOptions{
-					DialerOptions: option.DialerOptions{
-						BindInterface: "tun0",
-					},
-				},
-			},
-		},
-		Route: &option.RouteOptions{
-			AutoDetectInterface: true,
-			Final:               "direct",
-			Rules: []option.Rule{
-				option.Rule{
-					Type: "default",
-					DefaultOptions: option.DefaultRule{
-						Protocol: option.Listable[string]{},
-						Outbound: "direct",
-					},
-				},
-			},
-		},
-	}
-
 	newoption := connected.Botoptions{
 		Watchman:   &watchman.Watchmanconfig{},
 		Dbpath:     "./newtest.db",
 		Ctx:        ctx,
-		Bottoken:   "7450429117:AAG-GSYKGsylucObfp8FmsCxNnus8L7EtHo",
+		Bottoken:   "",
 		Botmainurl: "https://api.telegram.org/bot",
 		Metadata: &controller.MetadataConf{
 			GroupID:           -1002325676823,
@@ -103,7 +37,6 @@ func TestConnectedBot(t *testing.T) {
 			BandwidthAvelable: "4000GB",
 		},
 		Logger:     zLogger,
-		Sboxoption: newopt,
 	}
 
 	Bot, _ := connected.New(newoption)

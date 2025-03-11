@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/netip"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -15,10 +16,10 @@ import (
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
 	"github.com/sadeepa24/connected_bot/sbox/singapi"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
-	"github.com/sadeepa24/connected_bot/update/bottype"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
+	"github.com/sadeepa24/connected_bot/tg/update/bottype"
+	"github.com/sagernet/sing-box/option"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -29,11 +30,12 @@ type Controller struct {
 	db     *db.Database
 	botapi botapi.BotAPI
 	logger *zap.Logger
-	// mu sync.Mutex
 
 	Lockval    *atomic.Int32
+	wLockCounter *atomic.Int32
+	UpdateCounter *atomic.Int64
 	Metaconfig *MetadataConf
-	sboxio     *SboxIO
+	//sboxio     *SboxIO
 	*Metadata
 	Overview *Overview
 
@@ -45,22 +47,30 @@ type Controller struct {
 	//lockctx context.Context
 
 	//cond *sync.Cond
-	lockchanbuf []chan struct{}
+	lockchan chan struct{}
 
 	basectx    context.Context    //parent context for all ongoing upx
 	basecancle context.CancelFunc //cancle function for basecontext all upx will down
 
-	lastDbRefresh time.Time // this value only changed by watchman, all other routing read it so no race condition occure,
-
+	lastDbRefresh *atomic.Value // this value only changed by watchman, all other routing read it so no race condition occure,
 	signals chan any // share signals and message types to watchman (*botapi.Msgcommon, botapi.Upmessage, controller.UserCount, //TODO: forcedbrefresh signal) 
+	oprations *atomic.Int32
+	waitCritical *atomic.Bool
+	mu sync.RWMutex //mutext only use to read context I tried to create completly with out sync.bottlenext but i had to add this for small opration and it's allright
 }
 
-func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *MetadataConf, btapi botapi.BotAPI, sboxopt option.Options) (*Controller, error) {
+func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
 
 	//sboxlog := make(chan any, 2000) //buffer for reciving logs from sbox core
 
 	if metaconf.WatchMgbuf <= 0 {
 		metaconf.WatchMgbuf = 100
+	}
+
+	var err error
+	boxapi, boxopts, err := singapi.NewsingAPI(ctx, sboxpath, logger)
+	if err != nil {
+		return nil, errors.Join(err, errors.New("sing api creation failed"))
 	}
 
 	basectx, basecanc := context.WithCancel(ctx)
@@ -72,14 +82,17 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		Overview: &Overview{
 			Mu: &sync.RWMutex{},
 		},
+		sbox: boxapi,
 		basecancle:     basecanc,
 		signals:         make(chan any, metaconf.WatchMgbuf),
 		Usermgrsession: &sync.Map{},
+		lockchan: make(chan struct{}),
 		Metadata: &Metadata{
 			Inbounds:      []sbox.Inboud{},
 			Outbounds:     []sbox.Outbound{},
-			inboundasMap:  make(map[int]sbox.Inboud, len(sboxopt.Inbounds)),
-			outboundasMap: make(map[int]sbox.Outbound, len(sboxopt.Outbounds)),
+			rawoptions: boxopts,
+			inboundasMap:  make(map[int]sbox.Inboud, len(boxopts.Inbounds)),
+			outboundasMap: make(map[int]sbox.Outbound, len(boxopts.Outbounds)),
 			Botlink:       metaconf.Botlink,
 			GroupLink:     metaconf.GroupLink,
 			Channelink:    metaconf.Channelink,
@@ -90,24 +103,26 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		Metaconfig: metaconf,
 		botapi:     btapi,
 		Lockval:    new(atomic.Int32),
-		sboxio: &SboxIO{
-			Inbounds:  sboxopt.Inbounds,
-			outbounds: sboxopt.Outbounds,
-		},
+		wLockCounter: new(atomic.Int32),
+		oprations: new(atomic.Int32),
+		UpdateCounter: new(atomic.Int64),
+		waitCritical: new(atomic.Bool),
+		mu: sync.RWMutex{},
+		lastDbRefresh: &atomic.Value{},
+		// sboxio: &SboxIO{
+		// 	Inbounds:  boxopts.Inbounds,
+		// 	outbounds: boxopts.Outbounds,
+		// },
 		//sboxlog: sboxlog,
 	}
 
-	var err error
-	cn.sbox, err = singapi.NewsingAPI(ctx, sboxopt.SagerNetOpt(), logger)
-	if err != nil {
-		return nil, errors.Join(err, errors.New("sing api creation failed"))
-	}
+
 
 	return cn, nil
 }
 
 type ForceResetUsage uint16 //use to send Newrefresh signal wit force reset all usage database checkcount will reset
-type UserCount int //sending usercount updates
+type UserCount uint16 //sending Active usercount updates
 type RefreshSignal uint16 //use to send Newrefresh signal 
 type BroadcastSig string //use to send Broadcast signal with broadcast msg 
 
@@ -119,10 +134,7 @@ func (c *Controller) Getmgque() chan any {
 
 // msg should be type controller.UserCount, *botapi.Msgcommon, botapi.UpMessage:
 // remove ctx argument later
-func (w *Controller) Addquemg(upxctx context.Context, msg any) {
-	if upxctx.Err() != nil {
-		return
-	}
+func (w *Controller) Addquemg(msg any) {
 	w.signals <- msg
 }
 
@@ -169,7 +181,17 @@ func (c *Controller) Init() error {
 	}
 
 	//intilize All inbounds to map
-	for _, in := range c.sboxio.Inbounds {
+	for _, in := range c.rawoptions.Inbounds {
+		if in.Type != C.Vless {
+			return errors.New("this type inbound not supported yet " + in.Type)
+		}
+
+		vlessout, ok := in.Options.(*option.VLESSInboundOptions)
+		if !ok {
+			return errors.New("this type inbound not supported yet " + in.Type)
+		}
+
+
 		if in.Id == nil {
 			return errors.New("inbound id not found for " + in.Tag)
 		}
@@ -177,8 +199,8 @@ func (c *Controller) Init() error {
 		if in.Domain == "" {
 			in.Domain = c.DefaultDomain
 		}
-		if in.PubIp == "" {
-			in.PubIp = c.DefaultPubip
+		if in.Public_Ip == "" {
+			in.Public_Ip = c.DefaultPubip
 		}
 
 		inbdremake := sbox.Inboud{
@@ -189,21 +211,21 @@ func (c *Controller) Init() error {
 			Option:      &in,
 			Custom_info: in.Custom_info,
 			Domain:      in.Domain,
-			PublicIp:    in.PubIp,
+			PublicIp:    in.Public_Ip,
 			Support:     in.SupportInfo,
 		}
 
 		switch in.Type {
 		case C.Vless:
-			inbdremake.ListenAddres = in.VLESSOptions.ListenOptions.Listen.Build().String()
-			inbdremake.Listenport = int(in.VLESSOptions.ListenPort)
+			inbdremake.ListenAddres = vlessout.ListenOptions.Listen.Build(netip.IPv4Unspecified()).String()
+			inbdremake.Listenport = int(vlessout.ListenPort)
 
-			if in.VLESSOptions.TLS != nil {
-				inbdremake.Tlsenabled = in.VLESSOptions.TLS.Enabled
+			if vlessout.TLS != nil {
+				inbdremake.Tlsenabled = vlessout.TLS.Enabled
 			}
-			if in.VLESSOptions.Transport != nil {
-				inbdremake.Transporttype = in.VLESSOptions.Transport.Type
-				inbdremake.Transportoption = *in.VLESSOptions.Transport
+			if vlessout.Transport != nil {
+				inbdremake.Transporttype = vlessout.Transport.Type
+				inbdremake.Transportoption = *vlessout.Transport
 			}
 		default:
 			return C.ErrNotsupported
@@ -223,7 +245,8 @@ func (c *Controller) Init() error {
 	}
 
 	//intilize All outbounds to map
-	for _, out := range c.sboxio.outbounds {
+	//c.sboxio.outbounds = append(c.sboxio.outbounds, c.rawoptions.Endpoints)
+	for _, out := range c.rawoptions.Outbounds {
 		if out.Id == nil {
 			return errors.New("outbound id not found for " + out.Tag)
 		}
@@ -235,7 +258,7 @@ func (c *Controller) Init() error {
 			Name:        out.Tag,
 			Tag:         out.Tag,
 			Type:        out.Type,
-			Option:      &out,
+			///Option:      &out,
 			Custom_info: out.Custom_info,
 			Latency:     new(atomic.Int32),
 		}
@@ -244,6 +267,31 @@ func (c *Controller) Init() error {
 		if out.Type == C.Direct {
 			c.defaultoutbound = c.outboundasMap[*out.Id]
 		}
+	}
+
+	for _, endpt := range c.rawoptions.Endpoints {
+		if endpt.Id == nil {
+			return errors.New("endpoint id not found for " + endpt.Tag)
+		}
+
+		_, loaded := c.outboundasMap[*endpt.Id]
+		if loaded {
+			return errors.New("outbound and endpoint id conflicts outbound and endpoint id canoot be same")
+		}
+		c.outboundasMap[*endpt.Id] = sbox.Outbound{
+			Id:          int64(*endpt.Id),
+			Name:        endpt.Tag,
+			Tag:         endpt.Tag,
+			Type:        endpt.Type,
+			///Option:      &out,
+			Custom_info: endpt.Custom_info,
+			Latency:     new(atomic.Int32),
+		}
+		c.Outbounds = append(c.Outbounds, c.outboundasMap[*endpt.Id])
+	}
+
+	if c.rawoptions.Route == nil {
+		return errors.New("route cannopt be empty")
 	}
 
 	if c.defaultinbound.Type == "" {
@@ -375,6 +423,7 @@ func (c *Controller) Init() error {
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
+		dbMeta.CommonWarnRatio = c.GetWarnRate()
 		
 		var userct int64
 		if err = c.db.Model(&db.User{}).Count(&userct).Error; err != nil {
@@ -398,14 +447,26 @@ func (c *Controller) Init() error {
 		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
 	}
 
+	if c.GetWarnRate() < int16(c.RefreshRate) {
+		return errors.New("warn rate cannot be zero or lower than RefreshRate warnRate " +  strconv.Itoa(int(c.GetWarnRate())) + " refreshRate " + strconv.Itoa(int(c.RefreshRate)))
+	}
+
+	if c.GetWarnRate() != dbMeta.CommonWarnRatio {
+		c.logger.Info("Warn rate change detected, resetting all warn rates of users")
+		if err := c.db.Model(&db.User{}).Where("1 = 1").Update("warn_ratio", c.GetWarnRate()).Error; err != nil {
+			return errors.New("errored when changing warn rate")
+		}
+		dbMeta.CommonWarnRatio = c.GetWarnRate()
+	}
+
 	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
-		c.logger.Info("Defaul Domain Changed")
+		c.logger.Info("Default Domain Changed")
 		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.Metaconfig.DefaultDomain)
 		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
 	}
 
 	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
-		c.logger.Info("Defaul Public Ip Changed")
+		c.logger.Info("Default Public Ip Changed")
 		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
 		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
 	}
@@ -446,16 +507,6 @@ func (c *Controller) Init() error {
 }
 
 
-func (c *Controller) GetBaseContext() context.Context {
-	return c.basectx
-}
-
-// canceling all ongoing upx
-func (c *Controller) CancleUpdateContexs() {
-	c.basecancle()
-	c.basectx, c.basecancle = context.WithCancel(c.ctx)
-}
-
 func (c *Controller) GetUser(user *tgbotapi.User) (*bottype.User, bool, error) {
 	if user == nil {
 		return nil, false, errors.New("cannot fetch user from nil user object")
@@ -470,28 +521,90 @@ func (c *Controller) GetUser(user *tgbotapi.User) (*bottype.User, bool, error) {
 	gotuser := bottype.Newuser(user, dbUser)
 	return gotuser, true, nil
 }
-func (c *Controller) GetUserList(in *[]int64) error {
+func (c *Controller) GetAllUserList(in *[]int64) error {
 	if c.db.Model(&db.User{}).Pluck("tg_id", in).Error != nil {
 		return C.ErrDbopration
 	}
 	return nil
 }
-func (c *Controller) GetVerifiedUserList(in *[]int64) error { 
-	if err := c.db.Model(&db.User{}).
-		Where("is_in_group = ? AND is_in_channel = ?", true, true).
-		Pluck("tg_id", in).Error; err != nil {
-		return C.ErrDbopration
+
+func (c *Controller) GetUserList(listType string, in *[]int64) error  {
+	
+	switch listType {
+	
+	case C.UserLstAll:
+		return c.GetAllUserList(in)
+	case C.UserLstVerified:
+		if err := c.db.Model(&db.User{}).
+			Where("is_in_group = ? AND is_in_channel = ?", true, true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstUnVerified:
+		if err := c.db.Model(&db.User{}).
+			Where("is_in_group = ? OR is_in_channel = ?", false, false).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+
+	case C.UserLstTempLimited:
+		if err := c.db.Model(&db.User{}).
+			Where("temp_limited = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstMonthLimited:
+		if err := c.db.Model(&db.User{}).
+			Where("is_month_limited = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstDistributed:
+		if err := c.db.Model(&db.User{}).
+			Where("is_dis_user = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}		
+	case C.UserLstGroup:
+		if err := c.db.Model(&db.User{}).
+			Where("is_in_group = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}		
+	case C.UserLstActive:
+		if err := c.db.Model(&db.User{}).
+			Where("is_removed = ? AND is_month_limited = ? AND temp_limited = ?", false, false, false).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstRestricted:
+		if err := c.db.Model(&db.User{}).
+			Where("restricted = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	default:
+		return C.ErrUnknownUserListType
 	}
 	return nil
 }
-func (c *Controller) GetUnVerifiedUserList(in *[]int64) error {
-	if err := c.db.Model(&db.User{}).
-		Where("is_in_group = ? AND is_in_channel = ?", false, false).
-		Pluck("tg_id", in).Error; err != nil {
-		return C.ErrDbopration
-	}
-	return nil
+
+var availableuserList = []string{
+	C.UserLstAll,    
+	C.UserLstTempLimited,  
+	C.UserLstMonthLimited, 
+	C.UserLstActive,       
+	C.UserLstGroup,       
+	C.UserLstDistributed, 
+	C.UserLstVerified,    
+	C.UserLstUnVerified,   
+	C.UserLstRestricted,   
 }
+func (c *Controller) AvailableUserList() []string {
+	return availableuserList
+}
+
+
 func (c *Controller) GetUserById(userId int64) (*db.User, error) {
 	var user = &db.User{
 		TgID: userId,
@@ -629,7 +742,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 	oldQuota := user.CalculatedQuota
 	user.CalculatedQuota = C.Bwidth(c.CommonQuota.Load()) + user.GiftQuota
 
-	if user.IsCapped {
+	if user.IsCapped && user.CappedQuota <= user.CalculatedQuota {
 		user.CalculatedQuota = user.CappedQuota
 	}
 
@@ -670,10 +783,8 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 			c.DirectMg("config adding failed you may need to contact admin with error err - " + err.Error(), user.TgID, user.TgID)
 		}
 
-		user.Configs[i].Usage += (status.Download + status.Upload)
+		user.Configs[i].UpdateUsages(status)
 		user.MonthUsage += (status.Download + status.Upload)
-		user.Configs[i].Download += status.Download
-		user.Configs[i].Upload += status.Upload
 
 		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || user.IsDistributedUser || (user.IsCapped && user.CappedQuota > C.Bwidth(c.CommonQuota.Load())) || (user.MonthUsage >= user.CalculatedQuota) {
 
@@ -696,7 +807,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 				TgId: user.TgID,
 			})
 		}
-		if err == nil && !user.IsDistributedUser {
+		if err == nil && !user.IsDistributedUser && status.FullUsage() > 0 {
 			c.db.Create(&db.UsageHistory{
 				Usage:    status.Download + status.Upload,
 				Download: status.Download,
@@ -758,6 +869,7 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		CalculatedQuota:   C.Bwidth(c.CommonQuota.Load()),
 		DeletedConfCount:  0,
 		AddtionalConfig:   0,
+		WarnRatio: c.GetWarnRate(),
 		RecheckVerificity: recheck,
 		Lang:        "en",
 		Points:      C.DefaultPoint,
@@ -770,11 +882,11 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		GroupBanned:   false,
 		ChannelBanned: false,
 		
-		IsVipUser:     false,
-		WebToken: sql.NullString{
-			String: "no token", //TODO: change after making wqb app
-			Valid:  true,
-		},
+		//IsVipUser:     false,
+		// WebToken: sql.NullString{
+		// 	String: "no token", //TODO: change after making wqb app
+		// 	Valid:  true,
+		// },
 	}
 
 	dbUser, err := c.db.AddUser(newuser)
@@ -801,7 +913,6 @@ func (c *Controller) Addsession(closefunc ForceCloser, UserId int64) {
 	c.Usermgrsession.Store(UserId, closefunc)
 
 }
-
 func (c *Controller) RemoveSesion(UserId int64) {
 	c.Usermgrsession.Delete(UserId)
 }
@@ -882,39 +993,7 @@ func (c *Controller) startbox() error {
 	return c.sbox.Start()
 }
 
-//func (c *Controller) Getinbounds() ([]sbox.Inboud) { return c.Metadata.Inbounds }
 
-func (c *Controller) WatchmanLock() {
-	c.Lockval.Swap(1)
-
-}
-
-func (c *Controller) WatchmanUnlock() {
-	c.Lockval.Swap(0)
-	time.Sleep(1 * time.Millisecond) //make sure value swaped so that no more chan add to list
-
-	for _, chans := range c.lockchanbuf {
-		close(chans)
-	}
-	c.lockchanbuf = []chan struct{}{}
-
-}
-
-// check is that controller locked by watchman
-// if locked this function wait for it to unlock
-func (c *Controller) CheckLock() bool {
-	if c.Lockval.Load() == 0 {
-		return false
-	}
-	tmpchan := make(chan struct{})
-	c.addlockchan(tmpchan)
-	<-tmpchan
-	return true
-}
-
-func (c *Controller) addlockchan(lockchan chan struct{}) {
-	c.lockchanbuf = append(c.lockchanbuf, lockchan)
-}
 
 func (c *Controller) Close() error { return c.sbox.Close() }
 
@@ -930,7 +1009,6 @@ func (c *Controller) RemoveUserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, err
 func (c *Controller) GetstatusUserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, error) {
 	return c.sbox.GetstatusUser(conf)
 }
-
 func (c *Controller) UrlTestOut(tag string) (int16, error) {
 	return c.sbox.UrlTest(tag)
 
@@ -1027,13 +1105,11 @@ func (c *Controller) CreateSboxConf(userId int64, name string) (db.SboxConfigs, 
 	return *conf, nil
 
 }
-
 // this give configs according to server not from builder
 func (c *Controller) GetUserConfigs(userID int64) ([]db.Config, error) {
 	var confs []db.Config
 	return confs, c.db.Model(&db.Config{}).Where("user_id = ?", userID).Find(&confs).Error
 }
-
 // Deletes buildconfig not releted to server configs
 func (c *Controller) DeleteConf(confId int64) error {
 	return c.db.Model(&db.SboxConfigs{}).Delete(&db.SboxConfigs{
@@ -1120,36 +1196,6 @@ func (c *Controller) UpdatePoint(newpointCount int64, userId int64) error {
 	return nil
 }
 
-func (c *Controller) IncCriticalOp() {
-	c.critical.Add(1)
-}
-
-func (c *Controller) DecCriticalOp() {
-	if c.critical.Add(-1) == 0 && c.critchan != nil {
-		c.critchan <- struct{}{}
-	}
-}
-
-func (c *Controller) WaitCriticalop() {
-	if c.critical.Load() == 0 {
-		return
-	}
-	c.critchan = make(chan interface{})
-	<-c.critchan
-	c.critchan = nil
-}
-
-func (c *Controller) GetLastRefreshtime() time.Time {
-	c.CheckLock()
-	return c.lastDbRefresh
-}
-
-// only use In watchman,
-// Do not use elsewhere
-func (c *Controller) SetLastRefreshtime() {
-	c.lastDbRefresh = time.Now()
-}
-
 func (c *Controller) SendMsgContext(ctx context.Context, msg any) (*tgbotapi.Message, error) {
 	var (
 		repmg *tgbotapi.Message
@@ -1195,4 +1241,96 @@ func (c *Controller) SendMsgContext(ctx context.Context, msg any) (*tgbotapi.Mes
 		return nil, C.ErrNotMsgType
 	}
 	return repmg, err
+}
+
+func (c *Controller) RemoveAllLimits() error {
+	c.IncCriticalOp()
+	tx := c.db.Begin()
+	err := tx.Model(&db.User{}).Where("1 = 1").Update("is_month_limited", "false").Error
+	if err != nil {
+		tx.Rollback()
+		c.DecCriticalOp()
+		return err
+	}
+	tx.Commit()
+	c.DecCriticalOp()
+	if c.CheckLock() {
+		return nil
+	}
+	c.signals <- RefreshSignal(1)
+	return nil
+}
+
+
+
+
+//func (c *Controller) Getinbounds() ([]sbox.Inboud) { return c.Metadata.Inbounds }
+//concurrent area
+func (c *Controller) WatchmanLock() {
+	c.Lockval.Swap(1)
+}
+
+func (c *Controller) WatchmanUnlock() {
+	c.Lockval.Swap(0)
+	waiters := c.wLockCounter.Swap(0)
+	for i := 0; i < int(waiters); i++ {
+		c.lockchan <- struct{}{}
+	}
+}
+
+// check is that controller locked by watchman
+// if locked this function wait for it to unlock
+func (c *Controller) CheckLock() bool {
+	if c.Lockval.Load() == 0 {
+		return false
+	}
+	c.wLockCounter.Add(1)
+	<-c.lockchan
+	return true
+}
+
+func (c *Controller) IncCriticalOp() {
+	c.critical.Add(1)
+}
+
+func (c *Controller) DecCriticalOp() {
+	if c.critical.Add(-1) == 0  {
+		if c.waitCritical.Load() {
+			c.critchan <- struct{}{}
+		}
+	}
+}
+
+//only call ones by watchman do not call elsewhere
+func (c *Controller) WaitCriticalop() {
+	if c.critical.Load() == 0 {
+		return
+	}
+	c.waitCritical.Swap(true)
+	<-c.critchan
+	c.waitCritical.Swap(false)
+}
+
+func (c *Controller) SetLastRefreshtime() {
+	c.lastDbRefresh.Store(time.Now())
+}
+
+func (c *Controller) GetLastRefreshtime() time.Time {
+	return c.lastDbRefresh.Load().(time.Time)
+	
+}
+
+func (c *Controller) GetBaseContext() context.Context {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.basectx
+	
+}
+
+// canceling all ongoing upx
+func (c *Controller) CancleUpdateContexs() {
+	c.mu.Lock()
+	c.basecancle()
+	c.basectx, c.basecancle = context.WithCancel(c.ctx)
+	c.mu.Unlock()
 }

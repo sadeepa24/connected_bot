@@ -4,27 +4,34 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"io"
+	"errors"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/parser"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"go.uber.org/zap"
 )
 
 type ServerOption struct {
-	Addr              string   `json:"addr"`
-	Cert              string   `json:"cert"`
-	Key               string   `json:"key"`
-	ServerName        string   `json:"server_name"`
 	HttpPath          string   `json:"http_path"`
 	AllowedUpdates    []string `json:"allowed_updates,omitempty"`
 	FullUrl           string   `json:"full_url"`
 	Secret            string   `json:"secret"`
 	DisableWebhookSet bool     `json:"disable_setwebhook"`
+	Custom_Message    string   `json:"req_reject_message"`
+	ListenOption	 ListenOption `json:"listen_option"`
+}
+
+type ListenOption struct {
+	AllowdIPCidr		  []string `json:"allowd_cidr"`
+	ConnRejectMessage     string   `json:"reject_message"`
+	ServerName        string   `json:"server_name"`
+	Cert              string   `json:"cert"`
+	Key               string   `json:"key"`
+	Addr              string   `json:"addr"`
 }
 
 type Webhookserver struct {
@@ -47,34 +54,21 @@ type BotHandler struct {
 	path   string
 	parser parser.Parserwrap
 	secreatToken string
+	CustomMessage []byte
 }
 
 func New(ctx context.Context, srvopt *ServerOption, parser parser.Parserwrap, logger *zap.Logger) *Webhookserver {
 	if srvopt == nil {
 		return nil
 	}
-
-	var tlsconf *tls.Config
-
-	if srvopt.Cert != "" && srvopt.Key != "" {
-		cert, err := tls.LoadX509KeyPair(srvopt.Cert, srvopt.Key)
-		if err != nil {
-			logger.Error(err.Error())
-			return nil
-		}
-		tlsconf = &tls.Config{
-			ServerName:   srvopt.ServerName,
-			Certificates: []tls.Certificate{cert},
-			MinVersion:   tls.VersionTLS10,
-			InsecureSkipVerify: true,
-		}
-	}
-	ls, err := newwhls(srvopt.Addr, tlsconf)
-
+	ls, err := newwhls(srvopt.ListenOption, logger)
 	if err != nil {
+		logger.Error("webhook server listner failed ", zap.Error(err))
 		return nil
 	}
-
+	if srvopt.Custom_Message == "" {
+		srvopt.Custom_Message = "server cannot prosess this request"
+	}
 	wsh := &Webhookserver{
 		listner: ls,
 		logger:  logger,
@@ -89,7 +83,7 @@ func New(ctx context.Context, srvopt *ServerOption, parser parser.Parserwrap, lo
 				path:   srvopt.HttpPath,
 				parser: parser,
 				secreatToken: srvopt.Secret,
-				
+				CustomMessage: []byte(srvopt.Custom_Message),
 			},
 		},
 		FullUrl:           srvopt.FullUrl,
@@ -102,7 +96,6 @@ func New(ctx context.Context, srvopt *ServerOption, parser parser.Parserwrap, lo
 }
 
 func (w *Webhookserver) Start(botapi botapi.BotAPI, errchan chan error) error {
-	w.logger.Info("webhook listener started on " + w.Addr)
 	if !w.DIsableWebhookSet {
 		if err := botapi.SetWebhook(w.FullUrl, w.secret, "", w.AllowdObs); err != nil {
 			errchan <- err
@@ -111,113 +104,126 @@ func (w *Webhookserver) Start(botapi botapi.BotAPI, errchan chan error) error {
 		w.logger.Debug("webhook setting succsess")
 	}
 	errchan <- nil
+	w.logger.Info("webhook listener started on " + w.Addr)
 	return w.Server.Serve(w.listner)
 
 }
 
 func (w *Webhookserver) Close() error {
 	return w.Server.Close()
-
 }
 
 func (w *BotHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
-	w.logger.Debug("request recived from " + req.RemoteAddr)
 	if req.Method != "POST" {
-		w.logger.Warn("Unsupported Http Method Recived " + req.Method + "from " + req.RemoteAddr)
+		w.logger.Warn("Unsupported Http Method " + req.Method + " Recived from " + req.RemoteAddr)
 		writer.WriteHeader(http.StatusMethodNotAllowed)
-		writer.Write([]byte("පලයන් හුත්තෝ යන්න. එනවා මෙතන රෙද්දක් කරන්න, පකයා"))
+		writer.Write(w.CustomMessage)
 		return
 	}
-
 	if req.URL.Path != w.path {
-		w.logger.Warn("MissMatched Requests Path " + req.URL.Path + "from " + req.RemoteAddr)
+		w.logger.Warn("MissMatched Requests Path " + req.URL.Path + " from " + req.RemoteAddr)
 		writer.WriteHeader(http.StatusMethodNotAllowed)
-		writer.Write([]byte("පලයන් හුත්තෝ යන්න. එනවා මෙතන රෙද්දක් කරන්න, පකයා"))
+		writer.Write(w.CustomMessage)
 		return
 	}
 	if req.Header.Get("X-Telegram-Bot-Api-Secret-Token") != w.secreatToken {
 		w.logger.Warn("Auth Token Not Found Req from " + req.RemoteAddr)
 		writer.WriteHeader(http.StatusForbidden)
-		writer.Write([]byte("පලයන් හුත්තෝ යන්න. එනවා මෙතන රෙද්දක් කරන්න, පකයා"))
+		writer.Write(w.CustomMessage)
 		return
 	}
-
-	data := make([]byte, req.ContentLength)
-	var read int
-	
-	for read < len(data) {
-		n, err := req.Body.Read(data[read:])
-		read += n
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			w.logger.Error("Error reading request body: " +  err.Error())
-			break
-		}
-		
-	}
-	
-	if read < len(data) {
-		w.logger.Debug("Incomplete read, expected:", zap.Int("data len", len(data)), zap.Int("but got", read))
+	var update tgbotapi.Update
+    decoder := json.NewDecoder(req.Body)
+    if err := decoder.Decode(&update); err != nil {
+		w.logger.Error("Failed to decode JSON - ", zap.Error(err))
 		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	w.logger.Debug("Read: ", zap.Int("read", read), zap.Int("data len", len(data)))
-	req.Body.Close()
-	
-	
-	
-	var msg = &tgbotapi.Update{}
-	if err := json.Unmarshal(data, msg); err != nil {
-		w.logger.Error("request json body unmarshal failed err - " + err.Error())
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	//TODO: //
-
-	go w.parsertimetgmsg(msg)
+        return
+    }
+	go w.parsertimetgmsg(&update)
 	//go w.parser.Parse(msg)
-
 	writer.WriteHeader(http.StatusOK)
-
 }
 
 // remove this after testings
 func (w *BotHandler) parsertimetgmsg(tg *tgbotapi.Update) {
-	st := time.Now()
 	if err := w.parser.Parse(tg); err != nil {
-		w.logger.Error("updated errored",  zap.Error(err))
+		w.logger.Error("updated errored", zap.Int("id", tg.UpdateID), zap.Error(err))
 	}
-	w.logger.Info("elpsed time for processing request ⏳ " + time.Since(st).String())
 }
 
 type webhookls struct {
-	ls net.Listener
+	net.Listener
+	allowdip RangeCheck
+	tlsconfig *tls.Config
+	rejectMessage []byte
+	logger *zap.Logger
 }
 
-func newwhls(addres string, tlsconfig *tls.Config) (*webhookls, error) {
-	ls, err := net.Listen("tcp", addres)
+func newwhls(lsopts ListenOption, logger *zap.Logger) (*webhookls, error) {
+	tcpAddr,err := net.ResolveTCPAddr("tcp", lsopts.Addr)
+	if err != nil {
+		return nil, errors.New("listen address fault")
+	}
+	ls, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		return nil, err
 	}
-	if tlsconfig != nil {
-		ls = tls.NewListener(ls, tlsconfig)
+	var rangeChecker RangeCheck
+	if len(lsopts.AllowdIPCidr) > 0 {
+		rangeChecker, err = NewCIDRRange(lsopts.AllowdIPCidr)
 	}
+	var tlsconf *tls.Config
+	if lsopts.Cert != "" && lsopts.Key != "" {
+		cert, err := tls.LoadX509KeyPair(lsopts.Cert, lsopts.Key)
+		if err != nil {
+			return nil, err
+		}
+		tlsconf = &tls.Config{
+			ServerName:   lsopts.ServerName,
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS10,
+			InsecureSkipVerify: true,
+		}
+	}
+
+	if lsopts.ConnRejectMessage == "" {
+		lsopts.ConnRejectMessage = "connection reject due to security reason"
+	}
+
 	return &webhookls{
-		ls: ls,
-	}, nil
+		Listener: ls,
+		rejectMessage: []byte(lsopts.ConnRejectMessage),
+		tlsconfig: tlsconf,
+		logger: logger,
+		allowdip: rangeChecker,
+	}, err
 }
 
 func (w *webhookls) Accept() (net.Conn, error) {
-	return w.ls.Accept()
+	conn, err := w.Listener.Accept()
+	if err != nil {
+		w.logger.Error("connection Failed ", zap.Error(err))
+		return nil, err
+	}
+	if w.allowdip != nil {
+		if !w.allowdip.Contains(GetIP(conn)) {
+			conn.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
+			w.logger.Warn("Unknow Remote Connection Rehected " + conn.RemoteAddr().String())
+			conn.Write(w.rejectMessage)
+			conn.Close()
+			return nil, UnknownRemote("unknown remote addr " + conn.RemoteAddr().Network(), )
+		}
+	}
+	if w.tlsconfig != nil {
+		conn = tls.Server(conn, w.tlsconfig)
+	}
+	return conn, err
 }
 
-func (w *webhookls) Close() error {
-	return w.ls.Close()
-}
-
-func (w *webhookls) Addr() net.Addr {
-	return w.ls.Addr()
+func GetIP(conn net.Conn) net.IP {
+	//all connections are tcp so it's allright
+	if addr, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
+		return addr.IP
+	}
+	return nil
 }

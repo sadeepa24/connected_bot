@@ -47,7 +47,7 @@ func New(options Botoptions) (*ConnectedBot, error) {
 	//sbox = fortest.Newtestsbox()
 	//newbotapi = fortest.NewTESTBOTAPI()
 
-	ctrl, err := controller.New(options.Ctx, newdb, options.Logger, options.Metadata, newbotapi, options.Sboxoption)
+	ctrl, err := controller.New(options.Ctx, newdb, options.Logger, options.Metadata, newbotapi, options.SboxConfPath)
 	if err != nil {
 		return nil, err
 	}

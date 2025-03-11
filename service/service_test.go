@@ -6,15 +6,14 @@ import (
 	"testing"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 
 	"github.com/sadeepa24/connected_bot/db"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
 	"github.com/sadeepa24/connected_bot/service"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +29,7 @@ func init() {
 
 func TestUsersrv(t *testing.T) {
 	usethisdb.InitDb()
-	var ctrl ,_ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, option.Options{})
+	var ctrl ,_ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "")
 
 	groupid := 88890
 
@@ -117,7 +116,10 @@ func TestUsersrv(t *testing.T) {
 	}
 	var err error
 	var ok bool
-	upxx := update.Newupdate(ctx, testupdate)
+	upxx := &update.Updatectx{
+		Update: testupdate,
+		Ctx: ctx,
+	}
 	upxx.User, ok, err = ctrl.GetUser(testupdate.Message.From)
 	if err != nil || !ok {
 		upxx.User, _ = ctrl.Newuser(testupdate.Message.From, testupdate.Message.Chat)
@@ -140,7 +142,7 @@ func TestUsersrv(t *testing.T) {
 func TestXraywiz(t *testing.T) {
 
 	usethisdb.InitDb()
-	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, option.Options{})
+	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "option.Options{}")
 
 	var callbacksrv = service.NewCallback(ctx, zLogger, nil, nil)
 	//var adminsrv *service.Adminsrv
@@ -175,7 +177,10 @@ func TestXraywiz(t *testing.T) {
 	testupdate := &tgbotapi.Update{
 		Message: testmsg,
 	}
-	upxx := update.Newupdate(ctx, testupdate)
+	upxx := &update.Updatectx{
+		Update: testupdate,
+		Ctx: ctx,
+	}
 
 	t.Log("testing xray service")
 	Xrayserwiz := service.NewXraywiz(ctx, callbacksrv, zLogger,  ctrl, defaultsrv, nil, nil)

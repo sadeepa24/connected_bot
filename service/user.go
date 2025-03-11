@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sadeepa24/connected_bot/botapi"
+	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/service/events"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -62,7 +62,6 @@ func NewuserService(ctx context.Context,
 }
 
 func (u *Usersrv) Exec(upx *update.Updatectx) error {
-	u.logger.Info("executing user service " + upx.User.Info() )
 	switch {
 	case upx.Update.Message != nil:
 		if upx.Update.Message.IsCommand() {
@@ -186,7 +185,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		//newly joined group
 		
 		case updatedchat == C.Group && !NewUser.IsRemoved:
-			u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			u.ctrl.Addquemg(botapi.UpMessage{
 				Template: struct {
 					*botapi.CommonUser
 					Chat         string
@@ -251,7 +250,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 
 			if upx.User.IsInGroup {
 
-				u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+				u.ctrl.Addquemg(botapi.UpMessage{
 					Template: struct {
 						*botapi.CommonUser
 						Chat string
@@ -307,7 +306,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		// left and joined again channel
 		case updatedchat == C.Channel:
 
-			u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			u.ctrl.Addquemg( botapi.UpMessage{
 				Template: struct {
 					*botapi.CommonUser
 					Chat string
@@ -344,7 +343,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 
 		// left and joined again group
 		case updatedchat == C.Group:
-			u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+			u.ctrl.Addquemg(botapi.UpMessage{
 				Template: struct {
 					botapi.CommonUser
 					Chat         string
@@ -388,7 +387,6 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		
 		if NewUser.Isverified() {
 			Usersession.GetUser().IsRemoved = false
-			u.ctrl.IncreaseUserCount(1)
 		}
 		if err = Usersession.ActivateAll(); err != nil {
 			return errors.Join(errors.New("chat member parsing config activate failed user " + upx.User.Name), err)
@@ -459,14 +457,16 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 		return u.cmdRecheck(upx, Messagesession)
 	case C.CmdSource:
 		return u.cmdSendSource(Messagesession)
+	case C.CmdFree:
+		return u.cmdFree(upx, Messagesession)
 	default:
-		u.logger.Warn("unknown cmd recived by userservice - " + cmd)
+		u.logger.Warn("unknown cmd recived by userservice - ", zap.String("cmd", cmd), zap.String("user", upx.User.Info()))
 		return u.defaultsrv.FromserviceExec(upx)
 
 	}
 
 	if upx.User.IsDistributedUser {
-		u.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+		u.ctrl.Addquemg(&botapi.Msgcommon{
 			Infocontext: &botapi.Infocontext{
 				ChatId: upx.User.TgID,
 			},
@@ -809,7 +809,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 	btns.Reset([]int16{2})
 	btns.AddUrlbutton("Thanks Him", fmt.Sprintf("tg://user?id=%v", upx.User.TgID))
 
-	u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+	u.ctrl.Addquemg(botapi.UpMessage{
 		Template: struct {
 			*botapi.CommonUser
 			Gift     string
@@ -866,7 +866,6 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 		} else {
 			Messagesession.EditText(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		return nil
 
 	}
@@ -885,6 +884,7 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 	if ok, err := closeback(replcallback.ID, Messagesession.DeleteAllMsg, func() error {
 		return nil
 	}); ok {
+		Messagesession.Edit("Distribution Canceld", nil, "")
 		return err
 	}
 
@@ -894,7 +894,7 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 		Messagesession.DeleteAllMsg()
 		Messagesession.SendAlert(C.GetMsg(C.MsgDisSucsess), nil)
 
-		u.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
+		u.ctrl.Addquemg( botapi.UpMessage{
 			Template: struct {
 				*botapi.CommonUser
 				Disquota string
@@ -926,7 +926,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 		Messagesession.SendExtranal(struct {
 			EndDate string
 		}{
-			EndDate: upx.User.Captime.AddDate(0, 0, 30).Format("2006-01-02 15:04:05"),
+			EndDate: upx.User.Captime.AddDate(0, 0, int(upx.User.CapDays)).Format("2006-01-02 15:04:05"),
 		}, nil, C.TmpcapQuota, true)
 		return nil
 	}
@@ -953,14 +953,23 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	btns.Addbutton(C.BtnContinue, C.BtnContinue, "")
 	btns.AddClose(false)
 
-	capble_quota := (Usersession.GetUser().CalculatedQuota - Usersession.GetFullUsage().Full())
+	fullUsage := Usersession.GetFullUsage()
+
+	capble_quota := (Usersession.GetUser().CalculatedQuota - fullUsage.Full())
+
+	if capble_quota <= 0 {
+		Messagesession.SendAlert(C.GetMsg(C.MsgCannotCap), nil)
+		return nil
+	}
 
 	Messagesession.Edit(struct {
-		Leftquota    string
-		CapbleQuouta string
+		LeftQuota    string
+		MinCap string
+		CapRange     string
 	}{
-		Leftquota:    Usersession.LeftQuota().BToString(),
-		CapbleQuouta: capble_quota.BToString(),
+		LeftQuota:    Usersession.LeftQuota().BToString(),
+		MinCap: fullUsage.Full().BToString(),
+		CapRange:     fullUsage.Full().BToString() + " -- " + upx.User.CalculatedQuota.BToString(),
 	}, btns, C.TmpcapWarn)
 
 	answer, err := u.callback.GetcallbackContext(upx.Ctx, btns.ID())
@@ -978,65 +987,51 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 
 	Messagesession.Edit(struct {
 		LeftQuota    string
-		CapbleQuouta string
+		MinCap string
+		CapRange string
 	}{
 		LeftQuota:    Usersession.LeftQuota().BToString(),
-		CapbleQuouta: capble_quota.BToString(),
+		MinCap: fullUsage.Full().BToString(),
+		CapRange: fullUsage.Full().BToString() + " -- " + upx.User.CalculatedQuota.BToString(),
 	}, nil, C.Tmpcapreply)
 
-	Newcap := C.Bwidth(0)
-	var retry = 0
-	for {
 
-		if upx.Ctx.Err() != nil {
-			return C.ErrContextDead
-		}
-
-		if retry > 5 {
-			Messagesession.SendAlert(C.GetMsg(C.Msgretryfail), nil)
-			return nil
-		}
-		replymg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.Id, upx.Chat_ID)
-		if err != nil {
-			return err
-		}
-		if replymg == nil {
-			Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-			continue
-		}
-		Messagesession.Addreply(replymg.MessageID)
-
-		newCap, err := strconv.Atoi(replymg.Text)
-		retry++
-		if err != nil {
-			Messagesession.SendAlert(C.GetMsg(C.MsgValidInt), nil)
-			continue
-		}
-		if newCap <= 0 {
-			Messagesession.SendAlert(C.GetMsg(C.Msgcapzerod), nil)
-			continue
-		}
-
-		
-
-		if C.Bwidth(newCap).GbtoByte() > capble_quota {
-			Messagesession.SendAlert(C.GetMsg(C.MsgcapAlready), nil)
-			continue
-		}
-		// if C.Bwidth(newCap).GbtoByte() > Usersession.TotalUsage() {
-		// 	Messagesession.SendAlert(C.Getmsg(MsgcapUsage), nil)
-		// 	continue
-		// }
-		Newcap = C.Bwidth(newCap).GbtoByte()
-		break
-
+	cls := common.Tgcalls{
+		Alertsender: func(msg string) {
+			Messagesession.SendAlert(msg, nil)
+		},
+		Sendreciver: func(msg any) (*tgbotapi.Message, error) {
+			if msg != nil {
+				_, err := Messagesession.Edit(msg, nil, "")
+				if err != nil {
+					return nil, err
+				}
+			}
+			mg, err := u.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
+			if err == nil {
+				Messagesession.Addreply(mg.MessageID)
+			}
+			return mg, err
+		},
+		Callbackreciver: func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
+			_, err := Messagesession.Edit(msg, btns, "")
+			if err != nil {
+				return nil, err
+			}
+			return u.callback.GetcallbackContext(upx.Ctx, btns.ID())
+		},
 	}
 
+	Newcap, err := common.ReciveBandwidth(cls, upx.User.CalculatedQuota, fullUsage.Full())
+	if err != nil {
+		cls.Alertsender("cap setting canceld")
+		return nil
+	}
 	btns.Reset([]int16{1, 1})
 	btns.Addbutton(C.BtnConform, C.BtnConform, "")
 	btns.Addcancle()
 
-	Messagesession.EditText(C.GetMsg(C.MsgcapAlready), btns)
+	Messagesession.EditText(C.GetMsg(C.MsgcapConform), btns)
 
 	answer, err = u.callback.GetcallbackContext(upx.Ctx, btns.ID())
 	if err != nil {
@@ -1047,14 +1042,23 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	switch answer.Data {
 	case C.BtnCancle:
 		Messagesession.DeleteAllMsg()
-		Messagesession.SendAlert(C.GetMsg(C.MsgcapAlready), nil)
+		Messagesession.SendAlert(C.GetMsg(C.MsgcapCancle), nil)
 		return nil
 
 	}
 
 	Usersession.GetUser().IsCapped = true
-	Usersession.GetUser().CappedQuota = Newcap
+	Usersession.GetUser().CappedQuota = Newcap.GbtoByte()
 	Usersession.GetUser().Captime = time.Now()
+
+
+	Messagesession.Edit("send how much time do you want to set this cap ?", nil, "")
+	days, err := common.ReciveInt(cls, 60, 3)
+	if err != nil {
+		days = 30
+	}
+	Usersession.GetUser().CapDays = int32(days)
+
 
 	if err = u.ctrl.RecalculateConfigquotas(upx.User.User); err != nil {
 		Messagesession.SendAlert(C.GetMsg(C.MsgcapRecalFail), nil)
@@ -1240,7 +1244,7 @@ func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.
 			break
 		}
 		//Messagesession.ForwardMgTo(u.ctrl.SudoAdmin, int64(msg.MessageID))
-		u.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+		u.ctrl.Addquemg(&botapi.Msgcommon{
 			Infocontext: &botapi.Infocontext{
 				ChatId: u.ctrl.SudoAdmin,
 			},
@@ -1252,7 +1256,7 @@ func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.
 		
 	}
 
-	u.ctrl.Addquemg(u.ctx, &botapi.Msgcommon{
+	u.ctrl.Addquemg(&botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: upx.User.TgID,
 		},
@@ -1273,7 +1277,7 @@ func (u *Usersrv) commandSuggesion(upx *update.Updatectx , Messagesession *botap
 		return err
 	}
 
-	u.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+	u.ctrl.Addquemg(&botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: u.ctrl.SudoAdmin,
 		},
@@ -1313,6 +1317,43 @@ This project is built with passion and is open for contributions. Whether you're
 💡 Found an issue or have a suggestion? Feel free to contribute or share your thoughts!
 
 Let’s build something great together! ✨`, btns, "", true)
+	return nil
+}
+
+func (u *Usersrv) cmdFree(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
+	if !upx.User.Templimited && !upx.User.IsMonthLimited {
+		Messagesession.SendAlert(C.GetMsg(C.MsgTempNoLimit), nil)
+		return nil
+	}
+
+	Usersession, err := controller.NewctrlSession(u.ctrl, upx, false)
+	if err != nil {
+		if errors.Is(err, C.ErrSessionExcit) {
+			Messagesession.SendAlert(C.GetMsg(C.MsgSessionExcist), nil)
+		} else {
+			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
+		}
+		return nil
+
+	}
+	defer Usersession.Close()
+
+	switch {
+	case upx.User.Templimited:
+		if upx.User.WarnRatio == 0 {
+			Messagesession.SendAlert(C.GetMsg(C.MsgTempMonth), nil)
+			return nil
+		}
+		upx.User.EmptyCycle = 0
+		upx.User.Templimited = false
+		if upx.User.ConfigCount > 0 {
+			u.ctrl.IncreaseUserCount(1)
+		}
+		Usersession.ActivateAll()
+		Messagesession.SendAlert(C.GetMsg(C.MsgFree), nil)
+	case upx.User.IsMonthLimited:
+		Messagesession.SendAlert(C.GetMsg(C.MsgTempMonthLimited), nil)
+	}
 	return nil
 }
 

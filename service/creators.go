@@ -4,11 +4,12 @@ import (
 	"errors"
 	"strconv"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"go.uber.org/zap"
 )
 
 type creator interface {
@@ -170,7 +171,7 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 	// reduce will be that deleted config's usage
 	if upx.User.MonthUsage+fusage.Downloadtd+fusage.Uploadtd != fusage.Download+fusage.Upload {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCrQuotaNote), nil)
-		reduce = upx.User.MonthUsage + fusage.Downloadtd + fusage.Uploadtd - fusage.Download + fusage.Upload
+		reduce = upx.User.MonthUsage + fusage.Downloadtd + fusage.Uploadtd - (fusage.Download + fusage.Upload)
 	}
 
 	if Usersession.LeftQuota() - reduce <= 0 {
@@ -190,6 +191,8 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 
 	quotafroconfig, err := common.ReciveBandwidth(opts.Tgcalls, (Usersession.LeftQuota() - reduce), 0 )
 	if err != nil {
+		Messagesession.DeleteAllMsg()
+		Messagesession.SendAlert("Bandwidth Recive Failed", nil)
 		return err
 	}
 
@@ -208,7 +211,7 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 		return err
 	}
 
-	LoginLimit, err := common.ReciveInt(opts.Tgcalls, C.MaxLoginLimit, 0)
+	LoginLimit, err := common.ReciveInt(opts.Tgcalls, int(opts.Ctrl.LoginLimit), 0)
 
 	if err != nil {
 		return err
@@ -217,7 +220,7 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 	config, err := Usersession.AddNewConfig(int16(inID), int16(outID), C.Bwidth(quotafroconfig).GbtoByte(), int16(LoginLimit), confName)
 
 	if err != nil {
-		opts.Logger.Error("Error When Config Create - " +  err.Error())
+		opts.Logger.Error("Error When Config Create - ", zap.Error(err))
 		switch {
 		case errors.Is(err, C.ErrInboundNotFound), errors.Is(err, C.ErrDatabaseCreate), errors.Is(err, C.ErrTypeMissmatch), errors.Is(err, C.ErrContextDead):
 			Messagesession.SendAlert(C.GetMsg(C.MsgCrFailed), nil)
@@ -255,8 +258,8 @@ func (v *vlessCreator) Excute(opts common.OptionExcutors) error {
 		Transport:     sboxin.Transporttype,
 		TlsEnabled:    sboxin.Tlsenabled,
 		UUID:          config.UUID.String(),
-		Path:          sboxin.Option.VLESSOptions.GetPath(),
-		TransportType: sboxin.Option.VLESSOptions.TransportType(),
+		Path:          "/", //TODO: change later
+		TransportType: "ws", //TODO: change later
 	}, nil, C.TmpCrSendUID, true)
 
 	//Messagesession.SendExtranal(fmt.Sprintf("vless://%v@%v:%v?path=%v&security=%v&type=", config.UUID.String(), sboxin.Domain, sboxin.Port(), sboxin.Option.VLESSOptions.GetPath()     ), nil, "", true)

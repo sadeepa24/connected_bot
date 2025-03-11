@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
-	"github.com/sadeepa24/connected_bot/builder"
+	"github.com/sadeepa24/connected_bot/builder/v1"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
+	option "github.com/sagernet/sing-box/option"
 )
 
 func TestBuilder(t *testing.T) {
@@ -24,7 +24,7 @@ func TestBuilder(t *testing.T) {
 	}
 	uid, _ := uuid.NewV4()
 
-	Builder.AddDnsServer(option.DNSServerOptions{})
+	//Builder.AddDnsServer(option.HostsDNSServerOptions{})
 	err = Builder.AddOutbound(db.Config{
 		UUID: uid.String(),
 		Name: "tests",
@@ -38,7 +38,7 @@ func TestBuilder(t *testing.T) {
 		Transporttype: "ws",
 		Option: &option.Inbound{
 			Type: "vless",
-			VLESSOptions: option.VLESSInboundOptions{
+			Options: option.VLESSInboundOptions{
 				Transport:                  &option.V2RayTransportOptions{},
 				InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{},
 			},

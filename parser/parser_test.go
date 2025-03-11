@@ -7,15 +7,14 @@ import (
 	"testing"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/parser"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
 	"github.com/sadeepa24/connected_bot/service"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -28,7 +27,7 @@ var usethisdb = db.New(ctx, nil, "connect.db")
 func TestParser(t *testing.T) {
 
 	usethisdb.InitDb()
-	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, option.Options{})
+	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "./sbox.json")
 
 	var callbacksrv = service.NewCallback(ctx, zLogger, nil, nil)
 	var adminsrv *service.Adminsrv
@@ -303,7 +302,7 @@ func (t *Testservice) Exec(upx *update.Updatectx) error {
 	fmt.Println("is upx user started bot", upx.User.Isbotstarted())
 	fmt.Println("is upx user Newuser", upx.User.IsnewUser())
 
-	fmt.Println("is upx Drop", upx.Drop())
+	fmt.Println("is upx Drop", )
 	fmt.Println("upx user service", upx.Service)
 	if upx.Update.Message != nil {
 		if upx.Update.Message.IsCommand() {

@@ -4,7 +4,7 @@ theme:
   features:
     - navigation.tracking
     - navigation.tabs
-    - navigation.tabs.sticky
+    # - navigation.tabs.sticky
     - navigation.indexes
     - navigation.expand
     - navigation.path
@@ -32,13 +32,10 @@ nav:
   # - Installation:
   #     - installation/index.md
   #     - from_source: installation/build_from_source.md
+  # - Changes:
+  #     - changes/index.md
   - Quick Start:
       - quickstart/index.md
-      - Example Configs:
-          - bot config: quickstart/example/config.md
-          - sing-box config: quickstart/example/sing-box.md
-          - message template: quickstart/example/template.md
-          - store: quickstart/example/store.md
   - Configuration:
       - configuration/index.md
       - BOT Config:
@@ -67,6 +64,22 @@ nav:
 
       - Usermsg:
           - other_config/usermsg/index.md
+  - Example Configs:
+      - example/index.md
+      - v1.0.0:
+          - bot config: example/v1.0.0/config.md
+          - sing-box config: example/v1.0.0/sing-box.md
+          - message template: example/v1.0.0/template.md
+          - store: example/v1.0.0/store.md
+      - v1.2.0:
+          - bot config: example/v1.2.0/config.md
+          - sing-box config: example/v1.2.0/sing-box.md
+          - message template: example/v1.2.0/template.md
+          - store: example/v1.2.0/store.md
+  # - Commands:
+  #     - cmd/index.md
+  #     - User: cmd/user/user.md
+  #     - Admin: cmd/admin/admin.md
   # - Developer Guide:
   #     - developer_guide/index.md
 repo_url: https://github.com/sadeepa24/connected_bot

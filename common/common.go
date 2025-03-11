@@ -1,7 +1,7 @@
 package common
 
 import (
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"errors"
 	"fmt"
 	"strconv"
@@ -9,8 +9,8 @@ import (
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -89,6 +89,14 @@ func ReciveInt(call Tgcalls, max, min int) (int, error) {
 		if replymeassage == nil {
 			continue
 		}
+		if replymeassage.IsCommand() {
+			if replymeassage.Command() == C.CmdCancel {
+				call.Alertsender("canceld")
+				return 0, errors.New("user canceld value sending")
+			}
+			call.Alertsender("send valid value or cancel command")
+			continue
+		}
 		if out, err = strconv.Atoi(replymeassage.Text); err != nil {
 			call.Alertsender(C.GetMsg(C.MsgValidInt))
 			continue
@@ -126,7 +134,11 @@ func ReciveBandwidth(call Tgcalls, max, min C.Bwidth) (C.Bwidth, error) {
 			return 0, err
 		}
 		if replymg.IsCommand() {
-			call.Alertsender("send valid value not commands")
+			if replymg.Command() == C.CmdCancel {
+				call.Alertsender("canceld")
+				return 0, errors.New("user canceld value sending")
+			}
+			call.Alertsender("send valid value or cancel command")
 			continue
 		}
 		bwith, err = C.ParserBwidth(replymg.Text)

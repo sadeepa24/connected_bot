@@ -21,9 +21,9 @@ import (
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
-	"github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
-	"github.com/sadeepa24/connected_bot/update/bottype"
+	"github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
+	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 	"github.com/sagernet/sing-vmess/vless"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
@@ -46,6 +46,8 @@ type Adminsrv struct {
 	adminuserbtype bottype.User
 
 	modeUser *atomic.Bool // true mode- user false - admin
+
+	inspecifcUse *atomic.Bool  // remove in future after implmenting callback with id
 }
 
 func NewAdminsrv(
@@ -69,6 +71,7 @@ func NewAdminsrv(
 		msgstore: msgstore,
 		templateEditin: new(atomic.Bool),
 		modeUser: new(atomic.Bool),
+		inspecifcUse: new(atomic.Bool),
 	}
 
 }
@@ -80,13 +83,13 @@ func (a *Adminsrv) Exec(upx *update.Updatectx) error {
 	if upx.Update == nil {
 		return nil
 	}
-	upx.Ctx, upx.Cancle = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
+	upx.Ctx, upx.Cancle  = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
 	switch {
 	case upx.Update.Message != nil:
 		return a.handleMessage(upx)
 	}
 
-	return fmt.Errorf("admin exec not implemented")
+	return errors.New("admin exec not implemented")
 }
 
 func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
@@ -152,9 +155,10 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 			Messagesession.SendAlert(msg, nil)
 		},
 		Sendreciver: func(msg any) (*tgbotapi.Message, error) {
-			_, err := Messagesession.Edit(msg, nil, "")
-			if err != nil {
-				return nil, err
+			if msg != nil {
+				if _, err := Messagesession.Edit(msg, nil, ""); err != nil {
+					return nil, err
+				}
 			}
 			mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin)
 			if err == nil {
@@ -176,13 +180,13 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 	case C.CmdBrodcast:
 		return a.broadcast(upx, Messagesession)
 	case C.CmdServerInfo:
-		return a.getserverinfo(upx)
+		return a.getserverinfo()
 	case C.CmdChatSession:
 		return a.createchat(upx, Messagesession, calls)
 	case C.CmdOverview:
-		return a.overview(upx)
+		return a.overview(calls)
 	case C.CmdRefreshDb:
-		a.ctrl.Addquemg(upx.Ctx, controller.RefreshSignal(1))
+		a.ctrl.Addquemg(controller.RefreshSignal(1))
 		upx.Cancle()
 		return nil
 	case "manage":
@@ -206,37 +210,29 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 	Messagesession.Addreply(message.MessageID)
 	
 	btns := botapi.NewButtons([]int16{2})
-	btns.AddBtcommon("to verified")
-	btns.AddBtcommon("to all")
-	btns.AddBtcommon("to unverified")
-	btns.AddCloseBack()
+	
+	for _, btname := range a.ctrl.AvailableUserList() {
+		btns.AddBtcommon(btname)
+	}
 
-
+	btns.AddClose(true)
 	Messagesession.Edit("select target user type", btns, "")
-
 	callback, err := a.callback.GetcallbackContext(upx.Ctx, btns.ID())
 	if err != nil {
 		return err
 	}
-	Messagesession.SendAlert("broadcasting message", nil,)
-	Messagesession.Edit("📣", nil, "")
-
-	var userlist = []int64{}
-	switch callback.Data {
-	case "to verified":
-		err = a.ctrl.GetVerifiedUserList(&userlist) 
-	case "to all":
-		err = a.ctrl.GetUserList(&userlist) 
-	case "to unverified":
-		err = a.ctrl.GetUnVerifiedUserList(&userlist)
-	default:
-		Messagesession.SendAlert("Broadcast Canceled", nil)
+	if callback.Data == C.BtnClose {
+		Messagesession.Edit("Broadcast Canceled", nil, "")
 		return nil
 	}
+	var userlist = []int64{}
+	err = a.ctrl.GetUserList(callback.Data, &userlist) 
 	if err != nil {
 		Messagesession.SendAlert("fetching user list failed try again", nil)
 		return err
 	}
+	Messagesession.SendAlert("broadcasting message", nil,)
+	Messagesession.Edit("📣", nil, "")
 
 	var sendrfunc func(to int64, mgid int64) error
 	if message.IsForwaded() {
@@ -259,7 +255,11 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 }
 
 func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msgsession, calls common.Tgcalls) error {
-	
+	if a.inspecifcUse.Swap(true) {
+		calls.Alertsender("Already in getuser close it first and use this")
+		return nil
+	}
+	defer a.inspecifcUse.Swap(false)
 	alertsender := calls.Alertsender
 	sendreciver := calls.Sendreciver
 	callbackreciver := calls.Callbackreciver
@@ -351,22 +351,37 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			if enduserupx.User.IsMonthLimited {
 				btns.AddBtcommon("Remove Monthlimit")
 			}
+			if enduserupx.User.Templimited {
+				btns.AddBtcommon("Remove Templimit")
+			}
+			if enduserupx.User.IsCapped {
+				btns.AddBtcommon("Remove Cap")
+			}
 			btns.Addbutton("🔴 Distribute",  "Distribute","" )
 			btns.AddCloseBack()
+			tusage := endusersession.TotalUsage()
 			Messagesession.Edit(userinfo{
+				CappedQuota: enduserupx.User.CappedQuota.BToString(),
+				IsTemplimited: enduserupx.User.Templimited,
+				TempLimitRate: enduserupx.User.WarnRatio,
+				IsVerified: enduserupx.User.Verified(),
 				CommonUser: &botapi.CommonUser{
 					Name:     enduserupx.User.Name,
 					TgId:     enduserupx.User.TgID,
 					Username: enduserupx.User.User.Username.String,
 				},
+				NonUseCycle: upx.User.EmptyCycle,
+				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota)).Float64(),
 				GiftQuota: enduserupx.User.GiftQuota.BToString(),
 				Joined:    enduserupx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: C.Bwidth(a.ctrl.CommonQuota.Load()).BToString(),
 				TQuota:    (endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota).BToString(),
 				LeftQuota: endusersession.LeftQuota().BToString(),
-				TUsage:    endusersession.TotalUsage().BToString(),
+				TUsage:    tusage.BToString(),
 				ConfCount: endusersession.GetUser().ConfigCount,
-				CapEndin:  upx.User.Captime.AddDate(0, 0, 30).String(),
+				CapEndin:  enduserupx.User.Captime.AddDate(0, 0, int(enduserupx.User.CapDays)).String(),
+				CapDays: enduserupx.User.CapDays,
+				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
 
 				Disendin:     ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
 				UsageResetIn: ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
@@ -374,6 +389,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				Iscapped:       enduserupx.User.IsCapped,
 				IsMonthLimited: enduserupx.User.IsMonthLimited,
 				Isdisuser:      enduserupx.User.IsDistributedUser,
+			
 
 				
 
@@ -412,9 +428,34 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				}
 			case "Remove Monthlimit":
 				endusersession.GetUser().IsMonthLimited = false
-				endusersession.ActivateAll()
+				err = endusersession.ActivateAll()
+				if err != nil {
+					Messagesession.SendAlert("config activation failed" + err.Error(), nil)
+					continue
+				}
 				endusermsg.SendAlert("🎉you'r monthlimitation removed by admin 🍾", nil)
 				Messagesession.SendAlert("make a db refresh to change bandiwdth, it will automatically change in next refresh cycle", nil)
+			case "Remove Templimit":
+				if endusersession.GetUser().WarnRatio != 0 {
+					Messagesession.SendAlert("Temporary limitation can be removed by himself. his war rate is n't zero", nil)
+					continue
+				}
+				endusersession.GetUser().Templimited = false
+				endusersession.GetUser().WarnRatio = a.ctrl.GetWarnRate()
+				err = endusersession.ActivateAll()
+				if err != nil {
+					Messagesession.SendAlert("config activation failed" + err.Error(), nil)
+					continue
+				}
+				endusermsg.SendAlert("🎉 Your temporary limitation has been removed and warning rate reset by admin 🍾", nil)
+				Messagesession.SendAlert("Temporary limitation removed and warning rate reset successfully", nil)
+			case "Remove Cap":
+				enduserupx.User.IsCapped = false
+				enduserupx.User.CappedQuota = 0
+				if err = a.ctrl.RecalculateConfigquotas(endusersession.GetUser()); err != nil {
+					Messagesession.SendAlert(C.GetMsg(C.MsgcapRecalFail), nil)
+				}
+				endusermsg.SendAlert("🎉 Your Cap Removed By Admin🍾", nil)
 			}
 				
 		case 2:
@@ -530,7 +571,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				TemplateName: C.TmpConfigInfo,
 				Lang: "en",
 			}, btns); err != nil {
-				a.logger.Error(err.Error())
+				a.logger.Error("admin userinfo send failed ", zap.Error(err))
 				continue
 
 			}
@@ -574,7 +615,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			}
 			a.xraywiz.builds.Delete(enduserupx.User.TgID)
 			if err != nil {
-				a.logger.Error(err.Error())
+				a.logger.Error("admin: builder run failed ", zap.Error(err))
 				if errors.Is(err, C.ErrContextDead) {
 					tmpctx, cancle := context.WithTimeout(a.ctx, 10*time.Second)
 					Messagesession.SetNewcontext(tmpctx)
@@ -626,9 +667,9 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				}
 			}
 
-			configState.run()
+			err = configState.run()
 			if err != nil {
-				a.logger.Error(err.Error())
+				a.logger.Error("admin: configure run failed ", zap.Error(err))
 				if errors.Is(err, C.ErrContextDead) {
 					tmpctx, cancle := context.WithTimeout(a.ctx, 10*time.Second)
 					Messagesession.SetNewcontext(tmpctx)
@@ -648,7 +689,7 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 
 }
 
-func (a *Adminsrv) getserverinfo(upx *update.Updatectx) error {
+func (a *Adminsrv) getserverinfo() error {
 	var memorystate = runtime.MemStats{}
 	runtime.ReadMemStats(&memorystate)
 
@@ -683,7 +724,7 @@ func (a *Adminsrv) getserverinfo(upx *update.Updatectx) error {
 	memorystate.Frees,
 
 )
-	a.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+	a.ctrl.Addquemg( &botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: a.ctrl.SudoAdmin,
 		},
@@ -697,6 +738,7 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 	Messagesession.Edit("send target user", nil, "")
 	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
 	if err != nil {
+		calls.Alertsender("chat creation failed" + err.Error())
 		return err
 	}
 
@@ -719,45 +761,46 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 		calls.Alertsender("You can't chat weith your self 😅")
 		return nil
 	}
-	a.ctrl.Addquemg(upx.Ctx, &botapi.Msgcommon{
+	a.ctrl.Addquemg(&botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: dbuser.TgID,
 		},
 		Text: "admin created chat session with you, you can't use any command or anything until he ends the session ",
 	})
-
-
-	canclechan := make(chan any)
+	calls.Alertsender("chat started if you want to end chat you must /cancel session, if not it will hold for 30 min")
+	chatctx, chatcancel := context.WithTimeout(a.ctx, 30 * time.Minute)
+	Messagesession.SetNewcontext(chatctx)
 
 	mgcoping := func (src, dst int64, admin bool)  {
 		mgcopy:
 		for {
 			select {
-			case <-canclechan:
+			case <- chatctx.Done():
 				break mgcopy
 			default:
 			}
-			mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, src, src) // this will check context automatically
-			if err != nil && admin{
-				a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
-					Infocontext: &botapi.Infocontext{
-						ChatId: upx.User.TgID,
-					},
-					Text: "chat session ended",
-				})
+			mg, err := a.defaultsrv.ExcpectMsgContext(chatctx, src, src) // this will check context automatically
+			if err != nil{
+				if admin {
+					a.ctrl.Addquemg(&botapi.Msgcommon{
+						Infocontext: &botapi.Infocontext{
+							ChatId: upx.User.TgID,
+						},
+						Text: "chat session ended",
+					})
+				}
 				break
 			}
 			if mg.IsCommand() {
 				if mg.Command() == "cancel" && admin {
-					upx.Cancle()
-					canclechan <- struct{}{}
+					chatcancel()
 					break
 				}
 			}
 			Messagesession.CopyMessageRawTo(dst, int64(mg.MessageID), src)
 		}
 		if !admin {
-			a.ctrl.Addquemg(context.Background(), &botapi.Msgcommon{
+			a.ctrl.Addquemg(&botapi.Msgcommon{
 				Infocontext: &botapi.Infocontext{
 					ChatId: dbuser.TgID,
 				},
@@ -769,48 +812,11 @@ func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgs
 	
 	go mgcoping(upx.User.TgID, dbuser.TgID, true)
 	go mgcoping(dbuser.TgID, upx.User.TgID, false)
-	
-	
 	return nil
 }
 
-func (a *Adminsrv) overview(upx *update.Updatectx) error {
-	overview := a.ctrl.Overview
-	overview.Mu.RLock()
-	defer overview.Mu.RUnlock()
-
-
-	a.ctrl.Addquemg(upx.Ctx, botapi.UpMessage{
-		DestinatioID: upx.User.TgID,
-		TemplateName: "overview",
-		Template: struct{
-			BandwidthAvailable string
-			MonthTotal string
-			AllTime string
-			VerifiedUserCount int64
-			TotalUser int32
-			CappedUser int64
-			DistributedUser int64
-			Restricte int64
-			QuotaForEach string
-			LastRefresh time.Time
-		}{
-			BandwidthAvailable: overview.BandwidthAvailable.BToString(),
-			AllTime: overview.AllTime.BToString(),
-			QuotaForEach: overview.QuotaForEach.BToString(),
-			MonthTotal: overview.MonthTotal.BToString(),
-			TotalUser: overview.TotalUser,
-			CappedUser: overview.CappedUser,
-			Restricte: overview.Restricted,
-			DistributedUser: overview.DistributedUser,
-			LastRefresh: overview.LastRefresh,
-			VerifiedUserCount: overview.VerifiedUserCount,
-			
-		},
-		Lang: "en",
-	})
-
-
+func (a *Adminsrv) overview(calls common.Tgcalls ) error {
+	calls.Alertsender(a.ctrl.Overview.String() + fmt.Sprintf("Updates Since Last Refresh: %d", a.ctrl.UpdateCounter.Load()))
 	return nil
 }
 
@@ -946,7 +952,10 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 			}
 
 			replymg, err = calls.Sendreciver("send new file name for the file name with extetion ex - example.mp4")
-
+			if err != nil {
+				calls.Alertsender("fileName Recive Error")
+				return err
+			}
 			filename := replymg.Text
 
 			file, err := a.botapi.GetFile(fileid)
@@ -989,11 +998,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 
 			switch callback.Data {
 			case "Add Help Pages":
-
-				//TODO: add later
-				calls.Alertsender("not avbl yet")
-
-
+				calls.Alertsender("This feature is not available yet. Please check back later.")
 			case "Add Inline Post":
 				replymg, err = calls.Sendreciver("Send Name for New template")
 				if err != nil {
@@ -1008,7 +1013,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 
 					},
 				}
-				calls.Alertsender("New Template Created, Now You can Edit It, Also You have to Add this Template Name Into config.json's metadata.inline_post inorder to recive")
+				calls.Alertsender("New Template Created, Now You can Edit It, Also You have to Add this Template Name Into config.json's metadata.inline_post in order to recive the post via inline mode")
 
 			case C.BtnClose:
 				return nil
@@ -1246,6 +1251,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 func (a *Adminsrv) SwapMode() {
 	a.modeUser.Store(!a.modeUser.Load()) //this is okay with this, no heavy concurrent calls to this
 }
+
 func (a *Adminsrv) AdminMode() bool {
 	return !a.modeUser.Load()
 }
@@ -1301,7 +1307,6 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 		callback *tgbotapi.CallbackQuery
 		err error
 	)
-
 	mainloop:
 	for {
 
@@ -1309,19 +1314,18 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 
 		switch state {
 		case 0:
-			btns.AddBtcommon("Change Config Settings")
-			btns.AddBtcommon("Reset Usage")
+			btns.AddBtcommon("🔴 Change Config Settings")
+			btns.Addbutton("🔴 Reset Usage", "reset-usage", "")
 			btns.Addbutton("🔴 Restart", "Restart", "")
+			btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
 			btns.AddClose(true)
 			
 			if callback, err = callbackreciver("select", btns); err != nil {
-				alertsender("select within 1 minitue next time ")
 				break mainloop
 			}
 
 			switch callback.Data {
-			case "Reset Usage":
-
+			case "reset-usage":
 				calls.Alertsender("warning: If you Reset Usages New 30Days Cycle Begin From Here")
 				reply, err := calls.Sendreciver("if you want to continue send ok")
 				if err != nil {
@@ -1332,10 +1336,10 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					continue mainloop
 				}
 				calls.Alertsender("Usage Reset Added, If you want to undo this You have backup DB")
-				a.ctrl.Addquemg(a.ctx, controller.ForceResetUsage(1))
+				a.ctrl.Addquemg(controller.ForceResetUsage(1))
 				break mainloop
-
 			case "Change Config Settings":
+				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴")
 				alertsender("very carefull when you changing the config, if you make something wrong program will not restart correctly")
 				state = 1
 			case "Restart":
@@ -1345,6 +1349,35 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					Messagesession.SendAlert("Restart Signal Sending Failed "+ err.Error(), nil)
 				}
 				break mainloop
+			case "remlimit":
+				
+				btns.Reset([]int16{2})
+				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴 do thease if you realy want")
+				btns.Addcancle()
+				btns.AddBtcommon("proceed")
+				if callback, err = callbackreciver("this will remove everyone's monthlimitations do you want to continue ?", btns); err != nil {
+					break mainloop
+				}
+
+				if callback.Data != "proceed" {
+					continue
+				}
+				Messagesession.DeleteAllMsg()
+				err = a.ctrl.RemoveAllLimits()
+				if err != nil {
+					Messagesession.SendAlert("db update err "+ err.Error(), nil)
+					continue
+				}
+				a.ctrl.Addquemg( &botapi.Msgcommon{
+					Infocontext: &botapi.Infocontext{
+						User_id: a.ctrl.SudoAdmin,
+						ChatId: a.ctrl.SudoAdmin,
+					},
+					Text: "Month Limitation Remove And Db Refreshed",
+				})
+				return nil
+			
+
 			case C.BtnClose:
 				Messagesession.DeleteAllMsg()
 				alertsender("manager closed")
@@ -1402,8 +1435,6 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 
 			}
 		case 2:
-
-
 		default:
 			Messagesession.DeleteAllMsg()
 			break mainloop

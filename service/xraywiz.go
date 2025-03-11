@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	// tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	"github.com/sadeepa24/connected_bot/botapi"
-	"github.com/sadeepa24/connected_bot/builder"
+	"github.com/sadeepa24/connected_bot/builder/v1"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -23,7 +23,7 @@ type Xraywiz struct {
 	ctx        context.Context
 	callback   *Callback
 	logger     *zap.Logger
-	admin      *Adminsrv
+	//admin      *Adminsrv
 	defaultsrv *Defaultsrv
 
 	ctrl   *controller.Controller
@@ -116,9 +116,7 @@ func (u *Xraywiz) Commandhandler(cmd string, upx *update.Updatectx) error {
 	case C.CmdBuild:
 		return u.commandBuildV2(upx, Messagesession)
 	default:
-		u.logger.Warn("unknown CMD Recived" + upx.Update.Info())
-		upx.Cancle()
-		upx = nil //drop
+		u.logger.Warn("unknown CMD Recived config service" + upx.Update.Info())
 		return nil
 	}
 }
@@ -136,7 +134,6 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx, Messagesession *botapi.
 		} else {
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
-		upx = nil
 		return nil
 	}
 	defer Usersession.Close()
@@ -309,9 +306,5 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 		}
 
 	}
-
-	//Usersession = nil
-	//upx = nil
-	Messagesession = nil
 	return u.defaultsrv.Droper(upx)
 }

@@ -91,12 +91,20 @@ type userinfo struct {
 	CapEndin     string
 	Disendin     int32
 	UsageResetIn int32
+	TempLimitRate int16
 	AlltimeUsage string
+	UsagePercentage float64
+	NonUseCycle int16
+	CapDays int32
 
+	CappedQuota string
+
+	IsVerified 	   bool
 	Iscapped       bool
 	Isgifted       bool
 	Isdisuser      bool
 	IsMonthLimited bool
-
+	IsTemplimited bool
+	
 	JoinedPlace uint
 }

@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	option "github.com/sadeepa24/connected_bot/sbox_option/v1"
+	option "github.com/sagernet/sing-box/option"
 )
 
 // Standar config For Whole Aplication
@@ -86,7 +86,7 @@ func (in *Inboud) Laddr() string {
 	}
 	switch in.Type {
 	case C.Vless:
-		return in.Option.VLESSOptions.Listen.Build().String()
+		return in.Vlessopts().Listen.Build(netip.IPv4Unspecified()).String()
 	}
 	return "noaddr"
 }
@@ -97,10 +97,10 @@ func (in *Inboud) TransortType() string {
 	}
 	switch in.Type {
 	case C.Vless:
-		if in.Option.VLESSOptions.Transport == nil {
+		if in.Vlessopts().Transport == nil {
 			return "notype"
 		}
-		return in.Option.VLESSOptions.Transport.Type
+		return in.Vlessopts().Transport.Type
 	}
 	return "notype"
 }
@@ -110,14 +110,14 @@ func (in *Inboud) TransportPath() string {
 	}
 	switch in.Type {
 	case C.Vless:
-		if in.Option.VLESSOptions.Transport == nil {
+		if in.Vlessopts().Transport == nil {
 			return "notype"
 		}
-		switch in.Option.VLESSOptions.Transport.Type {
+		switch in.Vlessopts().Transport.Type {
 		case "ws":
-			return in.Option.VLESSOptions.Transport.WebsocketOptions.Path
+			return in.Vlessopts().Transport.WebsocketOptions.Path
 		case "http":
-			return in.Option.VLESSOptions.Transport.HTTPOptions.Path
+			return in.Vlessopts().Transport.HTTPOptions.Path
 		default:
 			return ""
 		}
@@ -132,12 +132,23 @@ func (in *Inboud) TlsIsEnabled() bool {
 	}
 	switch in.Type {
 	case C.Vless:
-		if in.Option.VLESSOptions.TLS == nil {
+		if in.Vlessopts().TLS == nil {
 			return false
 		}
-		return in.Option.VLESSOptions.TLS.Enabled
+		return in.Vlessopts().TLS.Enabled
 	}
 	return false
+}
+
+func (in *Inboud) Vlessopts() *option.VLESSInboundOptions {
+	if in.Option == nil {
+		return &option.VLESSInboundOptions{}
+	}
+	switch in.Type {
+	case C.Vless:
+		return in.Option.Options.(*option.VLESSInboundOptions)
+	}
+	return &option.VLESSInboundOptions{}
 }
 
 type Outbound struct {
@@ -145,7 +156,7 @@ type Outbound struct {
 	Name        string
 	Tag         string
 	Type        string
-	Option      *option.Outbound
+	//Option      *option.Outbound
 	Custom_info string
 	Latency     *atomic.Int32
 }

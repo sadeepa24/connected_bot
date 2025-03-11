@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sync"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	//
 	C "github.com/sadeepa24/connected_bot/constbot"
-	tgbotapi "github.com/sadeepa24/connected_bot/tgbotapi"
-	"github.com/sadeepa24/connected_bot/update"
+	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
+	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -15,6 +16,7 @@ type Defaultsrv struct {
 	ctx      context.Context
 	callback *Callback
 	logger   zap.Logger
+	chanPool sync.Pool
 	//admin    *Adminsrv
 	//ctrl *controller.Controller
 	//botapi botapi.BotAPI
@@ -39,18 +41,22 @@ func NewDefaulsrv(
 		logger:   *logger,
 		callback: callback,
 		ctx:      ctx,
+		chanPool: sync.Pool{
+			New: func() any {
+				cbackchan := make(chan *tgbotapi.Message)
+				return cbackchan
+			},
+		},
 	}
 }
 
 func (d *Defaultsrv) Init() error {
-	d.logger.Debug("not implemented yet")
 	return nil
 }
 
 func (d *Defaultsrv) Exec(upx *update.Updatectx) error {
-	if upx.FromChat() == nil || upx.FromUser() == nil || upx.Drop() {
+	if upx.FromChat() == nil || upx.FromUser() == nil {
 		// prosess this later
-		upx = nil
 		return nil
 	}
 
@@ -60,15 +66,19 @@ func (d *Defaultsrv) Exec(upx *update.Updatectx) error {
 	)
 
 	if val, ok = d.msgpool.Load(upx.FromChat().ID + upx.FromUser().ID); !ok {
-		upx = nil
 		return nil
 	}
 	var sendchan chan *tgbotapi.Message
 	if sendchan, ok = val.(chan *tgbotapi.Message); !ok {
-		upx = nil
 		return nil
 	}
-	sendchan <- upx.Update.Message
+	select {
+	case sendchan <- upx.Update.Message:
+	case <-d.ctx.Done():
+		return errors.New("context canceled while sending callback query")
+	default:
+		return errors.New("channel is closed or full")
+	}
 	return nil
 }
 
@@ -77,7 +87,7 @@ func (d *Defaultsrv) ExcpectMsg(userId int64, chatId int64) (*tgbotapi.Message, 
 }
 
 func (d *Defaultsrv) ExcpectMsgContext(ctx context.Context, userID int64, chatId int64) (*tgbotapi.Message, error) {
-	comebkchan := make(chan *tgbotapi.Message)
+	comebkchan := d.chanPool.Get().(chan *tgbotapi.Message)
 	d.msgpool.Store(chatId+userID, comebkchan)
 
 	select {
@@ -87,7 +97,7 @@ func (d *Defaultsrv) ExcpectMsgContext(ctx context.Context, userID int64, chatId
 		return nil, C.ErrContextDead
 	case val := <-comebkchan:
 		d.msgpool.Delete(chatId + userID)
-		close(comebkchan)
+		d.chanPool.Put(comebkchan)
 		return val, nil
 	}
 
@@ -120,7 +130,6 @@ func (d *Defaultsrv) Droper(upx *update.Updatectx) error {
 	upx.User.User = nil
 	upx.User = nil
 	upx.Update = nil
-	upx = nil
 
 	return nil
 }
