@@ -87,3 +87,4 @@ var (
 var ErrWebhookSetFailed = errors.New("setting web hook failed")
 var ErrNilRequest = errors.New("request is nil pointer")
 var ErrUnknownUserListType = errors.New("user list type error")
+var ErrUserObNil = errors.New("user struct cannot be nil")

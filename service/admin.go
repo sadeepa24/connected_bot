@@ -222,7 +222,7 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 		return err
 	}
 	if callback.Data == C.BtnClose {
-		Messagesession.SendAlert("Broadcast Canceled", nil)
+		Messagesession.Edit("Broadcast Canceled", nil, "")
 		return nil
 	}
 	var userlist = []int64{}

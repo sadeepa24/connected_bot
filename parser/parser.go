@@ -288,15 +288,7 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 		upx.Setservice(C.Userservicename)
 
 	}
-	if upx.User.IsMonthLimited && (upx.Update.Message != nil) && !upx.IsCommand(C.CmdBuild) {
-		p.ctrl.Addquemg(&botapi.Msgcommon{
-			Infocontext: &botapi.Infocontext{
-				ChatId: upx.User.TgID,
-			},
-			Text: C.GetMsg(C.MsgUserMonthLimited),
-		})
-		return false, nil
-	}
+
 
 	if upx.Dbuser().RecheckVerificity {
 		var (
@@ -324,35 +316,12 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 	case C.CmdStart, C.CmdHelp, C.CmdNull, C.CmdContact, C.CmdRecheck, C.CmdSource, C.CmdFree:
 		break
 	default:
+		if upx.User == nil {
+			return false, C.ErrUserObNil
+		}
+		
 		if !upx.Update.FromChat().IsPrivate() {
 			//return C.ErrUserIsNotinPrivate
-			return false, nil
-		}
-		if upx.User.Templimited {
-			//return C.ErrUserTempLimited
-			p.ctrl.Addquemg(&botapi.Msgcommon{
-				Infocontext: &botapi.Infocontext{
-					ChatId: upx.User.TgID,
-				},
-				Text: C.GetMsg(C.MsgTempLimitAlert),
-			})
-			return false, nil
-		}
-		if upx.User.Restricted {
-			p.ctrl.Addquemg(botapi.UpMessage{
-				DestinatioID: upx.User.TgID,
-				TemplateName: "restricted",
-				Lang:         upx.User.Lang,
-				Template: struct {
-					*botapi.CommonUser
-				}{
-					CommonUser: &botapi.CommonUser{
-						Name:     upx.User.Name,
-						Username: upx.Chat.UserName,
-						TgId:     upx.User.TgID,
-					},
-				},
-			})
 			return false, nil
 		}
 		if !upx.User.Isverified() {
@@ -373,10 +342,49 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 			return false, nil
 			
 		}
-		if upx.User == nil {
-			p.logger.Error("Error When Preprosess user command User Object nil")
+		if upx.User.Restricted {
+			p.ctrl.Addquemg(botapi.UpMessage{
+				DestinatioID: upx.User.TgID,
+				TemplateName: "restricted",
+				Lang:         upx.User.Lang,
+				Template: struct {
+					*botapi.CommonUser
+				}{
+					CommonUser: &botapi.CommonUser{
+						Name:     upx.User.Name,
+						Username: upx.Chat.UserName,
+						TgId:     upx.User.TgID,
+					},
+				},
+			})
 			return false, nil
 		}
+
+		if upx.IsCommand(C.CmdBuild)  {
+			return true, nil
+		}
+
+		if upx.User.IsMonthLimited && (upx.Update.Message != nil){
+			p.ctrl.Addquemg(&botapi.Msgcommon{
+				Infocontext: &botapi.Infocontext{
+					ChatId: upx.User.TgID,
+				},
+				Text: C.GetMsg(C.MsgUserMonthLimited),
+			})
+			return false, nil
+		}
+
+		if upx.User.Templimited {
+			p.ctrl.Addquemg(&botapi.Msgcommon{
+				Infocontext: &botapi.Infocontext{
+					ChatId: upx.User.TgID,
+				},
+				Text: C.GetMsg(C.MsgTempLimitAlert),
+			})
+			return false, nil
+		}
+	
+
 	}
 
 	return true, nil
