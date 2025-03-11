@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	//
@@ -15,6 +16,7 @@ type Defaultsrv struct {
 	ctx      context.Context
 	callback *Callback
 	logger   zap.Logger
+	chanPool sync.Pool
 	//admin    *Adminsrv
 	//ctrl *controller.Controller
 	//botapi botapi.BotAPI
@@ -39,6 +41,12 @@ func NewDefaulsrv(
 		logger:   *logger,
 		callback: callback,
 		ctx:      ctx,
+		chanPool: sync.Pool{
+			New: func() any {
+				cbackchan := make(chan *tgbotapi.Message)
+				return cbackchan
+			},
+		},
 	}
 }
 
@@ -47,7 +55,7 @@ func (d *Defaultsrv) Init() error {
 }
 
 func (d *Defaultsrv) Exec(upx *update.Updatectx) error {
-	if upx.FromChat() == nil || upx.FromUser() == nil || upx.Drop() {
+	if upx.FromChat() == nil || upx.FromUser() == nil {
 		// prosess this later
 		return nil
 	}
@@ -64,7 +72,13 @@ func (d *Defaultsrv) Exec(upx *update.Updatectx) error {
 	if sendchan, ok = val.(chan *tgbotapi.Message); !ok {
 		return nil
 	}
-	sendchan <- upx.Update.Message
+	select {
+	case sendchan <- upx.Update.Message:
+	case <-d.ctx.Done():
+		return errors.New("context canceled while sending callback query")
+	default:
+		return errors.New("channel is closed or full")
+	}
 	return nil
 }
 
@@ -73,7 +87,7 @@ func (d *Defaultsrv) ExcpectMsg(userId int64, chatId int64) (*tgbotapi.Message, 
 }
 
 func (d *Defaultsrv) ExcpectMsgContext(ctx context.Context, userID int64, chatId int64) (*tgbotapi.Message, error) {
-	comebkchan := make(chan *tgbotapi.Message)
+	comebkchan := d.chanPool.Get().(chan *tgbotapi.Message)
 	d.msgpool.Store(chatId+userID, comebkchan)
 
 	select {
@@ -83,7 +97,7 @@ func (d *Defaultsrv) ExcpectMsgContext(ctx context.Context, userID int64, chatId
 		return nil, C.ErrContextDead
 	case val := <-comebkchan:
 		d.msgpool.Delete(chatId + userID)
-		close(comebkchan)
+		d.chanPool.Put(comebkchan)
 		return val, nil
 	}
 

@@ -397,8 +397,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 	var chanmax = w.ctrl.VerifiedUserCount.Load()
 
-	if chanmax < 20 {
-		chanmax = 40
+	if chanmax < 30 {
+		chanmax = 35
 	}
 
 
@@ -647,7 +647,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			
 			
 
-			if oldUsage == user.MonthUsage && user.Verified() && !user.Templimited && docount && user.MonthUsage <= user.CalculatedQuota { //which means user did n't use the config for last refresh cycle
+			if oldUsage == user.MonthUsage && user.Verified() && !user.Templimited && !user.IsMonthLimited && docount && user.MonthUsage <= user.CalculatedQuota { //which means user did n't use the config for last refresh cycle
 				user.EmptyCycle++
 				if user.EmptyCycle >= user.WarnRatio && user.WarnRatio != 0 {
 					user.Templimited = true	// hecan't use the service until he remove this war manually
@@ -688,7 +688,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					
 				}
 
-			} else if (oldUsage != user.MonthUsage) && docount && user.MonthUsage <= user.CalculatedQuota  {
+			} else if (oldUsage != user.MonthUsage) &&  !user.IsMonthLimited && docount && user.MonthUsage <= user.CalculatedQuota  {
 				user.EmptyCycle = 0
 			}
 			if user.UsedQuota > user.CalculatedQuota {
@@ -984,7 +984,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, msgchan chan any
 	overview.AllTime = alltime+month_usage
 	overview.BandwidthAvailable = w.ctrl.BandwidthAvelable
 	overview.Restricte = preData.restricted
-	overview.CUser = preData.verifiedusercount - preData.unUsedUser
+	overview.CUser = preData.verifiedusercount + preData.cappeduser - preData.unUsedUser
 	overview.QuotaForEach = C.Bwidth(w.ctrl.CommonQuota.Load())
 	overview.LastRefresh = time.Now()
 	overview.Mu.Unlock()

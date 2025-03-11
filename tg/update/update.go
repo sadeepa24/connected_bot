@@ -12,17 +12,12 @@ import (
 type Updatectx struct {
 	Ctx        context.Context
 	Cancle     context.CancelFunc
-	iscallback bool
 
 	Service string
 	Update  *tgbotapi.Update
 	User    *bottype.User
-	Newuser bool
-	//Configs []db.Config
 
 	Serviceset bool
-	drop       bool
-	ShouldSave bool
 
 	Chat_ID int64
 	Chat    *tgbotapi.Chat
@@ -69,14 +64,6 @@ func (u *Updatectx) FromUser() *tgbotapi.User {
 	}
 }
 
-func (u *Updatectx) Setcallback() {
-	u.iscallback = true
-}
-
-func (u Updatectx) Iscallback() (bool, error) {
-	return u.iscallback, nil
-}
-
 func (u *Updatectx) Setservice(srvname string) error {
 	if u.Serviceset {
 		return fmt.Errorf("already service seted")
@@ -84,13 +71,5 @@ func (u *Updatectx) Setservice(srvname string) error {
 	u.Serviceset = true
 	u.Service = srvname
 	return nil
-}
-
-func (u *Updatectx) SetDrop(drp bool) {
-	u.drop = true
-}
-
-func (u *Updatectx) Drop() bool {
-	return u.drop
 }
 

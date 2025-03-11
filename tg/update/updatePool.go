@@ -31,8 +31,10 @@ func (u *UpdatePool) Newupdate(ctx context.Context, origin *tgbotapi.Update) *Up
 	upx := u.pool.Get().(*Updatectx)
 
 	upx.Update = origin
+	//upx.iscallback = false
 	upx.Ctx = ctx
 	upx.Command = C.CmdNull
+	upx.Serviceset = false
 	return upx
 }
 

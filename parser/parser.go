@@ -152,7 +152,6 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	}()
 	
 	if upx.Update.CallbackQuery != nil {
-		upx.Setcallback()
 		return p.Callback.Exec(upx)
 	}
 
@@ -204,8 +203,7 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	if upx.Serviceset {
 		return p.addtoservice(upx)
 	}
-	upx.SetDrop(true)
-	return p.addtoservice(upx)
+	return C.ErrNoService
 
 }
 
@@ -239,10 +237,6 @@ func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, e
 }
 
 func (u *Parser) addtoservice(upx *update.Updatectx) error {
-	if upx.Drop() {
-		u.logger.Warn("Dropping update not a valid update context")
-		return nil
-	}
 	if service, ok := u.services[upx.Service]; ok {
 		return service.Exec(upx)
 	}
@@ -263,7 +257,6 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 			var servicenm string
 			upx.Command, servicenm, err = p.commandparser(upx.Update.Message)
 			if err != nil {
-				upx.SetDrop(true)
 				return false, err
 			}
 
@@ -281,7 +274,6 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 	if !ok {
 		upx.User, err = p.ctrl.Newuser(upx.FromUser(), upx.FromChat())
 		if err != nil {
-			upx.SetDrop(true)
 			return false, err
 		}
 		p.logger.Info("New user added to DB " + upx.User.Info() )

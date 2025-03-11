@@ -302,7 +302,7 @@ func (t *Testservice) Exec(upx *update.Updatectx) error {
 	fmt.Println("is upx user started bot", upx.User.Isbotstarted())
 	fmt.Println("is upx user Newuser", upx.User.IsnewUser())
 
-	fmt.Println("is upx Drop", upx.Drop())
+	fmt.Println("is upx Drop", )
 	fmt.Println("upx user service", upx.Service)
 	if upx.Update.Message != nil {
 		if upx.Update.Message.IsCommand() {
