@@ -84,6 +84,7 @@ func getBotOption() (connected.Botoptions, error) {
 	if botoption.LoggerOption.Encoding == "" {
 		botoption.LoggerOption.Encoding = "console"
 	}
+	
 	if len(botoption.LoggerOption.Paths) == 0 {
 		botoption.LoggerOption.Paths = append(botoption.LoggerOption.Paths, "stdout")
 	}
@@ -99,7 +100,7 @@ func getBotOption() (connected.Botoptions, error) {
 		Encoding: botoption.LoggerOption.Encoding,
 		EncoderConfig: zapcore.EncoderConfig{
 			TimeKey:        "ts",
-			LevelKey:       botoption.LoggerOption.Level,
+			LevelKey:       botoption.LoggerOption.Level.String(),
 			NameKey:        "logger",
 			CallerKey:      "caller",
 			FunctionKey:    zapcore.OmitKey,

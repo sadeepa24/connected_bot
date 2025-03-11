@@ -30,6 +30,6 @@ type Botoptions struct {
 
 type LoggerOptions struct {
 	Paths []string `json:"paths,omitempty"`
-	Level string `json:"level,omitempty"`
+	Level zap.AtomicLevel `json:"level,omitempty"`
 	Encoding string `json:"encoding,omitempty"`
 }
