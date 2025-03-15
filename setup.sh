@@ -37,14 +37,14 @@ CONFIG_JSON="config.json"
 USERMSG_JSON="usermsg.json"
 
 # Detect system architecture and select the appropriate tar file
-TAR_FILE="connected_bot_Linux_x86_64.tar.gz"
+TAR_FILE="connected_bot_linux_amd64.tar.gz"
 ARCH=$(uname -m)
 case "$ARCH" in
   x86_64)
-    TAR_FILE="connected_bot_Linux_x86_64.tar.gz"
+    TAR_FILE="connected_bot_linux_amd64.tar.gz"
     ;;
   aarch64)
-    TAR_FILE="connected_bot_Linux_arm64.tar.gz"
+    TAR_FILE="connected_bot_linux_arm64.tar.gz"
     ;;
   *)
     echo "Unsupported architecture: $ARCH"
