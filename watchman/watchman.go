@@ -647,7 +647,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			
 			
 
-			if oldUsage == user.MonthUsage && user.Verified() && !user.Templimited && !user.IsMonthLimited && docount && user.MonthUsage <= user.CalculatedQuota { //which means user did n't use the config for last refresh cycle
+			if oldUsage == user.MonthUsage && user.Verified() && !user.Templimited && !user.IsMonthLimited && !user.IsDistributedUser && docount && user.MonthUsage <= user.CalculatedQuota { //which means user did n't use the config for last refresh cycle
 				user.EmptyCycle++
 				if user.EmptyCycle >= user.WarnRatio && user.WarnRatio != 0 {
 					user.Templimited = true	// hecan't use the service until he remove this war manually
@@ -688,7 +688,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					
 				}
 
-			} else if (oldUsage != user.MonthUsage) &&  !user.IsMonthLimited && docount && user.MonthUsage <= user.CalculatedQuota  {
+			} else if (oldUsage != user.MonthUsage) &&   !user.IsMonthLimited && !user.IsDistributedUser && docount && user.MonthUsage <= user.CalculatedQuota  {
 				user.EmptyCycle = 0
 			}
 			if user.UsedQuota > user.CalculatedQuota {
