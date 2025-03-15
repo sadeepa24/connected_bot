@@ -66,6 +66,7 @@ nav:
           - other_config/usermsg/index.md
   - Example Configs:
       - example/index.md
+      - usermsdg: ./other_config/usermsg/index.md
       - v1.0.0:
           - bot config: example/v1.0.0/config.md
           - sing-box config: example/v1.0.0/sing-box.md
@@ -76,6 +77,12 @@ nav:
           - sing-box config: example/v1.2.0/sing-box.md
           - message template: example/v1.2.0/template.md
           - store: example/v1.2.0/store.md
+      - v1.2.1:
+          - bot config: example/v1.2.1/config.md
+          - sing-box config: example/v1.2.1/sing-box.md
+          - message template: example/v1.2.1/template.md
+          - store: example/v1.2.1/store.md
+
   # - Commands:
   #     - cmd/index.md
   #     - User: cmd/user/user.md
