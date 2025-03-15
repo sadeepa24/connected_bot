@@ -23,6 +23,16 @@ done
 CONNECTED_BOT_DIR="/usr/local/etc/connected_bot"
 SERVICE_FILE="/etc/systemd/system/connected-bot.service"
 ZIP_FILE="./connected_bot.zip"
+if [ -f "./connected_bot.zip" ]; then
+  ZIP_FILE="./connected_bot.zip"
+elif [ -f "./connected-bot.zip" ]; then
+  ZIP_FILE="./connected-bot.zip"
+else
+  echo "Warning: No zip file found, skipping configuration files extraction."
+  echo "You have to Configure All Configurations to run this bot"
+  echo "Please Visit https://docs.connectedbot.site"
+  exit 1
+fi
 CONFIG_JSON="config.json"
 USERMSG_JSON="usermsg.json"
 
