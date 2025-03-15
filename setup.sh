@@ -22,17 +22,39 @@ done
 # Define paths and filenames
 CONNECTED_BOT_DIR="/usr/local/etc/connected_bot"
 SERVICE_FILE="/etc/systemd/system/connected-bot.service"
-ZIP_FILE="connected-bot.zip"
+ZIP_FILE="./connected_bot.zip"
 CONFIG_JSON="config.json"
 USERMSG_JSON="usermsg.json"
-LATEST_RELEASE_URL="https://github.com/sadeepa24/connected_bot/releases/latest/download/connected_bot_Linux_x86_64.tar.gz"
+
+# Detect system architecture and select the appropriate tar file
 TAR_FILE="connected_bot_Linux_x86_64.tar.gz"
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)
+    TAR_FILE="connected_bot_Linux_x86_64.tar.gz"
+    ;;
+  aarch64)
+    TAR_FILE="connected_bot_Linux_arm64.tar.gz"
+    ;;
+  *)
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+    ;;
+esac
+
+
+
+LATEST_RELEASE_URL="https://github.com/sadeepa24/connected_bot/releases/latest/download/$TAR_FILE"
 TEMP_DIR="/tmp/connected_bot_extracted"
 
 # Ensure the target directory exists
 if [ ! -d "$CONNECTED_BOT_DIR" ]; then
   echo "Creating target directory: $CONNECTED_BOT_DIR"
   sudo mkdir -p "$CONNECTED_BOT_DIR"
+else
+  echo "Directory $CONNECTED_BOT_DIR already exists. Removing all files except *.db..."
+  find "$CONNECTED_BOT_DIR" -type f ! -name '*.db' -exec sudo rm -f {} +
+fi
 fi
 
 # Download the latest release of connected_bot
@@ -45,25 +67,28 @@ mkdir -p "$TEMP_DIR"
 echo "Extracting $TAR_FILE..."
 sudo tar -xzf "$TAR_FILE" -C "$TEMP_DIR"
 
-# Find the actual binary
-BOT_BINARY=$(find "$TEMP_DIR" -type f -name "connected_bot_linux" | head -n 1)
+Find the actual binary
+BOT_BINARY=$(find "$TEMP_DIR" -type f -name "connected_bot" | head -n 1)
 if [ -z "$BOT_BINARY" ]; then
   echo "Error: connected_bot binary not found in extracted files!"
   exit 1
 fi
 
-# Move the binary to the target directory
+Move the binary to the target directory
 sudo mv "$BOT_BINARY" "$CONNECTED_BOT_DIR/connected_bot"
 sudo chmod +x "$CONNECTED_BOT_DIR/connected_bot"
 
-# Cleanup temporary files
+Cleanup temporary files
 rm -rf "$TEMP_DIR"
 rm -f "$TAR_FILE"
+
+
+
 
 # Check if the zip file exists in the current directory
 if [ -f "$ZIP_FILE" ]; then
   echo "Found $ZIP_FILE, unzipping..."
-  sudo unzip -o "$ZIP_FILE" -d "$CONNECTED_BOT_DIR"
+  sudo unzip -o "$ZIP_FILE" -d "$CONNECTED_BOT_DIR/"
 
   # Check for the presence of config.json and usermsg.json
   if [ ! -f "$CONNECTED_BOT_DIR/$CONFIG_JSON" ] || [ ! -f "$CONNECTED_BOT_DIR/$USERMSG_JSON" ]; then
@@ -73,11 +98,24 @@ if [ -f "$ZIP_FILE" ]; then
 
   # Check the paths in config.json and verify if the files exist
   if [ -f "$CONNECTED_BOT_DIR/$CONFIG_JSON" ]; then
+    echo "Verifing config values"
     SBOX_PATH=$(jq -r '.sbox_path' "$CONNECTED_BOT_DIR/$CONFIG_JSON")
     TEMPLATES_PATH=$(jq -r '.templates_path' "$CONNECTED_BOT_DIR/$CONFIG_JSON")
-    
+   
+    if [[ "$SBOX_PATH" != /* ]]; then
+      SBOX_PATH="$CONNECTED_BOT_DIR/$SBOX_PATH"
+    fi
+
+    if [[ "$TEMPLATES_PATH" != /* ]]; then
+      TEMPLATES_PATH="$CONNECTED_BOT_DIR/$TEMPLATES_PATH"
+    fi
+
     if [ ! -f "$SBOX_PATH" ]; then
       echo "Error: sbox_path file not found!"
+      exit 1
+    fi
+    if [ ! -f "$CONNECTED_BOT_DIR/$USERMSG_JSON" ]; then
+      echo "Error: usermsg file not found!"
       exit 1
     fi
 
@@ -88,9 +126,13 @@ if [ -f "$ZIP_FILE" ]; then
   fi
 else
   echo "Warning: $ZIP_FILE not found, skipping configuration files extraction."
+  echo "You have to Configure All Configurations to run this bot"
+  echo "Please Visit https://docs.connectedbot.site"
+  exit 1
 fi
 
-# Check if systemd service exists, if not, add the service
+
+Check if systemd service exists, if not, add the service
 if [ ! -f "$SERVICE_FILE" ]; then
   echo "Creating systemd service for connected-bot..."
   sudo bash -c "cat << EOF > $SERVICE_FILE
