@@ -100,7 +100,7 @@ func (c *Callback) Exec(upx *update.Updatectx) error {
 		}
 
 	}
-	return errors.New("callback quary not found error")
+	return nil
 }
 
 func (c *Callback) Getcallback(uniqid int64) (*tgbotapi.CallbackQuery, error) {

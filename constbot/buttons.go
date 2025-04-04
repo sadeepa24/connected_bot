@@ -7,6 +7,7 @@ const (
 	BtnConform  string = "conform"
 	BtnCancle   string = "cancle"
 	BtnContinue string = "continue"
+	BtnDone     string = "Done"
 )
 
 // Configure
@@ -30,6 +31,12 @@ const (
 
 	BtnCheckOutbounds string = "Outbounds"
 	BtnCheckInbounds string = "Inbounds"
+
+	BtnExportIn string = "Export Inbounds"
+	BtnExportConf string = "Export Config"
+	BtnoutLatancy string = "Check Latency"
+
+	BtnLangChange string = "Change Lang"
 )
 
 // Urls
@@ -53,6 +60,9 @@ const (
 	BtnTutorial string = "Tutorial"
 
 	BtnCloseConn string = "Close Conns"
+	BtnInbounds string = "All Inbounds"
+
+	BtnRefresh string = "Refresh"
 
 	
 )

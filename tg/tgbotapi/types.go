@@ -17,7 +17,7 @@ type WebhookConfig struct {
 	AllowedUpdates     []string
 	DropPendingUpdates bool
 }
-
+//TODO: remove unused types
 // APIResponse is a response from the Telegram API with the result
 // stored raw.
 type APIResponse struct {
@@ -2023,43 +2023,10 @@ type AnswerInlineQuery struct {
 	Is_personal bool `json:"is_personal,omitempty"`
 	Next_offset string `json:"next_offset,omitempty"`
 	Button *InlineKeyboardButton `json:"button,omitempty"`
-
-	content  []byte `json:"-"` //for Read method
-	called   bool   `json:"-"` // for Read method
+	
 	Endpoint string `json:"-"`
 
 }
-
-
-
-func (m *AnswerInlineQuery) Read(p []byte) (int, error) {
-	var err error
-	if !m.called {
-	
-		m.content, err = json.Marshal(m)
-	
-		if err != nil {
-			return 0, err
-		}
-		m.called = true
-	}
-	n := copy(p, m.content)
-	m.content = m.content[n:]
-	
-	if len(m.content) == 0 {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-func (m *AnswerInlineQuery) Close() error {
-	return nil
-}
-
-
-
-
-
 
 
 // InlineQueryResultCachedAudio is an inline query response with cached audio.

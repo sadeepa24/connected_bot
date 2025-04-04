@@ -9,9 +9,10 @@ import (
 
 	"github.com/sadeepa24/connected_bot/botapi"
 )
+var testToken = "token here"
 
 func TestBotapi(t *testing.T) {
-	newbot := botapi.NewBot(context.Background(), "7450429117:AAG-GSYKGsylucObfp8FmsCxNnus8L7EtHo", "https://api.telegram.org/bot", nil)
+	newbot := botapi.NewBot(context.Background(), testToken, "https://api.telegram.org/bot", nil)
 	_, err := newbot.SendContext(context.Background(), &botapi.Msgcommon{
 		Text: "Hello",
 		Infocontext: &botapi.Infocontext{

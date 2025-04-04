@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid/v5"
 	connected "github.com/sadeepa24/connected_bot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/watchman"
@@ -338,10 +338,10 @@ func TestQuotacalc(t *testing.T) {
 
 func TestTiming(t *testing.T) {
 	uuidMap := make(map[uuid.UUID]string)
-	testuuid := uuid.New()
+	testuuid,_ := uuid.NewV4()
 	syncmap := sync.Map{}
 	for i := 0; i < 100000; i++ {
-		storeid := uuid.New()
+		storeid, _ := uuid.NewV4()
 		uuidMap[storeid] = "waefdaewf"
 		syncmap.Store(storeid, i)
 	}

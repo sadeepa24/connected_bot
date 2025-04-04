@@ -27,7 +27,6 @@ type BotAPI interface {
 	GetchatmemberCtx(ctx context.Context, Userid int64, Chatid int64) (*tgbotapi.ChatMember, bool, error)
 	//Createkeyboard(keyboard *InlineKeyboardMarkup) ([]byte,error)
 	Send(msg *Msgcommon) (*tgbotapi.Message, error)
-	SendError(error, int64)
 	DeleteMsg(ctx context.Context, msgid int64, chatid int64) error
 	GetMgStore() *MessageStore
 	SetWebhook(webhookurl, secret, ip_addr string, allowd_ob []string) error
@@ -35,6 +34,8 @@ type BotAPI interface {
 	GetFile(file_Id string) (io.ReadCloser, error)
 }
 
+
+//TODO: Change Err to Custom err types
 type Botapi struct {
 	ctx    context.Context
 	token  string
@@ -142,6 +143,7 @@ func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 		return nil, C.ErrTgParsing
 	}
 	apires := &tgbotapi.APIResponse{}
+	//FIXME: change json Decoder
 	//var update tgbotapi.Update
     decoder := json.NewDecoder(res.Body)
     if err := decoder.Decode(&apires); err != nil {
@@ -160,9 +162,6 @@ func (b *Botapi) GetMgStore() *MessageStore {
 func (b *Botapi) AnswereInlineQuary(ctx context.Context) error {
 	return nil
 }
-
-
-
 
 func (b *Botapi) SendContext(ctx context.Context, msg *Msgcommon) (*tgbotapi.Message, error) {
 	endpoint := "sendMessage"
@@ -197,8 +196,6 @@ func (b *Botapi) SendContext(ctx context.Context, msg *Msgcommon) (*tgbotapi.Mes
 	return message, nil
 }
 
-
-
 func (b *Botapi) AnswereCallbackCtx(ctx context.Context, Callbackanswere *Callbackanswere) error {
 	_, err := b.Makerequest(ctx, http.MethodPost, "answerCallbackQuery", &BotReader{RealOb: Callbackanswere})
 	return err
@@ -232,16 +229,6 @@ func (b *Botapi) GetchatmemberCtx(ctx context.Context, Userid int64, Chatid int6
 func (b *Botapi) Send(msg *Msgcommon) (*tgbotapi.Message, error) {
 	return b.SendContext(context.Background(), msg)
 
-}
-
-func (b *Botapi) SendError(err error, UserID int64) {
-	b.Send(&Msgcommon{
-		Text: err.Error() + "      Please Send This Error To Admin It's Very Important Thin to Give Bug free Service",
-		Infocontext: &Infocontext{
-			User_id: UserID,
-			ChatId:  UserID,
-		},
-	})
 }
 
 func (b *Botapi) DeleteMsg(ctx context.Context, msgid int64, chatid int64) error {
@@ -376,7 +363,9 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 				return nil, C.ErrTmplRender
 			}
 		}
-		
+		if message.Keyboard != nil && buttons != nil {
+			buttons.OverideKeyboard(message.Keyboard)
+		}
 		if message.Includemed {
 			if m.lastsendmeadia && !(m.alertsent || m.replyrecived) {
 				sendmsg.Meadiacommon = &Meadiacommon{
@@ -428,30 +417,6 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 			sendmsg.Infocontext = &m.infoctx
 			sendmsg.Text = message.String()
 			sendmsg.Parse_mode = message.ParseMode
-
-			// if m.continuemedia && !message.SkipText && (!m.continue_skip_text || buttons != nil) {
-			// 	sendmsg.Meadiacommon = &Meadiacommon{
-			// 		Caption: sendmsg.Text,
-			// 	}
-
-			// 	fmt.Println("trigger 2")
-			// 	sendmsg.Text = ""
-			// 	sendmsg.Infocontext = &Infocontext{
-			// 		ChatId: m.ChatID,
-			// 	}
-
-			// 	if (m.alertsent || m.replyrecived) || m.MessageID == 0  {
-			// 		fmt.Println("trigger 3")
-			// 		sendmsg.SetMedType(m.lastmediatype, m.lastmedia)
-			// 	}
-			// } else if m.continue_skip_text {
-			// 	m.DeleteLast()
-			// 	sendmsg.Endpoint = C.ApiMethodEdimgmed
-			// 	if (m.alertsent || m.replyrecived) || m.MessageID == 0 || !m.lastsendmeadia {
-			// 		sendmsg.Endpoint = C.ApiMethodSendMG
-			// 	}
-			// }
-
 			m.preparesentmg(sendmsg, buttons != nil, message.MeadiaSkip)
 
 		}
@@ -503,6 +468,10 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 	}
 	m.sendfirst = false
 	return replymsg, err
+}
+
+func (m *Msgsession) ChangeLang(newcode string) {
+	m.lang = newcode
 }
 
 func (m *Msgsession) preparesentmg(sendmsg *Msgcommon, btnavbl, doskip bool, ) {
@@ -579,6 +548,9 @@ func (m *Msgsession) SendExtranal(msg any, buttons *Buttons, name string, nodel 
 		if err != nil {
 			sendmsg.Text = "error from template please note admin"
 			break
+		}
+		if rendermg.Keyboard != nil && buttons != nil {
+			buttons.OverideKeyboard(rendermg.Keyboard)
 		}
 		if rendermg.Includemed {
 
@@ -673,6 +645,17 @@ func (m *Msgsession) SendAlert(msg any, buttons *Buttons) (*tgbotapi.Message, er
 	m.alertsent = true
 	return replymsg, err
 
+}
+
+func (m *Msgsession) SendError(err error, dmsg string) {
+	if er, ok := err.(C.Error); ok {
+		m.SendAlert(er.UserMsg(), nil)
+		return
+	}
+	if dmsg != "" {
+		m.SendAlert(dmsg, nil)
+	}
+	
 }
 
 func (m *Msgsession) ForwardMgTo(to int64, mgid, fromchat int64) error {
@@ -883,6 +866,8 @@ type Buttons struct {
 	lastval        int16
 	uniqid         int64
 	nextnew        bool
+
+	overide bool
 }
 
 // Create button Schema
@@ -915,11 +900,33 @@ func (b *Buttons) Reset(btmatrix []int16) {
 	b.InlineKeyboard = make([][]InlineKeyboardButton, len(btmatrix))
 	b.uniqid = int64(rand.Int31n(4556))
 	b.nextnew = true
+	b.overide = false
 
 	if len(btmatrix) > 0 {
 		b.lastval = btmatrix[len(btmatrix)-1]
 	}
+}
 
+// same as Reset but overide field won't change
+func (b *Buttons) ResetNoOveride(btmatrix []int16) {
+	b.btmatrix = btmatrix
+	b.InlineKeyboard = make([][]InlineKeyboardButton, len(btmatrix))
+	b.uniqid = int64(rand.Int31n(4556))
+	b.nextnew = true
+	if len(btmatrix) > 0 {
+		b.lastval = btmatrix[len(btmatrix)-1]
+	}
+}
+
+
+func (b *Buttons) OverideKeyboard(keyboard *Keyboard) {
+	if keyboard != nil && b.overide {
+		b.InlineKeyboard = keyboard.Inline_keyboard
+	}
+} 
+
+func (b *Buttons) SetOveride() {
+	b.overide = true
 }
 
 func (b *Buttons) Addbutton(btnname, data, url string) {
@@ -1018,29 +1025,35 @@ func (b *Buttons) Getkeyboard() Keyboard {
 	}
 }
 
-// func (b *Buttons) GetKeyBoardTgbotapi() tgbotapi.ReplyKeyboardMarkup {
-	
-
-
-
-// 	tgmap := make([][]tgbotapi.KeyboardButton, len(b.InlineKeyboard))
-
-// 	for i, keymap := range b.InlineKeyboard {
-// 		tgmap[i] = make([]tgbotapi.KeyboardButton, len(keymap))
-		
-// 		for j, key := range keymap {
-// 			tgmap[j][i] = tgbotapi.KeyboardButton{
-// 				Text: key.Text,
-				
-// 			} 
-// 		}
-// 	}
-	
-	
-// 	return tgbotapi.ReplyKeyboardMarkup{
-// 		Keyboard: [][]tgbotapi.KeyboardButton(b.InlineKeyboard),
-// 	}
-// }
+func fromBtnConfig(btnconfig *BtnConfig) (Keyboard, error) {
+	if btnconfig == nil{
+		return Keyboard{}, errors.New("btn config is nil")
+	}
+	var InlineKeyboard [][]InlineKeyboardButton
+	for row, btnrow := range btnconfig.Btns {
+		InlineKeyboard = append(InlineKeyboard, []InlineKeyboardButton{})
+		for _, btn := range btnrow {
+			btnar := []byte(btn)
+			urlStart := bytes.IndexByte(btnar, '[')
+			var url []byte
+			
+			if urlStart == 0 || urlStart == -1 {
+				return Keyboard{}, errors.New("btn layout problem in row "  + strconv.Itoa(row) )
+			}
+			if urlStart != -1 && len(btnar) - (urlStart+1) > 0{
+				url = btnar[urlStart+1:len(btnar)-1]
+			}
+			
+			InlineKeyboard[row] = append(InlineKeyboard[row], InlineKeyboardButton{
+				Text:         string(btnar[:urlStart]),
+				URL:         string(url),
+			})
+		}
+	}
+	return Keyboard{
+		Inline_keyboard: InlineKeyboard,
+	}, nil
+}
 
 func (b *Buttons) Marshell() (json.RawMessage, error) {
 	rkeyboard, err := Createkeyboard(&InlineKeyboardMarkup{
@@ -1052,12 +1065,6 @@ func (b *Buttons) Marshell() (json.RawMessage, error) {
 	return json.RawMessage(rkeyboard), nil
 }
 
-// func (b *Buttons) AddSpecial(btnname, data,url string) {
-// 	b.InlineKeyboard = append(b.InlineKeyboard, []InlineKeyboardButton{
-
-// 	})
-// 	b.Addbutton(C.BtnCancle, C.BtnCancle, "")
-// }
 
 type Callbackdata struct {
 	Uniqid int64  `json:"uid"`
@@ -1104,11 +1111,44 @@ func (c *Callbackdata) FillV2(data string) error {
 	return nil
 }
 
+//more faster than typical json marshlling
 func Createkeyboard(keyboard *InlineKeyboardMarkup) ([]byte, error) {
 	if keyboard == nil {
-		return []byte{}, fmt.Errorf("nil keyboard enterd")
+		return []byte{}, errors.New("nil keyboard enterd")
 	}
-	return json.Marshal(keyboard)
+	buf := []byte{'['}
+	for row, boardrow := range keyboard.InlineKeyboard {
+		buf = append(buf, '[')
+		for btnplace, btn := range boardrow {
+			buf = append(buf, '{')
+			if btn.CallbackData != "" {
+				buf = append(buf, []byte(`"callback_data":"`+ btn.CallbackData + `",` )...)
+			}
+			if btn.URL != "" {
+				buf = append(buf, []byte(`"url":"`+ btn.URL + `",` )...)
+			}
+			if btn.Text != "" {
+				buf = append(buf, []byte(`"text":"`+ btn.Text + `",` )...)
+			}
+			
+			buf[len(buf)-1] = '}'
+
+			if btnplace == len(boardrow)-1 {
+				break
+			}
+			buf = append(buf, ',')
+
+		}
+		buf = append(buf, ']')
+		if row == len(keyboard.InlineKeyboard)-1 {
+			break
+		}
+		buf = append(buf, ',')
+	}
+
+	buf = append(buf, ']')
+	return buf, nil
+	//return json.Marshal(keyboard)
 }
 
 

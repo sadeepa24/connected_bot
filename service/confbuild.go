@@ -470,6 +470,8 @@ func (b *BuildState) addout() error {
 		}
 
 	case "load from your config":
+		
+		b.alertsender("this feture removed temprory")
 		allconfs, err := b.wiz.ctrl.GetUserConfigs(b.userID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -506,16 +508,18 @@ func (b *BuildState) addout() error {
 				return conf.Name == b.lastcallback.Data
 			})
 			if conf != nil {
-				in, ok := b.wiz.ctrl.Getinbound(int(conf.InboundID))
-				if !ok {
-					b.Messagesession.SendAlert("config loading failed", nil)
-					return nil
+				// TODO: add inbound selecter to here
+				
+				// in, ok := b.wiz.ctrl.Getinbound(int(conf.InboundID))
+				// if !ok {
+				// 	b.Messagesession.SendAlert("config loading failed", nil)
+				// 	return nil
 
-				}
-				err = b.Builder.AddOutbound(*conf, in, "")
-				if err == nil {
-					b.Messagesession.SendAlert("config loading sucsess", nil)
-				}
+				// }
+				// err = b.Builder.AddOutbound(*conf, in, "")
+				// if err == nil {
+				// 	b.Messagesession.SendAlert("config loading sucsess", nil)
+				// }
 			}
 
 		}

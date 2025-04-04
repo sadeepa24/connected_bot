@@ -2,10 +2,10 @@ package service
 
 import (
 	"errors"
-	"net/netip"
 
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
+	"github.com/sadeepa24/connected_bot/sbox/conf"
 )
 
 func closeback(callbackdata string, deletemsg, backfunc func() error) (bool, error) {
@@ -39,9 +39,11 @@ type configinfo struct {
 
 	TotalQuota string
 
+	ConfName string
 	ConfigName string
-	ConfigType string
 	ConfigUUID string
+	ConfigPassword string
+
 
 	ConfigUpload     string
 	ConfigDownload   string
@@ -53,19 +55,21 @@ type configinfo struct {
 
 	ResetDays int32
 
-	PublicIp string
-	PublicDomain string
+	// PublicIp string
+	// PublicDomain string
 
-	InName         string
-	InType         string
-	InPort         int
-	InAddr         string
-	InInfo         string
-	TranstPortType string
-	TransPortPath string
+	// InName         string
+	// InType         string
+	// InPort         int
+	// InAddr         string
+	// InInfo         string
+	// TranstPortType string
+	// TransPortPath string
 	Loginlimit int16
-	TlsEnabled     bool
-	SupportInfo    []string
+	// TlsEnabled     bool
+	// SupportInfo    []string
+
+	//conf.Outbound
 
 	OutName string
 	OutType string
@@ -75,7 +79,7 @@ type configinfo struct {
 	UsageDuration string
 
 	Online int
-	IpMap  map[netip.Addr]int64
+	IpMap  map[string]int16
 }
 
 type userinfo struct {
@@ -107,4 +111,15 @@ type userinfo struct {
 	IsTemplimited bool
 	
 	JoinedPlace uint
+}
+
+type exportConfig struct {
+	exportin
+	conf.Inboud
+	
+}
+
+type exportin struct {
+	ProtoUrl string
+	conf.ExportInfo
 }

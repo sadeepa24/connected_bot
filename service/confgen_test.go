@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	"github.com/sadeepa24/connected_bot/builder/v1"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/sbox"
-	option "github.com/sagernet/sing-box/option"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
 )
 
 func TestBuilder(t *testing.T) {
@@ -28,21 +27,14 @@ func TestBuilder(t *testing.T) {
 	err = Builder.AddOutbound(db.Config{
 		UUID: uid.String(),
 		Name: "tests",
-	}, sbox.Inboud{
+	}, sbConf.Inboud{
 		Type:          "vless",
 		Tag:           "sboxin",
 		ListenAddres:  "127.0.0.1",
 		Domain:        "testcom",
 		Listenport:    80,
 		Tlsenabled:    true,
-		Transporttype: "ws",
-		Option: &option.Inbound{
-			Type: "vless",
-			Options: option.VLESSInboundOptions{
-				Transport:                  &option.V2RayTransportOptions{},
-				InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{},
-			},
-		},
+		TransPortType: "ws",
 	}, "hello.com")
 	if err != nil {
 		zLogger.Error(err.Error())

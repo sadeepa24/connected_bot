@@ -87,59 +87,19 @@ func (d *Database) Close() error {
 
 }
 
-//User changes
-
 func (d *Database) AddUser(user *User) (*User, error) {
 	return user, d.Model(&User{}).Create(user).Error
 
 }
 
-// Get userfrom db
 func (d *Database) GetUser(user *tgbotapi.User) (*User, error) {
 	var getuser = &User{
 		TgID: user.ID,
 	}
-	//st := time.Now()
-	err := d.Model(&User{}).First(getuser).Error
-	//err := d.Model(getuser).Where(getuser).Error
-	//d.zLogger.Info("ELpsed Time For GetUser Quary " + time.Since(st).String())
-	return getuser, err
+	return getuser, d.Model(&User{}).First(getuser).Error
 }
 
-// return old user
-func (d *Database) UpdateUser(newuser *tgbotapi.User, Id string) (*User, error) {
-	return nil, nil
-}
-
-// return removed user
-func (d *Database) RemoveUser(user *tgbotapi.User) (*User, error) {
-	return nil, nil
-}
 func (d *Database) DatabasePath() string {
 	return d.path
 }
 
-// Configs Handle
-
-func (d *Database) Getadminchat() (map[int64]string, error) {
-	var adminchats []Adminchat
-	if err := d.Find(&adminchats).Error; err != nil {
-		return map[int64]string{}, err
-	}
-	adchmap := make(map[int64]string, len(adminchats))
-	for _, adminchat := range adminchats {
-		adchmap[adminchat.Id] = adminchat.Name
-	}
-
-	return adchmap, nil
-}
-
-func (d *Database) QuaryAdmin(UserID int64) *Admin {
-	var admin = &Admin{
-		Id: UserID,
-	}
-	if err := d.First(admin); err != nil {
-		return nil
-	}
-	return admin
-}

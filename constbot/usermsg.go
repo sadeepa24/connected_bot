@@ -39,6 +39,8 @@ var (
 	MsgQuotawarn string = "⚠️ Your quota must be within the specified range."
 	MsgQuotawarnlow string = "⚠️ Your quota must be greater than you'r current usage"
 	MsgQuotawarnzero string = "⚠️ Value should be greater than zero"
+
+	MsgAtleas1In string = "⚠️ You must select at least one inbound configuration."
 )
 
 var (
@@ -411,5 +413,6 @@ func overide() {
 	MsgTempNoLimit = "MsgTempNoLimit"
 	MsgTempLimitAlert = "MsgTempLimitAlert"
 	MsgCannotCap = "MsgCannotCap"
+	MsgAtleas1In = "MsgAtleas1In"
 }
 

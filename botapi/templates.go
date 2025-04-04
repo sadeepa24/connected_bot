@@ -32,9 +32,22 @@ type Message struct {
 	SkipText           bool
 	Continue_Skip_Text bool
 	SuperContinue      bool
-
+	Keyboard		   *Keyboard
 	MeadiaSkip bool
 }
+
+type BtnConfig struct {
+	Btns [][]string `json:"btns" yaml:"btns"`
+}
+/*
+{
+
+{firstbtn:link, second:link}
+{close:link}
+}
+
+*/
+
 
 func (m *Message) String() string {
 	return m.Msg
@@ -59,7 +72,8 @@ type MgItem struct {
 	SuperContinue      bool               `json:"supercontinue" yaml:"supercontinue"`
 	AltMediaUrl        string 			  `json:"alt_med_url" yaml:"alt_med_url"`
 	AltMediaPath       string 			  `json:"alt_med_path" yaml:"alt_med_path"`
-
+	BtnConfig 		   *BtnConfig		  `json:"btnconf" yaml:"btnconf"`
+	keyboard 		   Keyboard			  `json:"-" yaml:"-"`
 	MeadiaSkip		   bool  			  `json:"media_skip" yaml:"media_skip"`
 
 }
@@ -159,7 +173,7 @@ func NewMessageStore(path string) (*MessageStore, error) {
 		return nil, err
 	}
 	
-	mgmap := map[string]*MgItem{}
+	mgmap := make(map[string]*MgItem, len(messages)) 
 
 	for name, allmg := range messages {
 		for langcode, item := range allmg {
@@ -179,7 +193,12 @@ func NewMessageStore(path string) (*MessageStore, error) {
 			default:
 				item.ParseMode = ""
 			}
-
+			if item.BtnConfig != nil {
+				item.keyboard, err = fromBtnConfig(item.BtnConfig)
+				if err != nil {
+					return nil, err
+				}
+			}
 			mgmap[name+langcode] = &item
 		}
 	}
@@ -455,6 +474,8 @@ func TemplateInit(sender BotAPI, sudoadminID int64, logger *zap.Logger, template
 				}
 			}
 		}
+
+
 	}
 	return nil
 }
@@ -486,6 +507,7 @@ func (m *MessageStore) GetMessage(name, lang string, obj any) (*Message, error) 
 	mg.ParseMode = msg.ParseMode
 	mg.SkipText = msg.SkipText
 	mg.MeadiaSkip = msg.MeadiaSkip
+	mg.Keyboard = &msg.keyboard
 
 	if msg.Includemed {
 		mg.MedType = msg.Mediatype

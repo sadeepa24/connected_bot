@@ -2,12 +2,18 @@ package db
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"encoding/base64"
+	"encoding/binary"
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	"github.com/sadeepa24/connected_bot/sbox"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
 )
 
 type User struct {
@@ -21,6 +27,7 @@ type User struct {
 	IsInChannel       bool `gorm:"column:is_in_channel"`
 	IsInGroup         bool `gorm:"column:is_in_group"`
 	IsRemoved         bool `gorm:"column:is_removed"` //common for group and channel
+	//IsPaused		  bool	`gorm:"column:is_paused"` //FIXME: add this feture later and remove monthlimitation
 	Restricted 		  bool `gorm:"column:restricted"` // admin can restrict users
 	GroupBanned       bool `gorm:"column:group_banned"`
 	ChannelBanned     bool `gorm:"column:channel_banned"`
@@ -50,6 +57,7 @@ type User struct {
 	EmptyCycle		 int16    `gorm:"column:empty_cycle"`
 	Templimited 	 bool 	  `gorm:"column:temp_limited"`
 	WarnRatio 		 int16    `gorm:"column:warn_ratio"`
+				
 
 	//WebToken sql.NullString `gorm:"type:varchar(200);column:web_token"`
 	Configs  []Config       `gorm:"foreignKey:UserID"`
@@ -98,27 +106,134 @@ func (u *User) Verified() bool {
 type Config struct {
 	Id         int64 `gorm:"primaryKey"`
 	Name       string
-	UUID       string `gorm:"not null;uniqueIndex"`
-	Type       string
-	Password   string
+	UUID       string `gorm:"not null;uniqueIndex"` //common for all vless & vmess inbound
+	Password   string // common for all trojan, tuic, shadowsocks (everything which use a password)
 	Active     bool
 	UserID     int64 `gorm:"not null;column:user_id"`
-	InboundID  int16 `gorm:"not null"`
+	
+	//InboundID  int16 `gorm:"not null"`
+	
 	OutboundID int16 `gorm:"not null"`
-
-	Inbound  Inbound  `gorm:"foreignKey:ID"`
-	Outbound Outbound `gorm:"foreignKey:ID"`
-
+	InboundIds InIds `gorm:"type:blob"`
 	Usage    C.Bwidth // total usage for this month as byte
 	Download C.Bwidth // total download for this month as byte
 	Upload   C.Bwidth // total uploads for this month as byte
 	Quota    C.Bwidth // changes every day when according to groups user
 
 	LoginLimit int16
+	
 	//DeletedAt 		gorm.DeletedAt `gorm:"index"`
 
 }
-func (c *Config) UpdateUsages(status sbox.Sboxstatus) {
+
+type InIds []int16 
+
+func (s InIds) Value() (driver.Value, error) {
+	val := make([]byte, len(s)*2)
+	for i, id := range s {
+		binary.LittleEndian.PutUint16(val[i*2:], uint16(id))
+	}
+	return val, nil
+}
+
+func (s *InIds) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("failed to scan InIds: expected []byte, got something else")
+	}
+	if len(bytes)%2 != 0 {
+		return errors.New("invalid byte slice length: must be a multiple of 2")
+	}
+	var ids []int16
+	for i := 0; i < len(bytes); i += 2 {
+		id := int16(binary.LittleEndian.Uint16(bytes[i:]))
+		ids = append(ids, id)
+	}
+	*s = ids
+	return nil
+}
+
+
+
+
+func (c *Config) LeftQuota() C.Bwidth {
+	return (c.Quota - c.Usage)
+}
+
+func (c *Config) ExportUrlLink(in sbConf.Inboud, info *sbConf.ExportInfo) string {
+	if info == nil {
+		info = &sbConf.ExportInfo{
+			Host: "connectedbot",
+			Sni: "connectedbot",
+			Server: in.Domain,
+		}
+	}
+
+	if info.Server == "" {
+		info.Server = in.Domain
+	}
+	switch in.Type {
+	case "vless", "trojan":
+		passoruuid := c.UUID
+		if in.Type == "trojan" {
+			passoruuid = c.Password
+		}
+		url :=  in.Type+"://"+ passoruuid+ "@" + info.Server + ":" + strconv.Itoa(in.Port()) + "?encryption=none&"
+		if in.TransPortType != "" {
+			switch in.TransPortType {
+			case "ws", "http", "httpupgrade":
+				url += ("path="+in.TransPortPath+ "&host=" + info.Host+ "&")
+
+			case "grpc":
+				url += ("serviceName="+in.TransPortPath+ "&authority=" + info.Host+ "&")
+			}
+			url += ("type=" + in.TransPortType +  "&")
+		}
+		if in.Tlsenabled {
+			url += ("security=tls&sni="+ info.Sni +"&")
+		}
+		url,_ = strings.CutSuffix(url, "&")
+		url += ("#"+ c.Name)
+		return url
+	
+	// This won't be used because this VPN protocol is not added as a supported inbound 
+	// due to increased time complexity associated with user count.
+	case "vmess":
+		tlsinfo := "none"
+		if in.Tlsenabled {
+			tlsinfo = "tls"
+		}
+		url := fmt.Sprintf(
+			`
+		{
+		  "add": "%s",
+		  "aid": "%d",
+		  "scy": "auto",
+		  "host": "%s",
+		  "id": "%s",
+		  "net": "%s",
+		  "path": "%s",
+		  "port": "%d",
+		  "ps": "%s",
+		  "tls": "%s",
+		  "sni": "%s",
+		  "type": "none",
+		  "v": "2"
+		}
+			`, info.Server, 0, info.Host, c.UUID, in.TransPortType, in.TransPortPath, in.Port(), c.Name, tlsinfo, info.Sni,
+		)
+		return "vmess://"+ base64.RawStdEncoding.EncodeToString([]byte(url))
+
+	default:
+		return "currently proto " + in.Type + "isn't support for exporting"
+	}
+}
+
+func (u *Config) GetuniqName() string {
+	return strconv.Itoa(int(u.Id)) + strings.TrimSpace(u.Name) + strconv.Itoa(int(u.UserID))
+}
+
+func (c *Config) UpdateUsages(status sbConf.Sboxstatus) {
 	c.Usage += status.Download + status.Upload
 	c.Download += status.Download
 	c.Upload += status.Upload
@@ -238,6 +353,7 @@ type Metadata struct {
 	TotalUpdates int64
 
 	CommonWarnRatio int16
+	TotalConfigCount int64
 }
 
 type Reffral struct {

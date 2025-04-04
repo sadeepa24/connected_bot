@@ -3,14 +3,12 @@ module github.com/sadeepa24/connected_bot
 go 1.22.5
 
 require (
-	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/google/uuid v1.6.0
-	github.com/jinzhu/copier v0.4.0
+	github.com/gofrs/uuid/v5 v5.3.0
 	github.com/miekg/dns v1.1.63
-	github.com/sagernet/sing v0.6.1
-	github.com/sagernet/sing-box v1.11.3
+	github.com/sadeepa24/walker v0.0.0-00010101000000-000000000000
+	github.com/sagernet/sing v0.6.5
+	github.com/sagernet/sing-box v1.11.6
 	github.com/sagernet/sing-dns v0.4.0
-	github.com/sagernet/sing-vmess v0.2.0
 	go.uber.org/zap v1.27.0
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	gopkg.in/yaml.v3 v3.0.1
@@ -18,12 +16,15 @@ require (
 	gorm.io/gorm v1.25.12
 )
 
+//replaceing custom box for connectedBot
 replace (
-	github.com/sagernet/sing-box => ../sing-box
+	github.com/sadeepa24/walker => ../walker
+	github.com/sagernet/sing-box => ../bot_box
 	//github.com/sagernet/sing => ./sing
-	github.com/sagernet/sing-vmess => ../sing-vmess
+	github.com/sagernet/sing-vmess => ../bot_sing_vmess
 )
 
+//all pkg need to sing-box (does not used by connected_bot)
 require (
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.6 // indirect
@@ -37,7 +38,6 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/gofrs/uuid/v5 v5.3.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20231101202521-4ca4178f5c7a // indirect
@@ -77,6 +77,7 @@ require (
 	github.com/sagernet/sing-shadowsocks2 v0.2.0 // indirect
 	github.com/sagernet/sing-shadowtls v0.2.0 // indirect
 	github.com/sagernet/sing-tun v0.6.1 // indirect
+	github.com/sagernet/sing-vmess v0.2.0 // indirect
 	github.com/sagernet/smux v0.0.0-20231208180855-7041f6ea79e7 // indirect
 	github.com/sagernet/utls v1.6.7 // indirect
 	github.com/sagernet/wireguard-go v0.0.1-beta.5 // indirect

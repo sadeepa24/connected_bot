@@ -32,8 +32,10 @@ func NewInline(
 		ctrl:     ctrl,
 		logger:   logger,
 	}
-
 }
+
+
+
 
 func (a *InlineService) Exec(upx *update.Updatectx) error {
 	if upx.Update.InlineQuery == nil {
@@ -46,7 +48,7 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 	quary := upx.Update.InlineQuery
 
 	//var sendquary io.Reader 
-	answere := tgbotapi.AnswerInlineQuery{
+	answere := &tgbotapi.AnswerInlineQuery{
 		InlineQueryId: quary.ID,
 	}
 
@@ -56,6 +58,7 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 	btns.AddUrlbutton("Channel", a.ctrl.Channelink)
 	btns.AddUrlbutton("Group", a.ctrl.GroupLink)
 	btns.AddUrlbutton("Bot", a.ctrl.Botlink)
+	btns.SetOveride()
 
 	for i, post := range posts {
 		message, err := a.botapi.GetMgStore().GetMessage(post, "en", struct{}{})
@@ -76,8 +79,7 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 							Keyboard: btns.Getkeyboard().Inline_keyboard,
 						},
 						PhotoID: message.MediaId,
-					})
-					
+					})	
 				case constbot.MedVideo:
 					answere.Results = append(answere.Results, tgbotapi.InlineQueryResultCachedVideo{
 						ParseMode: message.ParseMode,
@@ -93,12 +95,16 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 		} else {
 		}
 	}
-
-	a.botapi.Makerequest(upx.Ctx, "POST", constbot.ApiMethodAnswereInline, &botapi.BotReader{RealOb: &answere})
-
+	a.botapi.Makerequest(upx.Ctx, "POST", constbot.ApiMethodAnswereInline, &botapi.BotReader{RealOb: answere})
 	return nil
 }
 
+
+
+func (a *InlineService) SendUsage(upx *update.Updatectx) error {
+	//TODO: may be later
+	return nil
+}
 
 func (a *InlineService) Name() string {
 	return constbot.InlineServiceName

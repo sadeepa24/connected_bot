@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	sdb "github.com/sadeepa24/connected_bot/db"
 	"go.uber.org/zap"
 )
@@ -36,7 +36,6 @@ func TestDb(t *testing.T) {
 		Id:        66,
 		UUID:      uid.String(),
 		UserID:    247,
-		InboundID: 3,
 		Usage:     0,
 		Active:    true,
 		Quota:     20,

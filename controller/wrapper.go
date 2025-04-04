@@ -4,29 +4,28 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"net/netip"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	//tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
 	"github.com/sadeepa24/connected_bot/sbox/singapi"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
-	"github.com/sagernet/sing-box/option"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type Controller struct {
 	ctx    context.Context
-	sbox   sbox.Sboxcontroller
+	//sbox  
+	Boxapi sbox.Controller
 	db     *db.Database
 	botapi botapi.BotAPI
 	logger *zap.Logger
@@ -34,19 +33,17 @@ type Controller struct {
 	Lockval    *atomic.Int32
 	wLockCounter *atomic.Int32
 	UpdateCounter *atomic.Int64
-	Metaconfig *MetadataConf
+	metaconfig *MetadataConf
 	//sboxio     *SboxIO
 	*Metadata
 	Overview *Overview
 
 	Usermgrsession *sync.Map
 
-	//sboxlog  chan any
+	
 	critical *atomic.Int32 //ongoing critical opration count such as chatmember updates, this value should be zero, in order to do a db refresh
 	critchan chan interface{}
-	//lockctx context.Context
 
-	//cond *sync.Cond
 	lockchan chan struct{}
 
 	basectx    context.Context    //parent context for all ongoing upx
@@ -60,13 +57,9 @@ type Controller struct {
 }
 
 func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
-
-	//sboxlog := make(chan any, 2000) //buffer for reciving logs from sbox core
-
 	if metaconf.WatchMgbuf <= 0 {
 		metaconf.WatchMgbuf = 100
 	}
-
 	var err error
 	boxapi, boxopts, err := singapi.NewsingAPI(ctx, sboxpath, logger)
 	if err != nil {
@@ -82,17 +75,17 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		Overview: &Overview{
 			Mu: &sync.RWMutex{},
 		},
-		sbox: boxapi,
+		Boxapi: boxapi,
 		basecancle:     basecanc,
 		signals:         make(chan any, metaconf.WatchMgbuf),
 		Usermgrsession: &sync.Map{},
 		lockchan: make(chan struct{}),
 		Metadata: &Metadata{
-			Inbounds:      []sbox.Inboud{},
-			Outbounds:     []sbox.Outbound{},
+			Inbounds:      []sbConf.Inboud{},
+			Outbounds:     []sbConf.Outbound{},
 			rawoptions: boxopts,
-			inboundasMap:  make(map[int]sbox.Inboud, len(boxopts.Inbounds)),
-			outboundasMap: make(map[int]sbox.Outbound, len(boxopts.Outbounds)),
+			inboundasMap:  make(map[int16]sbConf.Inboud, len(boxopts.Inbounds)),
+			outboundasMap: make(map[int16]sbConf.Outbound, len(boxopts.Outbounds)),
 			Botlink:       metaconf.Botlink,
 			GroupLink:     metaconf.GroupLink,
 			Channelink:    metaconf.Channelink,
@@ -100,7 +93,7 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		critical: new(atomic.Int32),
 		//critchan: make(chan interface{}),
 		//cond: &sync.Cond{},
-		Metaconfig: metaconf,
+		metaconfig: metaconf,
 		botapi:     btapi,
 		Lockval:    new(atomic.Int32),
 		wLockCounter: new(atomic.Int32),
@@ -109,15 +102,8 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 		waitCritical: new(atomic.Bool),
 		mu: sync.RWMutex{},
 		lastDbRefresh: &atomic.Value{},
-		// sboxio: &SboxIO{
-		// 	Inbounds:  boxopts.Inbounds,
-		// 	outbounds: boxopts.Outbounds,
-		// },
-		//sboxlog: sboxlog,
 	}
-
-
-
+    
 	return cn, nil
 }
 
@@ -144,28 +130,28 @@ func (c *Controller) Init() error {
 		err        error
 		dbnotfound bool
 	)
-	if err = c.Metadata.Init(*c.Metaconfig); err != nil {
-		return err
-	}
-
-	if c.Metaconfig.DefaultDomain == "" || c.Metaconfig.DefaultPublicIp == "" {
-		return errors.New("default domain or public ip not found")
-	} else {
-		//TODO: verify ip and domain dns
-	}
-
-	c.DefaultDomain = c.Metaconfig.DefaultDomain
-	c.DefaultPubip = c.Metaconfig.DefaultPublicIp
-
-	if c.Metaconfig == nil {
+	if c.metaconfig == nil {
 		return errors.New("metaconfig not found ")
 	}
-	if c.sbox == nil {
+	if c.Boxapi == nil {
 		return errors.New("sbox creation failed")
 	}
 	if err = c.startbox(); err != nil {
 		return err
 	}
+
+	if err = c.Metadata.Init(*c.metaconfig, c.logger); err != nil {
+		return err
+	}
+
+	if c.metaconfig.DefaultDomain == "" || c.metaconfig.DefaultPublicIp == "" {
+		return errors.New("default domain or public ip not found")
+	} else {
+		//TODO: verify ip and domain dns
+	}
+
+	c.DefaultDomain = c.metaconfig.DefaultDomain
+	c.DefaultPubip = c.metaconfig.DefaultPublicIp
 
 	if err = c.db.Model(&db.Metadata{}).First(dbMeta).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -176,95 +162,60 @@ func (c *Controller) Init() error {
 	}
 
 	// Count users who are in a group (is_in_group = true)
-	if err := c.db.Model(&db.User{}).Where("is_in_group = ? AND is_in_channel = ?", true, true).Count(&dbMeta.VerifiedUserCount).Error; err != nil {
-		return err
+	if !dbnotfound {
+		if err := c.db.Model(&db.User{}).Where("is_in_group = ? AND is_in_channel = ?", true, true).Count(&dbMeta.VerifiedUserCount).Error; err != nil {
+			return err
+		}
+		if err := c.db.Model(&db.Config{}).Where("1 = 1").Count(&dbMeta.TotalConfigCount).Error; err != nil {
+			return err
+		}
 	}
 
+	
 	//intilize All inbounds to map
 	for _, in := range c.rawoptions.Inbounds {
-		if in.Type != C.Vless {
-			return errors.New("this type inbound not supported yet " + in.Type)
-		}
-
-		vlessout, ok := in.Options.(*option.VLESSInboundOptions)
-		if !ok {
-			return errors.New("this type inbound not supported yet " + in.Type)
-		}
-
-
 		if in.Id == nil {
-			return errors.New("inbound id not found for " + in.Tag)
+			continue
 		}
-
 		if in.Domain == "" {
 			in.Domain = c.DefaultDomain
 		}
 		if in.Public_Ip == "" {
 			in.Public_Ip = c.DefaultPubip
 		}
-
-		inbdremake := sbox.Inboud{
-			Id:          int64(*in.Id),
-			Name:        in.Tag,
-			Tag:         in.Tag,
-			Type:        in.Type,
-			Option:      &in,
-			Custom_info: in.Custom_info,
-			Domain:      in.Domain,
-			PublicIp:    in.Public_Ip,
-			Support:     in.SupportInfo,
-		}
-
-		switch in.Type {
-		case C.Vless:
-			inbdremake.ListenAddres = vlessout.ListenOptions.Listen.Build(netip.IPv4Unspecified()).String()
-			inbdremake.Listenport = int(vlessout.ListenPort)
-
-			if vlessout.TLS != nil {
-				inbdremake.Tlsenabled = vlessout.TLS.Enabled
-			}
-			if vlessout.Transport != nil {
-				inbdremake.Transporttype = vlessout.Transport.Type
-				inbdremake.Transportoption = *vlessout.Transport
-			}
-		default:
-			return C.ErrNotsupported
-
+		var inbdremake sbConf.Inboud
+		err = inbdremake.AddOption(in)
+		if err != nil {
+			return err
 		}
 		c.inboundasMap[*in.Id] = inbdremake
-
-		c.Inbounds = append(c.Inbounds, c.inboundasMap[*in.Id])
+		c.Inbounds = append(c.Inbounds, inbdremake)
 		if in.Tag == "default" {
-			c.defaultinbound = c.inboundasMap[*in.Id]
+			c.defaultinbound = inbdremake
 		}
 	}
 
 	if c.defaultinbound.Type == "" {
-		return errors.New("default inbound not found")
-		//c.defaultinbound = c.Metadata.Inbounds[0]
+		c.defaultinbound = c.Inbounds[0]
+		c.logger.Warn("Default Inbound Not Found First Inbound will bes used as default")
 	}
 
 	//intilize All outbounds to map
-	//c.sboxio.outbounds = append(c.sboxio.outbounds, c.rawoptions.Endpoints)
 	for _, out := range c.rawoptions.Outbounds {
-		if out.Id == nil {
-			return errors.New("outbound id not found for " + out.Tag)
-		}
 		if out.Type == "block" || out.Type == "dns" || out.Type == "selector" {
 			continue
 		}
-		c.outboundasMap[*out.Id] = sbox.Outbound{
-			Id:          int64(*out.Id),
-			Name:        out.Tag,
-			Tag:         out.Tag,
-			Type:        out.Type,
-			///Option:      &out,
-			Custom_info: out.Custom_info,
-			Latency:     new(atomic.Int32),
+		
+		if out.Id == nil {
+			return errors.New("outbound id not found for " + out.Tag)
 		}
-		c.Outbounds = append(c.Outbounds, c.outboundasMap[*out.Id])
 
-		if out.Type == C.Direct {
+		var oubd sbConf.Outbound
+		oubd.AddOption(out)
+		c.outboundasMap[*out.Id] = oubd
+		c.Outbounds = append(c.Outbounds, c.outboundasMap[*out.Id])
+		
+		if out.Tag == "default" {
 			c.defaultoutbound = c.outboundasMap[*out.Id]
 		}
 	}
@@ -273,109 +224,42 @@ func (c *Controller) Init() error {
 		if endpt.Id == nil {
 			return errors.New("endpoint id not found for " + endpt.Tag)
 		}
-
 		_, loaded := c.outboundasMap[*endpt.Id]
 		if loaded {
 			return errors.New("outbound and endpoint id conflicts outbound and endpoint id canoot be same")
 		}
-		c.outboundasMap[*endpt.Id] = sbox.Outbound{
-			Id:          int64(*endpt.Id),
-			Name:        endpt.Tag,
-			Tag:         endpt.Tag,
-			Type:        endpt.Type,
-			///Option:      &out,
-			Custom_info: endpt.Custom_info,
-			Latency:     new(atomic.Int32),
-		}
+		var outbd sbConf.Outbound
+		outbd.AddOptionEndpoint(endpt)
+		c.outboundasMap[*endpt.Id] = outbd
 		c.Outbounds = append(c.Outbounds, c.outboundasMap[*endpt.Id])
 	}
-
 	if c.rawoptions.Route == nil {
 		return errors.New("route cannopt be empty")
 	}
 
-	if c.defaultinbound.Type == "" {
-		return errors.New("default outbound not found create direct outbound")
+	if c.defaultoutbound.Type == "" {
+		for _, ou := range c.outboundasMap {
+			if ou.Type == "direct" {
+				c.defaultoutbound = ou
+				break
+			}
+		}
+		if c.defaultoutbound.Type == "" {
+			return errors.New("default outbound not found create direct outbound")
+		}
 	}
 
 	//if already db intilize verify all new and old  inbounds and make changes as needed
 	if !dbnotfound {
-
-		infromdb := []*db.Inbound{}
-		outfromdb := []*db.Outbound{}
-
-		// verify all new inbound from config according to exting db inbound
-		// reconfigure all inbounds according to new inbounds
-		// all inbounds which are'nt avalble nolonger will replace by defaultoutbound
-		if err := c.db.Model(&db.Inbound{}).Find(&infromdb).Error; err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return err
-			}
+		err = c.initallconfigs(dbMeta)
+		if err != nil {
+			return errors.New("failed to init all configs " + err.Error())
 		}
-
-		for _, dbIn := range infromdb {
-			sboxin, ok := c.inboundasMap[int(dbIn.ID)]
-
-			if !ok {
-				c.logger.Warn("not found new inbound for inbound from db " + dbIn.Name)
-				c.logger.Warn(dbIn.Name + " Will replace by default inbound")
-				//c.DefaultInboud()
-				c.db.Model(&db.Config{}).Where("inbound_id = ?", dbIn.ID).Update("inbound_id", c.defaultinbound.Id)
-				c.db.Model(&db.Inbound{}).Delete(dbIn)
-
-			} else if sboxin.Type != dbIn.Type {
-				return errors.New("type conflicst same id has diffrent type inbounds")
-			}
-		}
-
-		if err := c.db.Model(&db.Outbound{}).Find(&outfromdb).Error; err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return err
-			}
-
-		}
-		// verify all new outbound from config according to exting db outbound
-		// reconfigure all oubounds according to new outbounds from config
-		// all oubounds which are'nt avalble nolonger will replace by defaultoubound
-		for _, outDb := range outfromdb {
-			sboxout, ok := c.outboundasMap[int(outDb.ID)]
-
-			if !ok {
-				c.logger.Warn("not found new outbound for oubound from db " + outDb.Name)
-				c.logger.Warn(outDb.Name + " Will replace by default outbound")
-				//c.DefaultInboud()
-				c.db.Model(&db.Config{}).Where("outbound_id = ?", outDb.ID).Update("outbound_id", c.defaultoutbound.Id)
-				c.db.Model(&db.Outbound{}).Delete(outDb)
-
-			} else if sboxout.Type != outDb.Type {
-				return errors.New("outbound type conflict db and config outbound type missmatch")
-			}
-		}
-
-		/*if len(infromdb) > len(c.Inbounds) {
-			return errors.New("config inbounds not enougf")
-		}
-		if len(outfromdb) > len(c.Outbounds) {
-			return errors.New("config outbound not enougf")
-		}
-
-
-		for _, in := range infromdb {
-			if in.Type != c.inboundasMap[int(in.ID)].Type {
-				return errors.New("inbound type conflict db and config inbound type missmatch")
-			}
-		}
-		*/
-
 	}
 
 	//replacing all inbounds according to new data
 	for _, in := range c.Metadata.Inbounds {
-
-		if in.Type != "vless" {
-			return errors.New("this type inbound not supported yet " + in.Type)
-		}
-		if err := c.db.Model(&db.Inbound{}).Where("id = ?", in.Id).Save(&db.Inbound{
+		if err := c.db.Save(&db.Inbound{
 			ID:   int16(in.Id),
 			Tag:  in.Tag,
 			Name: in.Name,
@@ -396,33 +280,30 @@ func (c *Controller) Init() error {
 		}).Error; err != nil {
 			return err
 		}
-
 	}
 
 	if err := c.db.Model(&db.User{}).Count(&dbMeta.Dbusercount).Error; err != nil {
 		return err
 	}
 
-	if c.Metaconfig.RefreshRate <= 0 || c.Metaconfig.RefreshRate > 24 {
+	if c.metaconfig.RefreshRate <= 0 || c.metaconfig.RefreshRate > 24 {
 		return errors.New("refresh rate should between 0 and 24")
 	}
- 	
-	//initilizing db first time
-	dbMeta.LoginLimit = int32(c.Metaconfig.LoginLimit)
+	dbMeta.LoginLimit = int32(c.metaconfig.LoginLimit)
 	
+	//initilizing db first time
 	if dbnotfound { 
 
-		if dbMeta.BandwidthAvelable, err = C.BwidthString(c.Metaconfig.BandwidthAvelable); err != nil {
+		if dbMeta.BandwidthAvelable, err = C.BwidthString(c.metaconfig.BandwidthAvelable); err != nil {
 			return err
 		}
-
-		dbMeta.ChannelId = c.Metaconfig.ChannelID
-		dbMeta.GroupID = c.Metaconfig.GroupID
+		dbMeta.ChannelId = c.metaconfig.ChannelID
+		dbMeta.GroupID = c.metaconfig.GroupID
 		dbMeta.CommonQuota = dbMeta.BandwidthAvelable
-		dbMeta.ResetCount = (30 * 24) / c.Metaconfig.RefreshRate
-		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
-		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
-		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
+		dbMeta.ResetCount = (30 * 24) / c.metaconfig.RefreshRate
+		dbMeta.RefreshRate = c.metaconfig.RefreshRate
+		dbMeta.PublicDomain = c.metaconfig.DefaultDomain
+		dbMeta.PublicIp = c.metaconfig.DefaultPublicIp
 		dbMeta.CommonWarnRatio = c.GetWarnRate()
 		
 		var userct int64
@@ -433,18 +314,18 @@ func (c *Controller) Init() error {
 		//Load to Database
 	}
 
-	if dbMeta.Maxconfigcount > c.Metaconfig.Maxconfigcount {
+	if dbMeta.Maxconfigcount > c.metaconfig.Maxconfigcount {
 		c.logger.Warn("Decrement of Maxconfigcount detected. This will not happen as users may have already created configs equal to Maxconfigcount.")
 	} else {
-		dbMeta.Maxconfigcount = c.Metaconfig.Maxconfigcount
+		dbMeta.Maxconfigcount = c.metaconfig.Maxconfigcount
 	}
 
-	if c.Metaconfig.RefreshRate != dbMeta.RefreshRate {
+	if c.metaconfig.RefreshRate != dbMeta.RefreshRate {
 		c.logger.Info("Refresh Rate Change Detected. Recalculating Refresh Rates.")
 		oldRefreshRate := dbMeta.RefreshRate
-		dbMeta.CheckCount = (dbMeta.CheckCount * oldRefreshRate) / c.Metaconfig.RefreshRate //Recalculating ResetCount according to new refresh rate
-		dbMeta.ResetCount = (30 * 24) / c.Metaconfig.RefreshRate
-		dbMeta.RefreshRate = c.Metaconfig.RefreshRate
+		dbMeta.CheckCount = (dbMeta.CheckCount * oldRefreshRate) / c.metaconfig.RefreshRate //Recalculating ResetCount according to new refresh rate
+		dbMeta.ResetCount = (30 * 24) / c.metaconfig.RefreshRate
+		dbMeta.RefreshRate = c.metaconfig.RefreshRate
 	}
 
 	if c.GetWarnRate() < int16(c.RefreshRate) {
@@ -459,24 +340,24 @@ func (c *Controller) Init() error {
 		dbMeta.CommonWarnRatio = c.GetWarnRate()
 	}
 
-	if c.Metaconfig.DefaultDomain != dbMeta.PublicDomain {
+	if c.metaconfig.DefaultDomain != dbMeta.PublicDomain {
 		c.logger.Info("Default Domain Changed")
-		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.Metaconfig.DefaultDomain)
-		dbMeta.PublicDomain = c.Metaconfig.DefaultDomain
+		c.signals <- BroadcastSig("Default Domain Changed Use New Public Domain " + c.metaconfig.DefaultDomain)
+		dbMeta.PublicDomain = c.metaconfig.DefaultDomain
 	}
 
-	if c.Metaconfig.DefaultPublicIp != dbMeta.PublicIp {
+	if c.metaconfig.DefaultPublicIp != dbMeta.PublicIp {
 		c.logger.Info("Default Public Ip Changed")
-		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.Metaconfig.DefaultPublicIp)
-		dbMeta.PublicIp = c.Metaconfig.DefaultPublicIp
+		c.signals <- BroadcastSig("Default Public Ip Changed Use New Public Ip (if you are using public domain and the public domain did not change, simply ignore this message )" + c.metaconfig.DefaultPublicIp)
+		dbMeta.PublicIp = c.metaconfig.DefaultPublicIp
 	}
 
 
-	if c.Metaconfig.GroupID == 0 || c.Metaconfig.ChannelID == 0 {
+	if c.metaconfig.GroupID == 0 || c.metaconfig.ChannelID == 0 {
 		return errors.New("channel or group id not found ")
 	}
 	var Bandwidth C.Bwidth
-	if Bandwidth, err = C.BwidthString(c.Metaconfig.BandwidthAvelable); err != nil {
+	if Bandwidth, err = C.BwidthString(c.metaconfig.BandwidthAvelable); err != nil {
 		return err
 	}
 	c.Metadata.GroupID = dbMeta.GroupID
@@ -502,8 +383,102 @@ func (c *Controller) Init() error {
 
 
 	return nil
+}
 
-	//c.db.Model(&db.Metadata{}).Find()
+
+//this function verify all config's inbound with new sbox config
+func (c *Controller) initallconfigs(meta *db.Metadata) error {
+
+
+	outfromdb := []*db.Outbound{}
+	if err := c.db.Model(&db.Outbound{}).Find(&outfromdb).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+	}
+	// verify all new outbound from config according to exting db outbound
+	// reconfigure all oubounds according to new outbounds from config
+	// all oubounds which are'nt avalble nolonger will replace by defaultoubound
+	for _, outDb := range outfromdb {
+		_, ok := c.outboundasMap[outDb.ID]
+
+		if !ok {
+			c.logger.Warn("not found new outbound for oubound from db " + outDb.Name)
+			c.logger.Warn(outDb.Name + " Will replace by default outbound")
+			//c.DefaultInboud()
+			c.db.Model(&db.Config{}).Where("outbound_id = ?", outDb.ID).Update("outbound_id", c.defaultoutbound.Id)
+			c.db.Model(&db.Outbound{}).Delete(outDb)
+
+		}
+	}
+	
+	infromdb := []*db.Inbound{}
+	if err := c.db.Model(&db.Inbound{}).Find(&infromdb).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+	}
+	changedID := make(map[int16]bool, len(infromdb)) //ids which is not available with new sbox config 
+	for _, in := range infromdb {
+		_, ok := c.inboundasMap[(in.ID)]
+		if !ok {
+			c.logger.Warn("Inbound from database (" + in.Tag + ") not found in the new configuration. All inbound lists of configurations using this inbound will be replaced or removed.")
+			changedID[in.ID] = true
+		}
+		
+	}
+
+	if len(changedID) == 0 {
+		return nil
+	}
+
+	bufct := meta.TotalConfigCount / 10 
+	if bufct < 20 {
+		bufct = 30
+	}
+	if bufct > 100 {
+		bufct = 100
+	}
+	bufsender := NewBufSender(c.ctx, c,  int(bufct), time.Duration(meta.TotalConfigCount * 3) * time.Second)
+	defer bufsender.Close()
+	
+	// verify all config's inbounds according to exting db inbound
+	// reconfigure all inbounds according to new inbounds
+	// all inbounds which are nolonger availble  will be removed
+
+	var listConfig []db.Config
+	c.db.Model(&db.Config{}).FindInBatches(&listConfig, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
+		
+		for i := range listConfig {
+			if len(listConfig[i].InboundIds) == 0 {
+				listConfig[i].InboundIds = append(listConfig[i].InboundIds, c.defaultinbound.Id)
+				tx.Save(&listConfig[i])
+				continue
+			}
+			var newinbounds []int16
+			for _, id := range listConfig[i].InboundIds {
+				if changedID[id] {
+					continue
+				}
+				newinbounds = append(newinbounds, id)
+			}
+			mustchange := len(listConfig[i].InboundIds) != len(newinbounds)
+			if len(newinbounds) == 0 {
+				newinbounds = append(newinbounds, c.defaultinbound.Id)
+				mustchange = true
+			}
+			if mustchange {
+				bufsender.Send("you'r config " + listConfig[i].Name +"'s inbound has been changed due to configuration changes please check new nbound or reconfigure you'r config's inbound as you need ", listConfig[i].UserID )
+				listConfig[i].InboundIds = newinbounds
+				tx.Save(&listConfig[i])
+			}
+		}
+		tx.Commit()
+		return nil
+	})
+	c.db.Unscoped().Where("1 = 1").Delete(&db.Inbound{})
+	bufsender.Over()
+	return nil
 }
 
 
@@ -611,6 +586,21 @@ func (c *Controller) GetUserById(userId int64) (*db.User, error) {
 	}	
 	return user, c.db.Model(&db.User{}).First(user).Error
 }
+
+func (c *Controller) GetUserByConfID(confId int64) (*db.User, error) {
+	var conf = &db.Config{
+		Id: confId,
+	}
+	err := c.db.Model(&db.Config{}).First(conf).Error
+	if err != nil {
+		return nil, err
+	}
+	var user = &db.User{
+		TgID: conf.UserID,
+	}
+	return user, c.db.Model(&db.User{}).First(user).Error
+}
+
 func (c *Controller) GetUserByUserName(userName string) (*db.User, error) {
 	var user = &db.User{}
 	err := c.db.Model(&db.User{}).Where("username = ?", userName).First(user).Error
@@ -619,7 +609,6 @@ func (c *Controller) GetUserByUserName(userName string) (*db.User, error) {
 	}
 	return user, err
 }
-
 
 func (c *Controller) SearchUserByUsername(username string) (*db.User, bool, error) {
 	var dbuser *db.User
@@ -750,62 +739,17 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 
 		k := oldQuota.Float64() / user.Configs[i].Quota.Float64()      // findig ratio between oldquota and old configs quota
 		newConfigQuota := C.Bwidth(user.CalculatedQuota.Float64() / k) // subpressing quota according to ratio, k is the constant
-
-		dbin, err := c.GetdbInbound(int(user.Configs[i].InboundID))
-		if err != nil {
-			_, dbin = c.DefaultInboud()
-		}
-		dbout, err := c.GetdbOutbound(int(user.Configs[i].OutboundID))
-		if err != nil {
-			_, dbout = c.Defaultoutboud()
-		}
-
 		user.Configs[i].Quota = newConfigQuota
-		status, err := c.AddResetUserSbox(&sbox.Userconfig{
-			Vlessgroup: &sbox.Vlessgroup{
-				UUID: user.Configs[i].GetUUID(),
-			},
-			Type: user.Configs[i].Type,
-
-			UsercheckId: int(user.CheckID),
-			Name:        user.Name,
-			Inboundtag:  dbin.Tag,
-			Outboundtag: dbout.Tag,
-			InboundId:   dbin.ID,
-			DbID:        user.Configs[i].Id,
-			OutboundID:  dbout.ID,
-			Usage:       user.Configs[i].Usage,
-			Quota:       newConfigQuota,
-			LoginLimit:  int32(user.Configs[i].LoginLimit),
-			TgId: user.TgID,
-		})
-		if err != nil {
-			c.DirectMg("config adding failed you may need to contact admin with error err - " + err.Error(), user.TgID, user.TgID)
-		}
-
+		status, err := c.Boxapi.AddConfigReset(&user.Configs[i])
+		if err != nil {c.DirectMg("config adding failed you may need to contact admin with error err - " + err.Error(), user.TgID, user.TgID)}
 		user.Configs[i].UpdateUsages(status)
 		user.MonthUsage += (status.Download + status.Upload)
 
 		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || user.IsDistributedUser || (user.IsCapped && user.CappedQuota > C.Bwidth(c.CommonQuota.Load())) || (user.MonthUsage >= user.CalculatedQuota) {
-
 			// if (user.Configs[i].Quota - user.Configs[i].Usage) <= 0 {
 			// 	c.DirectMg("your config "+user.Configs[i].Name+" Usage is over, config wo'nt work until renew", user.TgID, user.TgID)
 			// }
-
-			c.RemoveUserSbox(&sbox.Userconfig{
-				Vlessgroup: &sbox.Vlessgroup{
-					UUID: user.Configs[i].GetUUID(),
-				},
-				UsercheckId: int(user.CheckID),
-				Name:        user.Name,
-				Inboundtag:  dbin.Tag, //TODO: fetch this correctly
-				Outboundtag: dbout.Tag,
-				Usage:       user.Configs[i].Usage,
-				Quota:       newConfigQuota,
-				DbID:        user.Configs[i].Id,
-				LoginLimit:  int32(user.Configs[i].LoginLimit),
-				TgId: user.TgID,
-			})
+			c.Boxapi.RemoveConfig(&user.Configs[i])
 		}
 		if err == nil && !user.IsDistributedUser && status.FullUsage() > 0 {
 			c.db.Create(&db.UsageHistory{
@@ -871,7 +815,7 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		AddtionalConfig:   0,
 		WarnRatio: c.GetWarnRate(),
 		RecheckVerificity: recheck,
-		Lang:        "en",
+		Lang:        c.metaconfig.DefaultLang,
 		Points:      C.DefaultPoint,
 		IsTgPremium: false,
 
@@ -989,31 +933,6 @@ func (c *Controller) CreateRefrral(owenerid, userid int64) (*db.Reffral, error) 
 
 }
 
-func (c *Controller) startbox() error {
-	return c.sbox.Start()
-}
-
-
-
-func (c *Controller) Close() error { return c.sbox.Close() }
-
-func (c *Controller) AdduserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, error) {
-	return c.sbox.AddUser(conf)
-}
-func (c *Controller) AddResetUserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, error) {
-	return c.sbox.AddUserReset(conf)
-}
-func (c *Controller) RemoveUserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, error) {
-	return c.sbox.RemoveUser(conf)
-}
-func (c *Controller) GetstatusUserSbox(conf *sbox.Userconfig) (sbox.Sboxstatus, error) {
-	return c.sbox.GetstatusUser(conf)
-}
-func (c *Controller) UrlTestOut(tag string) (int16, error) {
-	return c.sbox.UrlTest(tag)
-
-}
-
 // heavy load on db
 // optimize later
 func (c *Controller) ClaimReferVerified(owenerid int64) (int, error) {
@@ -1062,11 +981,6 @@ func (c *Controller) ClaimReferVerified(owenerid int64) (int, error) {
 	}
 
 	return len(verified) * 2, nil
-}
-
-func (c *Controller) RefreshUrlTest() {
-	c.sbox.RefreshUrlTest()
-
 }
 
 func (c *Controller) GetSboxConfig(userID int64) ([]db.SboxConfigs, error) {
@@ -1260,6 +1174,53 @@ func (c *Controller) RemoveAllLimits() error {
 	c.signals <- RefreshSignal(1)
 	return nil
 }
+
+func (c *Controller) ResetLangCode() error {
+	c.IncCriticalOp()
+	tx := c.db.Begin()
+	err := tx.Model(&db.User{}).Where("1 = 1").Update("lang", c.metaconfig.DefaultLang).Error
+	if err != nil {
+		tx.Rollback()
+		c.DecCriticalOp()
+		return err
+	}
+	tx.Commit()
+	c.DecCriticalOp()
+	if c.CheckLock() {
+		return nil
+	}
+	return nil
+}
+
+
+
+// sbox 
+func (c *Controller) startbox() error {
+	return c.Boxapi.Start()
+}
+func (c *Controller) Close() error { return c.Boxapi.Close() }
+
+
+// func (c *Controller) AdduserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
+// 	return c.sbox.AddUser(conf)
+// }
+// func (c *Controller) AddResetUserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
+// 	return c.sbox.AddUserReset(conf)
+// }
+// func (c *Controller) RemoveUserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
+// 	return c.sbox.RemoveUser(conf)
+// }
+// func (c *Controller) GetstatusUserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
+// 	return c.sbox.GetStatusUser(conf)
+// }
+// func (c *Controller) UrlTestOut(tag string) (int16, error) {
+// 	return c.sbox.UrlTest(tag)
+// }
+// func (c *Controller) RefreshUrlTest() {
+// 	c.sbox.RefreshUrlTest()
+// }
+
+
 
 
 

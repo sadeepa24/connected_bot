@@ -6,7 +6,7 @@ import (
 
 	//
 	"github.com/sadeepa24/connected_bot/botapi"
-	"github.com/sadeepa24/connected_bot/sbox"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"go.uber.org/zap"
 )
@@ -28,33 +28,33 @@ func (t *TestSboxStruct) Start() error {
 	zLogger.Info("Sbox controller start called")
 	return nil
 }
-func (t *TestSboxStruct) AddUser(user *sbox.Userconfig) (*sbox.Sboxstatus, error) {
-	zLogger.Info("Sbox Newuser adding called")
-	return &sbox.Sboxstatus{
-		Download: 2,
-		Upload:   2,
-	}, nil
-}
-func (t *TestSboxStruct) RemoveUser(user *sbox.Userconfig) (*sbox.Sboxstatus, error) { return nil, nil }
+// func (t *TestSboxStruct) AddUser(user *sbConf.Userconfig) (*sbConf.Sboxstatus, error) {
+// 	zLogger.Info("Sbox Newuser adding called")
+// 	return &sbConf.Sboxstatus{
+// 		Download: 2,
+// 		Upload:   2,
+// 	}, nil
+// }
+// func (t *TestSboxStruct) RemoveUser(user *sbConf.Userconfig) (*sbConf.Sboxstatus, error) { return nil, nil }
 
-// Do not going to update database usage it will automaticaly doing by watchman
-func (t *TestSboxStruct) GetStatus(user *sbox.Userconfig) (*sbox.Sboxstatus, error) { return nil, nil }
-func (t *TestSboxStruct) AddInboud()                                                {}
-func (t *TestSboxStruct) RemoveInboud() error                                       { return nil }
-func (t *TestSboxStruct) InboundStatus(tag string) error                            { return nil }
-func (t *TestSboxStruct) ShareLinkEncode(user *sbox.Userconfig, str string) (string, error) {
-	return "", nil
-}
+// // Do not going to update database usage it will automaticaly doing by watchman
+// func (t *TestSboxStruct) GetStatus(user *sbConf.Userconfig) (*sbConf.Sboxstatus, error) { return nil, nil }
+// func (t *TestSboxStruct) AddInboud()                                                {}
+// func (t *TestSboxStruct) RemoveInboud() error                                       { return nil }
+// func (t *TestSboxStruct) InboundStatus(tag string) error                            { return nil }
+// func (t *TestSboxStruct) ShareLinkEncode(user *sbConf.Userconfig, str string) (string, error) {
+// 	return "", nil
+// }
 
-func (t *TestSboxStruct) GetAllInbound() ([]sbox.Inboud, error) {
-	return []sbox.Inboud{}, nil
+func (t *TestSboxStruct) GetAllInbound() ([]sbConf.Inboud, error) {
+	return []sbConf.Inboud{}, nil
 }
 func (t *TestSboxStruct) AddInbound() error {
 	return nil
 }
 
-func (t *TestSboxStruct) GetAllOutbound() ([]sbox.Outbound, error) {
-	return []sbox.Outbound{}, nil
+func (t *TestSboxStruct) GetAllOutbound() ([]sbConf.Outbound, error) {
+	return []sbConf.Outbound{}, nil
 }
 func (t *TestSboxStruct) AddOutbound() error {
 	return nil

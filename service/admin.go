@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/netip"
 	"os"
 	"runtime"
 	"strconv"
@@ -20,11 +19,10 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/sbox"
 	"github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
-	"github.com/sagernet/sing-vmess/vless"
+	"github.com/sagernet/sing-box/connectedbot/opts"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
@@ -189,6 +187,8 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 		a.ctrl.Addquemg(controller.RefreshSignal(1))
 		upx.Cancle()
 		return nil
+	case "activeconfs":
+		return a.activeUserStatus(upx, Messagesession, calls)
 	case "manage":
 		return a.manage(Messagesession, calls)
 	case "template":
@@ -255,6 +255,15 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 }
 
 func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msgsession, calls common.Tgcalls) error {
+	message, err := calls.Sendreciver("send user id or username")
+	if err != nil {
+		return err
+	}
+	defer Messagesession.DeleteAllMsg()
+	return a.loaduserinfo(upx, Messagesession, calls, message.Text)
+}
+
+func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Msgsession, calls common.Tgcalls, IDorUserName string) error {
 	if a.inspecifcUse.Swap(true) {
 		calls.Alertsender("Already in getuser close it first and use this")
 		return nil
@@ -263,22 +272,16 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 	alertsender := calls.Alertsender
 	sendreciver := calls.Sendreciver
 	callbackreciver := calls.Callbackreciver
-
-	message, err := sendreciver("send user id or username")
-	if err != nil {
-		return err
-	}
-
 	enduserupx := update.Updatectx{
 		User: &bottype.User{},
 		Ctx: upx.Ctx,
 		Cancle: upx.Cancle,
 	}
 
-	id, err := strconv.Atoi(message.Text)
+	id, err := strconv.Atoi(IDorUserName)
 	if err != nil {
-		message.Text = strings.ReplaceAll(message.Text, "@", "")
-		enduserupx.User.User, err = a.ctrl.GetUserByUserName(message.Text)
+		IDorUserName = strings.ReplaceAll(IDorUserName, "@", "")
+		enduserupx.User.User, err = a.ctrl.GetUserByUserName(IDorUserName)
 	} else {
 		enduserupx.User.User, err = a.ctrl.GetUserById(int64(id))
 	}
@@ -289,19 +292,17 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 	}
 
 	endusersession, err := controller.NewctrlSession(a.ctrl, &enduserupx, false)
-
 	if err != nil {
 		Messagesession.SendAlert(fmt.Sprintf("failed creating target userssion err - %s", err.Error()), nil)
 		return nil
 	}
-
 	defer endusersession.Close()
 	endusermsg := botapi.NewMsgsession(upx.Ctx, a.botapi, enduserupx.User.TgID, enduserupx.User.TgID, "en")
 
+	
 	var (
 		state int
 		callback *tgbotapi.CallbackQuery
-		confid int
 	)
 
 	btns := botapi.NewButtons([]int16{2})
@@ -318,10 +319,10 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 		}
 		switch state {
 		case 0:
-			btns.AddBtcommon("User Info")
-			btns.AddBtcommon("Config Info")
+			btns.AddBtcommon("User Info")	
+			btns.AddBtcommon("User Settings")
 			btns.AddBtcommon("Builder")
-			btns.AddBtcommon("Configure")		
+			btns.AddBtcommon("Configure")	
 			btns.AddClose(false)
 
 			callback, err = callbackreciver("select", btns)
@@ -330,14 +331,14 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			}
 
 			switch callback.Data {
-			case "User Info":
+			case "User Settings":
 				state = 1
-			case "Config Info":
-				state = 2
 			case "Builder":
 				state = 4
 			case "Configure":
 				state = 5
+			case "User Info":
+				state = 6
 			case C.BtnClose:
 				break main
 			}
@@ -389,10 +390,6 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 				Iscapped:       enduserupx.User.IsCapped,
 				IsMonthLimited: enduserupx.User.IsMonthLimited,
 				Isdisuser:      enduserupx.User.IsDistributedUser,
-			
-
-				
-
 				JoinedPlace: enduserupx.User.CheckID,
 
 			}, btns, C.TmpUserInfo)
@@ -456,136 +453,9 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 					Messagesession.SendAlert(C.GetMsg(C.MsgcapRecalFail), nil)
 				}
 				endusermsg.SendAlert("🎉 Your Cap Removed By Admin🍾", nil)
+			
 			}
-				
-		case 2:
-			if endusersession.GetUser().ConfigCount <= 0{
-				alertsender("user does not have created configs")
-				state = 0
-				break
-			}
-			for _, conf := range  endusersession.GetUser().Configs {
-				btns.Addbutton(conf.Name, strconv.Itoa(int(conf.Id)), "")
-			}
-			btns.AddCloseBack()
-
-			callback, err := callbackreciver("select config", btns)
-			if err != nil {
-				break main
-			}
-			switch callback.Data {
-			case C.BtnBack:
-				state = 0
-			case C.BtnClose:
-				break main
-			default:
-				confid, err = strconv.Atoi(callback.Data)
-				if err != nil {
-					continue
-				}
-				state = 3
-
-			}
-
-		case 3:
-
-			selectedconfig, err := endusersession.GetConfig(int64(confid))
-			if err != nil {
-				continue
-			}
-
-			status, err := endusersession.Getstatus(int64(confid))
-
-			if err != nil {
-				if errors.Is(err, C.ErrContextDead) {
-					return err
-				} else if errors.Is(err, vless.ErrUserNotFound) {
-					status = sbox.Sboxstatus{
-						Download:  0,
-						Upload:    0,
-						Online_ip: map[netip.Addr]int64{},
-					}
-				} else {
-					Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.GetMsg(C.Msgconfcannotfind)), true)
-					Messagesession.DeleteAllMsg()
-					return err
-				}
-
-			}
-			sboxin, _ := a.ctrl.Getinbound(int(selectedconfig.InboundID))
-			sboxout, _ := a.ctrl.Getoutbound(int(selectedconfig.OutboundID))
-
-
-			btns.AddBtcommon(C.BtnCloseConn)
-			btns.AddCloseBack()
-
-			if callback, err = callbackreciver(botapi.UpMessage{
-				Template: configinfo{
-					CommonUser: &botapi.CommonUser{
-						Name:     enduserupx.User.Name,
-						Username: enduserupx.User.User.Username.String,
-						TgId:     enduserupx.User.TgID,
-					},
-	
-					TotalQuota:     selectedconfig.Quota.BToString(),
-					ConfigName:     selectedconfig.Name,
-					ConfigType:     selectedconfig.Type,
-					ConfigUUID:     selectedconfig.UUID,
-					Loginlimit: selectedconfig.LoginLimit,
-					UsedPresenTage: float64(int(((selectedconfig.Usage+status.FullUsage()).Float64()/selectedconfig.Quota.Float64())*100*1000)) / 1000,
-					//UsedPresenTage: (((selectedconfig.Usage + status.FullUsage()).Float64()/selectedconfig.Quota.Float64()))*100,
-	
-					ResetDays: ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
-	
-					ConfigDownload: (selectedconfig.Download + status.Download).BToString(),
-					ConfigUpload:   (selectedconfig.Upload + status.Upload).BToString(),
-	
-					ConfigDownloadtd: (status.Download).BToString(),
-					ConfigUploadtd:   (status.Upload).BToString(),
-	
-					ConfigUsagetd: (status.Download + status.Upload).BToString(),
-					ConfigUsage:   (status.Download + status.Upload + selectedconfig.Usage).BToString(),
-					PublicIp: sboxin.PublicIp,
-					PublicDomain: sboxin.Domain,
-	
-					InName:         sboxin.Name,
-					InType:         sboxin.Type,
-					InPort:         sboxin.Port(),
-					InAddr:         sboxin.Laddr(),
-					InInfo:         sboxin.Custom_info,
-					TranstPortType: sboxin.TransortType(),
-					TlsEnabled:     sboxin.TlsIsEnabled(),
-					TransPortPath:  sboxin.TransportPath(),
-					UsageDuration:  time.Since(a.ctrl.GetLastRefreshtime()).Round(1 * time.Second).String(),
-					SupportInfo:    sboxin.Support,
-	
-					OutName: sboxout.Name,
-					OutType: sboxout.Type,
-					OutInfo: sboxout.Custom_info,
-					Latency: sboxout.Latency.Load(),
-	
-					Online: len(status.Online_ip),
-					IpMap:  status.Online_ip,
-					//TODO: fill here
-				},
-				TemplateName: C.TmpConfigInfo,
-				Lang: "en",
-			}, btns); err != nil {
-				a.logger.Error("admin userinfo send failed ", zap.Error(err))
-				continue
-
-			}
-
-			switch callback.Data {
-			case C.BtnClose:
-				break main
-			case C.BtnBack:
-				state = 2
-				continue
-			case C.BtnCloseConn:
-				endusersession.ConfigCloseConn(int64(confid))
-			}
-
+		
 		case 4:
 			if _, ok := a.xraywiz.builds.Load(enduserupx.User.TgID); ok {
 				Messagesession.SendAlert("user have already opend a builder session please wait until he closes it", nil)
@@ -680,13 +550,33 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 			}
 			state = 0
 
+		case 6:
+			userinfost := &getinfo{
+				state:  0,
+				callback: a.callback,
+				Messagesession: Messagesession,
+				calls: common.Tgcalls{
+					Alertsender: alertsender,
+					Sendreciver: sendreciver,
+					Callbackreciver: callbackreciver,
+				},
+				btns: btns,
+				ctx: upx.Ctx,
+				dbuser: endusersession.GetUser(),
+				ctrl: a.ctrl,
+				Usersession: endusersession,
+			}
+			err = userinfost.run()
+			if err != nil {
+				return err
+			}
+			state = 0
+		
 		}
 	}
 
-	Messagesession.DeleteAllMsg()
 
 	return nil
-
 }
 
 func (a *Adminsrv) getserverinfo() error {
@@ -1256,7 +1146,113 @@ func (a *Adminsrv) AdminMode() bool {
 	return !a.modeUser.Load()
 }
 
+func (a *Adminsrv) activeUserStatus(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	activeusr := a.ctrl.Boxapi.GetAllUserStatus()
+	btns := botapi.NewButtons([]int16{2})
+	
+	var (
+		callback *tgbotapi.CallbackQuery
+		err error
+		online map[int]opts.UserStatus
+		onlineIDS []int
+	)
+	for {
+		btns.Reset([]int16{2})
+		btns.AddBtcommon("Online")
+		btns.AddBtcommon("All")
+		btns.AddClose(false)
 
+		callback, err = calls.Callbackreciver("select option", btns)
+		if err != nil {
+			break
+		}
+
+		switch callback.Data {
+		case "Online":
+			if online != nil || len(online) == len(activeusr) {
+				online = make(map[int]opts.UserStatus, len(activeusr))
+				onlineIDS = make([]int, len(activeusr))
+				for id, user := range activeusr {
+					if len(user.Ip) > 0 {
+						online[id] = user
+						onlineIDS = append(onlineIDS, id)
+					}
+				}
+			}
+
+		case "All":
+			online = activeusr
+			onlineIDS = C.MapToSliceKey(activeusr)
+		}
+
+		if len(online) == 0 {
+			calls.Alertsender("no any active conf can be found")
+			continue
+		}
+
+	
+		pagecount := len(online)/eachpagebtn
+		currentPage := 1
+		configs:
+		for {
+			btns.Reset([]int16{2})
+			to := currentPage*eachpagebtn
+			if to > len(online) {
+				to = (currentPage-1)*eachpagebtn + len(online)%eachpagebtn
+			}
+			for i := (currentPage-1)*eachpagebtn; i < to; i++ {
+				btns.AddBtcommon(strconv.Itoa(onlineIDS[i]))
+			}
+			
+			if currentPage < pagecount || (currentPage == pagecount &&  len(online)%eachpagebtn > 0) {
+				btns.AddBtcommon(C.BtnNext)
+			}
+			btns.AddCloseBack()
+			callback, err = calls.Callbackreciver("select config to see info", btns)
+			if err != nil {
+				return err
+			}
+			switch callback.Data {
+			case C.BtnNext:
+				currentPage++
+			case C.BtnClose:
+				return nil
+			case C.BtnBack:
+				if currentPage == 1 {
+					break configs
+				}
+				currentPage--
+			default:
+				id, err := strconv.Atoi(callback.Data)
+				if err != nil {
+					continue
+				}
+				user, err := a.ctrl.GetUserByConfID(int64(id))
+				if err != nil {
+					calls.Alertsender("user loading failed " + err.Error())
+					continue
+				}
+				err = a.loaduserinfo(upx, Messagesession, calls, strconv.Itoa(int(user.TgID)))
+				if err != nil {
+					if errors.Is(err, C.ErrContextDead) {
+						return err
+					}
+					a.logger.Error("failed loaduser ", zap.Error(err))
+					calls.Alertsender("user loading failed " + err.Error())
+				}
+			}
+		}
+		
+		
+
+	}
+	Messagesession.DeleteAllMsg()
+	return err
+
+
+}
+
+var eachpagebtn = 10
 
 
 //TODO: edit templates. edit configs, edit usermsgs, make restarts
@@ -1268,32 +1264,6 @@ func (a *Adminsrv) RefreshMsgsession() error {
 
 
 func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
-
-
-	// Messagesession := botapi.NewMsgsession(a.botapi, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin, "en")
-	
-	// //TODO: Create Function That construct below three function
-	// alertsender := func(msg string) {
-	// 	Messagesession.SendAlert(msg, nil)
-	// }
-	// sendreciver := func(msg any) (*tgbotapi.Message, error) {
-	// 	_, err := Messagesession.Edit(msg, nil, "")
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	mg, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, a.ctrl.SudoAdmin, a.ctrl.SudoAdmin)
-	// 	if err == nil {
-	// 		Messagesession.Addreply(mg.MessageID)
-	// 	}
-	// 	return mg, err
-	// }
-	// callbackreciver := func(msg any, btns *botapi.Buttons) (*tgbotapi.CallbackQuery, error) {
-	// 	_, err := Messagesession.Edit(msg, btns, "")
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return a.callback.GetcallbackContext(upx.Ctx, btns.ID())
-	// }
 	callbackreciver := calls.Callbackreciver
 	sendreciver := calls.Sendreciver
 	alertsender := calls.Alertsender
@@ -1318,6 +1288,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 			btns.Addbutton("🔴 Reset Usage", "reset-usage", "")
 			btns.Addbutton("🔴 Restart", "Restart", "")
 			btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
+			btns.Addbutton("Reset Lang Codes", "langchg", "")
 			btns.AddClose(true)
 			
 			if callback, err = callbackreciver("select", btns); err != nil {
@@ -1376,7 +1347,32 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					Text: "Month Limitation Remove And Db Refreshed",
 				})
 				return nil
-			
+			case "langchg":
+								
+				btns.Reset([]int16{2})
+				btns.Addcancle()
+				btns.AddBtcommon("proceed")
+				if callback, err = callbackreciver("this will reset everyone's lang code to default lang code", btns); err != nil {
+					break mainloop
+				}
+
+				if callback.Data != "proceed" {
+					continue
+				}
+				Messagesession.DeleteAllMsg()
+				err = a.ctrl.ResetLangCode()
+				if err != nil {
+					Messagesession.SendAlert("db update err "+ err.Error(), nil)
+					continue
+				}
+				a.ctrl.Addquemg( &botapi.Msgcommon{
+					Infocontext: &botapi.Infocontext{
+						User_id: a.ctrl.SudoAdmin,
+						ChatId: a.ctrl.SudoAdmin,
+					},
+					Text: "lang code changed",
+				})
+				return nil
 
 			case C.BtnClose:
 				Messagesession.DeleteAllMsg()

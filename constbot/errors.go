@@ -2,12 +2,54 @@ package constbot
 
 import "errors"
 
+
+type Error interface {
+	error
+	UserMsg() string
+}
+
+
+type customErr struct {
+	error
+	msg string
+
+}
+func (c customErr) UserMsg() string { return c.msg }
+
+func WrapError(err error, usermsg string) error {
+	return customErr{
+		error: err,
+		msg: usermsg,
+	}
+}
+
+
+var CErrConfigNotFound =  WrapError(ErrConfigNotFound, "Can't Find Config Please Try Again")
+var CErrQuotaExceed  = WrapError(ErrQuotaExceed, "Cannot Activate Config: Config's Quota Already Exceed")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 var ErrContextDead = errors.New("context cancled")
 var ErrConfigNotFound = errors.New("config Notfound")
 var ErrInboundNotFound = errors.New("inbound Notfound")
 var ErrOutboundNotFound = errors.New("outbound Notfound")
 var ErrResultMalformed = errors.New("status result malformed")
 var ErrNotMsgType = errors.New("type is not valid messagetype")
+var ErrRetryFailed = errors.New("retry attemps failed")
 
 
 var ErrTypeMissmatch = errors.New("iobound type not supported or invalid type")
@@ -40,6 +82,9 @@ var ErrOnDb = errors.New("db tx failed")
 var ErrSessionExcit = errors.New("already session excist")
 var ErrSessioForceClose = errors.New("old session force closing errored ")
 var Erruuidcreatefailed = errors.New("uuid create failed")
+
+
+var ErrConfigNoQota = errors.New("config doesn't have any quota")
 
 // Metadata
 var ErrNotsupported = errors.New("type not supporte yet")
@@ -88,4 +133,5 @@ var ErrWebhookSetFailed = errors.New("setting web hook failed")
 var ErrNilRequest = errors.New("request is nil pointer")
 var ErrUnknownUserListType = errors.New("user list type error")
 var ErrUserObNil = errors.New("user struct cannot be nil")
-var ErrNoService = errors.New("No service")
+var ErrNoService = errors.New("no service")
+var ErrNoAnyInbound = errors.New("no any inbound")

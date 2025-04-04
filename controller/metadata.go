@@ -9,9 +9,10 @@ import (
 
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/sbox"
+	"github.com/sadeepa24/connected_bot/sbox/conf"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 	"github.com/sagernet/sing-box/option"
+	"go.uber.org/zap"
 )
 
 type MetadataConf struct {
@@ -50,8 +51,11 @@ type MetadataConf struct {
 
 	InlinePost []string `json:"inline_posts,omitempty"`
 	Langs []string  `json:"allowed_langs,omitempty"`
+	DefaultLang string	`json:"default_lang,omitempty"`
 
 	CommonWarnRatio int16  `json:"warn_rate,omitempty"`
+
+	
 }
 
 func (mn *Metadata) GetWarnRate() int16 {
@@ -76,16 +80,16 @@ type Metadata struct {
 	LoginLimit        int32
 	BandwidthAvelable C.Bwidth
 
-	Inbounds  []sbox.Inboud
-	Outbounds []sbox.Outbound
+	Inbounds  []conf.Inboud
+	Outbounds []conf.Outbound
 
-	inboundasMap  map[int]sbox.Inboud
-	outboundasMap map[int]sbox.Outbound
+	inboundasMap  map[int16]conf.Inboud
+	outboundasMap map[int16]conf.Outbound
 
 	rawoptions option.Options
 
-	defaultinbound  sbox.Inboud
-	defaultoutbound sbox.Outbound
+	defaultinbound  conf.Inboud
+	defaultoutbound conf.Outbound
 
 	CheckCount  *atomic.Int32
 	ResetCount  int32 //static value that db should reset when checkcount eqal to this
@@ -113,18 +117,11 @@ type Metadata struct {
 
 	CommonWarnRate int16 
 
-	//mu *sync.RWMutex
+	Langs []string
 
 }
 
-// func (m *Metadata) Lock() {
-// 	m.mu.Lock()
-// }
-// func (m *Metadata) Unlock() {
-// 	m.mu.Unlock()
-// }
-
-func (m *Metadata) Init(metaconf MetadataConf) error {
+func (m *Metadata) Init(metaconf MetadataConf, logger *zap.Logger) error {
 
 	if metaconf.StorePath == "" {
 		return errors.New("configs store path not found")
@@ -145,8 +142,17 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 
 	m.HelperInfo = metaconf.HelperInfo
 
-	m.MaxRecurtion = 20 //TODO: change this
+	m.MaxRecurtion = 20 //TODO: change this: remove it
 
+
+	if metaconf.DefaultLang == "" {
+		return errors.New("default lang should be select")
+	}
+
+	if len(metaconf.Langs) == 0 {
+		metaconf.Langs = append(metaconf.Langs, metaconf.DefaultLang)
+	}
+	m.Langs = metaconf.Langs
 
 	if metaconf.SudoAdmin == 0 {
 		return errors.New("sudo admin not found")
@@ -161,7 +167,7 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 	return nil
 }
 
-func (m *Metadata) DefaultInboud() (sbox.Inboud, db.Inbound) {
+func (m *Metadata) DefaultInboud() (conf.Inboud, db.Inbound) {
 	return m.defaultinbound, db.Inbound{
 		ID:   int16(m.defaultinbound.Id),
 		Tag:  m.defaultinbound.Tag,
@@ -171,7 +177,7 @@ func (m *Metadata) DefaultInboud() (sbox.Inboud, db.Inbound) {
 	}
 }
 
-func (m *Metadata) Defaultoutboud() (sbox.Outbound, db.Outbound) {
+func (m *Metadata) Defaultoutboud() (conf.Outbound, db.Outbound) {
 	return m.defaultoutbound, db.Outbound{
 		ID:   int16(m.defaultoutbound.Id),
 		Tag:  m.defaultoutbound.Tag,
@@ -181,7 +187,7 @@ func (m *Metadata) Defaultoutboud() (sbox.Outbound, db.Outbound) {
 	}
 }
 
-func (m *Metadata) Getinbounds() []sbox.Inboud {
+func (m *Metadata) Getinbounds() []conf.Inboud {
 	return m.Inbounds
 }
 
@@ -192,22 +198,34 @@ func (m *Metadata) ConfFolder() string {
 	return m.ConfigFolder
 }
 
-func (m *Metadata) Getoutbounds() []sbox.Outbound {
+func (m *Metadata) Getoutbounds() []conf.Outbound {
 	return m.Outbounds
 }
 
-func (m *Metadata) Getinbound(id int) (sbox.Inboud, bool) {
-
+func (m *Metadata) Getinbound(id int16) (conf.Inboud, bool) {
 	in, ok := m.inboundasMap[id]
 	return in, ok
 }
-func (m *Metadata) Getoutbound(id int) (sbox.Outbound, bool) {
+func (m *Metadata) GetinboundList(ids []int16) (map[int16]conf.Inboud) {
+	inlist := make(map[int16]conf.Inboud, len(ids))
+	for _, id := range ids {
+		ins, ok := m.Getinbound(id)
+		if !ok {
+			continue
+		}
+		inlist[id] = ins
+	}
+	return inlist
+}
+
+
+func (m *Metadata) Getoutbound(id int16) (conf.Outbound, bool) {
 
 	in, ok := m.outboundasMap[id]
 	return in, ok
 }
 
-func (m *Metadata) GetdbInbound(id int) (db.Inbound, error) {
+func (m *Metadata) GetdbInbound(id int16) (db.Inbound, error) {
 	inbound, ok := m.inboundasMap[id]
 	if !ok {
 		return db.Inbound{}, C.ErrInboundNotFound
@@ -221,7 +239,7 @@ func (m *Metadata) GetdbInbound(id int) (db.Inbound, error) {
 	}, nil
 }
 
-func (m *Metadata) GetdbOutbound(id int) (db.Outbound, error) {
+func (m *Metadata) GetdbOutbound(id int16) (db.Outbound, error) {
 	outbound, ok := m.outboundasMap[id]
 	if !ok {
 		return db.Outbound{}, C.ErrOutboundNotFound
@@ -269,7 +287,8 @@ type Overview struct {
 
 
 
-
+	//TODO: add days count to reset
+	DaysToReset int32
 	LastRefresh time.Time
 
 }
@@ -294,8 +313,10 @@ func (o *Overview) String() string {
 			"Temp Limited User: %d\n\n"+
 			"Total Conf Count: %d\n"+
 			"Active Conf Count: %d\n\n"+
-			"Total Update Recived (until last refresh): %d\n"+
-			"Last Refresh: %s\n",
+			"Last Refresh: %s\n" + 
+			"Days To Reset: %d\n\n"+
+			"Total Update Recived (until last refresh): %d\n\n",
+			
 		o.BandwidthAvailable.BToString(),
 		o.MonthTotal.BToString(),
 		o.AllTime.BToString(),
@@ -310,7 +331,8 @@ func (o *Overview) String() string {
 		o.TempLimitedUser,
 		o.TotalConfCount,
 		o.ActiveConfCount,
-		o.TotalUpdates,
 		o.LastRefresh.Format(time.RFC3339),
+		o.DaysToReset,
+		o.TotalUpdates,
 	)
 }

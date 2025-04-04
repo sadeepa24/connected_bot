@@ -113,7 +113,7 @@ type BotReader struct {
 func (m *BotReader) Read(p []byte) (int, error) {
 	var err error
 	if !m.called {
-		m.content, err = json.Marshal(m.RealOb)
+		m.content, err = json.Marshal(m.RealOb) //FIXME: change json 
 		if err != nil {
 			return 0, err
 		}

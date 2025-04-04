@@ -211,7 +211,7 @@ func testingfirst() connected.Botoptions {
 		},
 		Dbpath:     "./newtest.db",
 		Ctx:        ctx,
-		Bottoken:   "7450429117:AAG-GSYKGsylucObfp8FmsCxNnus8L7EtHo",
+		Bottoken:   "",
 		Botmainurl: "https://api.telegram.org/bot",
 
 		WebHookServerOption: &server.ServerOption{

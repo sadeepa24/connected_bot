@@ -150,6 +150,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 	btns.Addbutton(C.BtnChannel, C.BtnChannel, u.ctrl.Channelink)
 	btns.Addbutton(C.BtnGroup, C.BtnGroup, u.ctrl.GroupLink)
 	btns.Addbutton(C.BtnBot, C.BtnBot, u.ctrl.Botlink)
+	btns.SetOveride()
 
 	switch NewchatMember.Status {
 	case C.Statusleft:
@@ -378,7 +379,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 						Username: upx.FromChat().UserName,
 						TgId:     upx.User.TgID,
 					},
-				}, nil, C.TmplInboxVerifiedAgain)
+				}, btns, C.TmplInboxVerifiedAgain)
 			}
 
 		}
@@ -401,7 +402,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 }
 
 func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
-	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.User.TgID, upx.User.Lang)
+	Messagesession := botapi.NewMsgsession( upx.Ctx, u.botapicaller, upx.User.TgID, upx.Update.FromChat().ID, upx.User.Lang)
 
 
 	// calls := common.Tgcalls{
@@ -484,11 +485,12 @@ func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msg
 	btns := botapi.NewButtons([]int16{1, 1})
 	btns.Addbutton(C.BtnChannel, C.BtnChannel, u.ctrl.Channelink)
 	btns.Addbutton(C.Group, C.Group, u.ctrl.GroupLink)
+	btns.SetOveride()
 
 	switch {
 
 	case !upx.FromChat().IsPrivate():
-		err = errors.New("user send start command group chat " + upx.User.Info())
+		return errors.New("user send start command group chat " + upx.User.Info())
 	case upx.User.IsMonthLimited:
 
 		Messagesession.Edit(struct {
@@ -568,7 +570,8 @@ func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msg
 
 	case upx.User.Isverified():
 
-		btns.Reset([]int16{1})
+		btns.ResetNoOveride([]int16{1})
+
 
 		Messagesession.Edit(struct {
 			*botapi.CommonUser
@@ -585,11 +588,11 @@ func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msg
 				Alltime:         (upx.User.MonthUsage + upx.User.AlltimeUsage).BToString(),
 				MUsage:          upx.User.MonthUsage.BToString(),
 			},
-		}, nil, C.TmpregularVerified)
+		}, btns, C.TmpregularVerified)
 
 	case upx.User.IsremovedUser() && !upx.User.IsBannedAny():
 
-		btns.Reset([]int16{1})
+		btns.ResetNoOveride([]int16{1})
 		btns.AddUrlbutton(C.BtnChannel, u.ctrl.Channelink)
 		btns.AddUrlbutton(C.BtnGroup, u.ctrl.GroupLink)
 
@@ -611,12 +614,12 @@ func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msg
 		Messagesession.SendAlert(C.GetMsg(C.MsgBannedUser), nil)
 
 	case upx.User.IsInChannel:
-		btns.Reset([]int16{1})
+		btns.ResetNoOveride([]int16{1})
 		btns.AddUrlbutton(C.BtnGroup, u.ctrl.GroupLink)
 		Messagesession.EditText(C.GetMsg(C.MsgsttInChan), btns)
 
 	case upx.User.IsInGroup:
-		btns.Reset([]int16{1})
+		btns.ResetNoOveride([]int16{1})
 		btns.AddUrlbutton(C.BtnChannel, u.ctrl.Channelink)
 		Messagesession.EditText(C.GetMsg(C.MsgstartGrpin), btns)
 
@@ -893,7 +896,8 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 		Usersession.DeactivateAll()
 		Messagesession.DeleteAllMsg()
 		Messagesession.SendAlert(C.GetMsg(C.MsgDisSucsess), nil)
-
+		btns.Reset([]int16{1})
+		btns.SetOveride()
 		u.ctrl.Addquemg( botapi.UpMessage{
 			Template: struct {
 				*botapi.CommonUser
@@ -909,6 +913,7 @@ func (u *Usersrv) commandDistribute(upx *update.Updatectx, Messagesession *botap
 			TemplateName: C.TmpDisGroup,
 			Lang:         upx.User.Lang,
 			DestinatioID: u.ctrl.GroupID,
+			Buttons: btns,
 		})
 
 	}
@@ -1219,7 +1224,7 @@ func (u *Usersrv) commandReffral(upx *update.Updatectx , Messagesession *botapi.
 	return nil
 }
 
-// TODO: implemet this function later
+
 func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
 	// Create contact session here
 	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 2*time.Minute)

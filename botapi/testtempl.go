@@ -302,64 +302,6 @@ var Testtemplts map[string]map[string]MgItem = map[string]map[string]MgItem{
 		},
 	},
 
-	constbot.TmpCrInInfo: {
-		"en": {
-			Msgtmpl: `selected inbound info is here if you want excatly this seeting for your config conform also you can change the inbound later 
-			
-			InName {{.InName}}
-			InType {{.InType}}
-			InPort {{.InPort}}
-			InAddr {{.InAddr}}
-			InInfo {{.InInfo}}
-			TranstPortType {{.TranstPortType}}
-			TlsEnabled {{.TlsEnabled}}
-			Domain 	{{.Domain}}
-			PublicIp {{.PublicIp}}
-			
-			`,
-		},
-	},
-
-
-	constbot.TmpCrSendUID: {
-		"en": {
-			Msgtmpl: `
-
-			this is tempory config structure we will provide good way to generate configs as you need till then use this
-
-			UUID {{.UUID}}
-			Domain {{.Domain}}
-			Transport {{.Transport}}
-			ConfigName {{.ConfigName}}
-			TlsEnabled {{.TlsEnabled}}
-			Port {{.Port}}
-
-
-
-			`,
-		},
-	},
-
-	constbot.TmpInchange: {
-		"en": {
-			Msgtmpl: `
-
-			Info about inbound that you are goung to change 
-
-			InName {{.InName}}
-			InType {{.InType}}
-			InPort {{.InPort}}
-			InAddr {{.InAddr}}
-			InInfo {{.InInfo}}
-			TranstPortType {{.TranstPortType}}
-			TlsEnabled {{.TlsEnabled}}
-			Domain 	{{.Domain}}
-			PublicIp {{.PublicIp}}
-
-
-			`,
-		},
-	},
 	constbot.TmpOutchange: {
 		"en": {
 			Msgtmpl: `

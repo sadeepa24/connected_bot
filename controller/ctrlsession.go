@@ -3,12 +3,15 @@ package controller
 import (
 	"context"
 	"errors"
+	"math/rand"
+	"strconv"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/sbox"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
+	"github.com/sadeepa24/connected_bot/sbox/singapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 )
@@ -20,11 +23,8 @@ type CtrlSession struct {
 
 	ctrl   *Controller
 	user   *db.User
-	//config []*db.Config
 
 	configmap map[int64]*db.Config
-
-	//oprations *atomic.Int32
 	olduser   db.User
 
 	closed bool
@@ -59,14 +59,10 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 		cancle:    upx.Cancle,
 		ctrl:      ctrl,
 		user:      user,
-		//config:    []*db.Config{},
-		// oprations: new(atomic.Int32),
 		closed:    false,
-
-		//tx: ctrl.db.Begin(),
 	}
 	if user.ConfigCount != 0 {
-		err := ctrl.db.Model(&db.Config{}).Preload("Inbound").Preload("Outbound").Where("user_id = ?", user.TgID).Find(&session.user.Configs).Error
+		err := ctrl.db.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&session.user.Configs).Error
 		if err != nil {
 			return nil, C.ErrOnDb
 		}
@@ -74,7 +70,6 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 	session.configmap = make(map[int64]*db.Config, ctrl.Maxconfigcount+1)
 	for i, conf := range session.user.Configs {
 		session.configmap[conf.Id] = &session.user.Configs[i]
-		//session.config = append(session.config, &session.user.Configs[i])
 	}
 
 	ctrl.Addsession(session, user.TgID)
@@ -82,248 +77,52 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 	return session, nil
 }
 
-func (c *CtrlSession) AddNewConfig(inboundid int16, outboundid int16, Quota C.Bwidth, login int16, name string) (*sbox.Userconfig, error) {
+
+
+
+
+func (c *CtrlSession) AddNewConfig(inboundid []int16, outboundid int16, Quota C.Bwidth, login int16, name string) (*db.Config, error) {
 	c.ctrl.IncCriticalOp()
 	defer c.ctrl.DecCriticalOp()
+	
+	var dbconf *db.Config
 	if c.ctx.Err() != nil {
-		return nil, C.ErrContextDead
+		return dbconf, C.ErrContextDead
 	}
-
-
-	
-	var (
-		exists bool
-		uid uuid.UUID
-		err error
-	)
-
-	//to check redundant uuid
-	for {
-		uid, err = uuid.NewV4()
-		if err != nil {
-			return nil, C.Erruuidcreatefailed
-		}
-		if err = c.ctrl.db.Raw("SELECT EXISTS(SELECT 1 FROM configs WHERE uuid = ?)", uid.String()).Scan(&exists).Error; err != nil {
-			return nil, C.ErrDbopration
-		}
-		if exists {
-			continue
-		}
-		break
-	}
-
-
-	// db.Where("tg_id = ?", 123).First(&user)
-	//if c.ctrl.db.Model(&db.Config{}).Where("uuid = ?", uid).
-	
-	
-
-	intag, err := c.ctrl.GetdbInbound(int(inboundid))
-	if err != nil {
-		return nil, C.ErrInboundNotFound
-	}
-	outtag, err := c.ctrl.GetdbOutbound(int(outboundid))
-	if err != nil {
-		return nil, C.ErrOutboundNotFound
-	}
-
-	newconfig := &sbox.Userconfig{
-		Type:        intag.Type,
-		Name:        c.user.Name,
-		UsercheckId: int(c.user.CheckID),
-
-		InboundId:   inboundid,
-		Inboundtag:  intag.Tag,
-		OutboundID:  outboundid,
-		Outboundtag: outtag.Tag,
-
+	dbconf = &db.Config{
+		InboundIds:  inboundid,
+		OutboundID:	 outboundid,
+		Name:       name,
+		UserID:     c.user.TgID,
+		Active:     true,
+		Download:   0,
+		Upload:     0,
 		Usage:      0,
 		Quota:      Quota,
-		LoginLimit: int32(login),
-		TgId: c.user.TgID,
+		LoginLimit: int16(login),
+	}
+	c.typeCheckConfig(dbconf)
+	if c.ctrl.db.Create(dbconf).Error != nil {
+		return dbconf, C.WrapError(C.ErrDatabaseCreate, "Config Did n't create: DB opration failed try again later")
 	}
 
-
-	var dbconf db.Config
-
-	switch intag.Type {
-
-	case "vless":
-		newconfig.Vlessgroup = &sbox.Vlessgroup{
-			UUID: uid,
-		}
-		dbconf = db.Config{
-			InboundID:  newconfig.InboundId,
-			OutboundID: newconfig.OutboundID,
-			UUID:       newconfig.UUID.String(),
-			Name:       name,
-			UserID:     c.user.TgID,
-			Active:     true,
-			Type:       "vless",
-			Download:   0,
-			Upload:     0,
-			Usage:      newconfig.Usage,
-			Quota:      newconfig.Quota,
-			LoginLimit: int16(newconfig.LoginLimit),
-		}
-	default:
-		return nil, C.ErrTypeMissmatch
-
-	}
-
-	if c.ctrl.db.Create(&dbconf).Error != nil {
-		return nil, C.ErrDatabaseCreate
-	}
-
-	c.user.ConfigCount = c.user.ConfigCount + 1
+	c.user.ConfigCount++
 	c.user.UsedQuota += Quota
-	newconfig.DbID = dbconf.Id
-
-	c.configmap[dbconf.Id] = &dbconf
-	//c.configmap[c.config[len(c.config)-1].Id] = c.config[len(c.config)-1]
-	c.user.Configs = append(c.user.Configs, dbconf)
-	//c.user.Configs = append(c.user.Configs, *c.config[len(c.config)-1])
-	//c.tx.Save(c.config[len(c.config)-1])
-	_, err = c.ctrl.AdduserSbox(newconfig)
-	if err != nil && c.user.ConfigCount == 1 {
+	c.configmap[dbconf.Id] = dbconf
+	c.user.Configs = append(c.user.Configs, *dbconf)
+	_, err := c.ctrl.Boxapi.AddConfig(dbconf)
+	if boxerr, ok := err.(singapi.Error); ok {
+		if boxerr.IsBoxErr() {
+			return dbconf, C.WrapError(err, "Config Created But Error occured When adding to singbox: " + boxerr.UserMsg())
+		}
+		return dbconf, C.WrapError(err, "Config Created But Error occured When adding to singbox you can check the config using configure and change inbound & outbound it may help: " + boxerr.UserMsg())
+	}
+	if err == nil && c.user.ConfigCount == 1 {
 		c.ctrl.Addquemg(UserCount(1))
 	}
-	return newconfig, err
+	return dbconf, nil
 }
-
-func (c *CtrlSession) ActivateConfig(confid int64) (sbox.Sboxstatus, error) {
-	conf, dbconf, err := c.getsboxconf(confid)
-
-	var stsatus sbox.Sboxstatus
-	if err != nil {
-		return stsatus, err
-	}
-
-	if (conf.Quota - conf.Usage) <= 0 {
-		return stsatus, C.ErrQuotaExceed
-	}
-	dbconf.Active = true
-
-	return c.ctrl.sbox.AddUser(conf)
-
-}
-
-func (c *CtrlSession) ConfigCloseConn(confid int64) error {
-	conf, _, err := c.getsboxconf(confid)
-	if err != nil {
-		return err
-	}
-
-	return c.ctrl.sbox.CloseConns(conf)
-}
-
-func (c *CtrlSession) ReActivateConfig(confid int64) (sbox.Sboxstatus, error) {
-	conf, dbconf, err := c.getsboxconf(confid)
-
-
-	var stsatus sbox.Sboxstatus
-
-	if err != nil {
-		return stsatus, err
-	}
-
-	if (conf.Quota - conf.Usage) <= 0 {
-		return stsatus, C.ErrQuotaExceed
-	}
-	dbconf.Active = true
-
-	status, err := c.ctrl.sbox.AddUserReset(conf)
-
-	if err != nil {
-		return stsatus, err
-	}
-	c.ctrl.db.Model(&db.UsageHistory{}).Create(&db.UsageHistory{
-		Upload:   status.Upload,
-		Download: status.Download,
-		UserID:   c.user.TgID,
-		Usage:    (status.Download + status.Upload),
-		Date:     time.Now(),
-		ConfigID: confid,
-	})
-
-	c.user.MonthUsage = (status.Download + c.user.MonthUsage + status.Upload)
-
-	return status, err
-
-}
-
-func (c *CtrlSession) ChangeLoginLimit(confid int64, newlimit int32) (sbox.Sboxstatus, error) {
-	conf, dbconf, err := c.getsboxconf(confid)
-	if err != nil {
-		return sbox.Sboxstatus{}, err
-	}
-	conf.LoginLimit = newlimit
-	dbconf.LoginLimit = int16(newlimit)
-	return c.ReActivateConfig(confid)
-}
-
-
-func (c *CtrlSession) ActivateAll() error {
-
-	if c.user.IsRemoved || !(c.user.IsInChannel && c.user.IsInGroup) || c.user.IsMonthLimited || c.user.Restricted || c.user.IsDistributedUser  ||c.user.Templimited{
-		return errors.New("cannot activate configs with this state of user")
-	}
-
-	var err error
-	for _, conf := range c.user.Configs {
-		if _, errr := c.ActivateConfig(conf.Id); errr != nil {
-			err = errors.Join(err, errr)
-		}
-
-	}
-	return err
-}
-
-func (c *CtrlSession) DeactivateConfig(configID int64) (sbox.Sboxstatus, error) {
-
-	if c.ctx.Err() != nil {
-		return sbox.Sboxstatus{}, C.ErrContextDead
-	}
-	conf, dbconf, err := c.getsboxconf(configID)
-
-	if err != nil {
-		return sbox.Sboxstatus{}, err
-	}
-	dbconf.Active = false
-	status, err := c.ctrl.sbox.RemoveUser(conf)
-	if err != nil {
-		return sbox.Sboxstatus{}, err
-	}
-
-	err = c.ctrl.db.Model(&db.UsageHistory{}).Create(&db.UsageHistory{
-		Upload:   status.Upload,
-		Download: status.Download,
-		UserID:   c.user.TgID,
-		Usage:    (status.Download + status.Upload),
-		Date:     time.Now(),
-		ConfigID: configID,
-	}).Error
-
-	dbconf.Usage += status.Download + status.Upload
-	dbconf.Download += status.Download
-	dbconf.Upload += status.Upload
-
-	c.user.MonthUsage = (status.Download + c.user.MonthUsage + status.Upload)
-	return status, err
-}
-
-func (c *CtrlSession) DeactivateAll() error {
-	var err error
-	for _, conf := range c.user.Configs {
-		if _, errr := c.DeactivateConfig(conf.Id); errr != nil {
-			err = errors.Join(err, errr)
-		}
-
-	}
-	return err
-}
-
-func (c *CtrlSession) DeleteConfig(configID int64) error {
+func (c *CtrlSession) DeleteConfig(confid int64) error {
 	
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
@@ -332,52 +131,156 @@ func (c *CtrlSession) DeleteConfig(configID int64) error {
 	defer c.ctrl.DecCriticalOp()
 
 	var err error
-	if _, err = c.DeactivateConfig(configID); err != nil {
-		return C.ErrOnDeactivation
-	}
-
-	conf, dbconf, err := c.getsboxconf(configID)
-	if err != nil {
+	if _, err = c.DeactivateConfig(confid); err != nil {
 		return err
+	}
+	conf, ok := c.configmap[confid]
+	if !ok {
+		return C.WrapError(C.ErrConfigNotFound, "Config Delete Failed, Cannot Find Config May Be Already Deleted")
 	}
 	configQuota := conf.Quota
 
-	delete(c.configmap, configID)
+	delete(c.configmap, confid)
 	
-	if c.ctrl.db.Delete(dbconf).Error != nil {
-		return C.ErrDbopration
+	if c.ctrl.db.Delete(confid).Error != nil {
+		return C.WrapError(C.ErrDbopration, "Config Delete Failed, Please try Again Later: Db opration Failed")
 	}
 
-	/*for i, conf := range c.config {
-		if conf.Id == configID {
-			if c.ctrl.db.Model(&db.Config{}).Delete(conf).Error != nil {
-				return C.ErrDbopration
-			}
-			c.config = append(c.config[:i], c.config[i+1:]...)
-			break
-		}
-	}*/
-
-
 	for i, config := range c.user.Configs {
-		if config.Id == configID {
+		if config.Id == confid {
 			c.user.Configs = append(c.user.Configs[:i], c.user.Configs[i+1:]...)
 			break
 		}
 	}
-
 	c.user.ConfigCount--
 	c.user.DeletedConfCount = c.user.DeletedConfCount + 1
 	c.user.UsedQuota = c.user.UsedQuota - configQuota
-
-
 	return nil
+}
+
+
+func (c *CtrlSession) ActivateConfig(confid int64) (sbConf.Sboxstatus, error) {
+	conf, ok := c.configmap[confid]
+	var stsatus sbConf.Sboxstatus
+	if !ok {
+		return stsatus, C.WrapError(errors.New(strconv.Itoa(int(confid))+ " config cannot found"), "config cannot dound for activation")
+	}
+	if (conf.Quota - conf.Usage) <= 0 {
+		return stsatus, C.CErrQuotaExceed
+	}
+	conf.Active = true
+	return c.ctrl.Boxapi.AddConfig(conf)
+
+}
+func (c *CtrlSession) ActivateAll() error {
+
+	if c.user.IsRemoved || !c.user.Verified() || c.user.IsMonthLimited || c.user.Restricted || c.user.IsDistributedUser  ||c.user.Templimited{
+		return C.WrapError(errors.New("user is not in state that config can be activated "), "Err: User is not in state for the opration")
+	}
+	var err error
+	for _, conf := range c.configmap {
+		if _, errr := c.ActivateConfig(conf.Id); errr != nil {
+			err = errors.Join(err, errr)
+		}
+	}
+	return err
+}
+
+func (c *CtrlSession) DeactivateConfig(confid int64) (sbConf.Sboxstatus, error) {
+	var stsatus sbConf.Sboxstatus
+	if c.ctx.Err() != nil {
+		return stsatus, C.ErrContextDead
+	}
+	conf, ok := c.configmap[confid]
+	
+	if !ok {
+		return stsatus, C.WrapError(C.ErrConfigNotFound, "Config Cannot Found")
+	}
+	conf.Active = false
+	status, err := c.ctrl.Boxapi.RemoveConfig(conf)
+	if err != nil {
+		return status, err
+	}
+	if status.FullUsage() > 0 {
+		c.ctrl.db.Model(&db.UsageHistory{}).Create(&db.UsageHistory{
+			Upload:   status.Upload,
+			Download: status.Download,
+			UserID:   c.user.TgID,
+			Usage:    (status.Download + status.Upload),
+			Date:     time.Now(),
+			ConfigID: confid,
+		})
+	}
+	conf.UpdateUsages(status)
+	c.user.MonthUsage = (status.Download + c.user.MonthUsage + status.Upload)
+	return status, nil
+}
+func (c *CtrlSession) DeactivateAll() error {
+	var err error
+	for _, conf := range c.configmap {
+		if _, errr := c.DeactivateConfig(conf.Id); errr != nil {
+			err = errors.Join(err, errr)
+		}
+	}
+	return err
+}
+
+func (c *CtrlSession) ReActivateConfig(confid int64) (sbConf.Sboxstatus, error) {
+	conf, ok := c.configmap[confid]
+	var stsatus sbConf.Sboxstatus
+	if !ok {
+		return stsatus, C.CErrConfigNotFound
+	}
+	if (conf.Quota - conf.Usage) <= 0 {
+		return stsatus, C.CErrQuotaExceed
+	}
+	conf.Active = true
+	status, err := c.ctrl.Boxapi.AddConfigReset(conf)
+
+	if err != nil {
+		return stsatus, err
+	}
+	
+	if status.FullUsage() > 0 {
+		c.CreateUsagehistory(status, conf.Id)
+		conf.UpdateUsages(status)
+		c.user.MonthUsage = (status.Download + c.user.MonthUsage + status.Upload)
+	}
+	
+	return status, nil
+
+}
+
+
+
+
+
+func (c *CtrlSession) ConfigCloseConn(confid int64) error {
+	conf, ok := c.configmap[confid]
+	if !ok {
+		return C.CErrConfigNotFound
+	}
+	return c.ctrl.Boxapi.CloseConns(conf)
+}
+func (c *CtrlSession) ChangeLoginLimit(confid int64, newlimit int16) (sbConf.Sboxstatus, error) {
+	conf, ok := c.configmap[confid]
+	var stsatus sbConf.Sboxstatus
+	if !ok {
+		return stsatus, C.CErrConfigNotFound
+	}
+	conf.LoginLimit = newlimit
+	return c.ReActivateConfig(confid)
+}
+
+
+func (c *CtrlSession) ChangeLang(langcode string) {
+	c.user.Lang = langcode
 }
 
 func (c *CtrlSession) GetConfig(confid int64) (*db.Config, error) {
 	conf, ok := c.configmap[confid]
 	if !ok {
-		return nil, C.ErrConfigNotFound
+		return nil, C.CErrConfigNotFound
 	}
 	return conf, nil
 }
@@ -387,83 +290,60 @@ func (c *CtrlSession) GetConfig(confid int64) (*db.Config, error) {
 // Every thing in byte format
 // retur today, monthusage
 func (c *CtrlSession) GetUsage() (C.Bwidth, C.Bwidth) {
-	var status = sbox.Sboxstatus{
+	var status = sbConf.Sboxstatus{
 		Download: 0,
 		Upload:   0,
 	}
-	for _, config := range c.user.Configs {
-		conf, _, err := c.getsboxconf(config.Id)
-		if err != nil {
-			continue
-		}
-		cstatus, err := c.ctrl.sbox.GetstatusUser(conf)
+	for _, config := range c.configmap {
+		cstatus, err := c.ctrl.Boxapi.GetStatusConfig(config)
 		if err != nil {
 			continue
 		}
 		status.Download += cstatus.Download
 		status.Upload += cstatus.Upload
-
 	}
 	return (status.Download + status.Upload), c.user.MonthUsage
 }
-// return all config's full usage for not
+// return all config's full usage for now
 func (c *CtrlSession) GetFullUsage() bottype.FullUsage {
-
 	bf := bottype.FullUsage{}
-
-	for _, config := range c.user.Configs {
-		conf, dbconf, err := c.getsboxconf(config.Id)
+	for _, config := range c.configmap {
+		cstatus, err := c.ctrl.Boxapi.GetStatusConfig(config)
 		if err != nil {
 			continue
 		}
-		cstatus, err := c.ctrl.sbox.GetstatusUser(conf)
-		if err != nil {
-			continue
-		}
-		bf.Download = bf.Download + dbconf.Download + cstatus.Download
-		bf.Upload = bf.Upload + dbconf.Upload + cstatus.Upload
+		bf.Download = bf.Download + config.Download + cstatus.Download
+		bf.Upload = bf.Upload + config.Upload + cstatus.Upload
 		bf.Uploadtd += cstatus.Upload
 		bf.Downloadtd += cstatus.Download
-
 	}
-
 	return bf
 
 }
-
 // return total usage for this month
 func (c *CtrlSession) TotalUsage() C.Bwidth {
-	var status = sbox.Sboxstatus{
+	var status = sbConf.Sboxstatus{
 		Download: 0,
 		Upload:   0,
 	}
-	for _, config := range c.user.Configs {
-		conf, _, err := c.getsboxconf(config.Id)
-		if err != nil {
-			continue
-		}
-		cstatus, err := c.ctrl.sbox.GetstatusUser(conf)
+	for _, config := range c.configmap {
+		cstatus, err := c.ctrl.Boxapi.GetStatusConfig(config)
 		if err != nil {
 			continue
 		}
 		status.Download += cstatus.Download
 		status.Upload += cstatus.Upload
-
 	}
 	return status.Download + status.Upload + c.user.MonthUsage
 }
 
 // returns today, month, usage as byte
 func (c *CtrlSession) GetconfigUsage(confid int64) (C.Bwidth, C.Bwidth, error) {
-	var (
-		conf *sbox.Userconfig
-		err  error
-	)
-	if conf, _, err = c.getsboxconf(confid); err != nil {
-		return 0, 0, err
+	conf, ok := c.configmap[confid]
+	if !ok {
+		return 0,0, C.ErrConfigNotFound
 	}
-	cstatus, err := c.ctrl.sbox.GetstatusUser(conf)
-
+	cstatus, err := c.ctrl.Boxapi.GetStatusConfig(conf)
 	return cstatus.Download + cstatus.Upload, conf.Usage + cstatus.Download + cstatus.Upload, err
 }
 
@@ -475,25 +355,23 @@ func (c *CtrlSession) GetconfigUsageTotal(confid int64) C.Bwidth {
 	return td + m
 }
 
-func (c *CtrlSession) GetConfigFullUsage(confid int64) (bottype.FullUsage, sbox.Sboxstatus) {
+func (c *CtrlSession) GetConfigFullUsage(confid int64) (bottype.FullUsage, sbConf.Sboxstatus) {
 	var (
-		conf    *sbox.Userconfig
-		dbconf  *db.Config
+		conf  *db.Config
 		err     error
 		btusage bottype.FullUsage
 	)
-	if conf, dbconf, err = c.getsboxconf(confid); err != nil {
-		return bottype.FullUsage{}, sbox.Sboxstatus{}
+	conf, ok := c.configmap[confid]
+	if !ok {
+		return btusage, sbConf.Sboxstatus{}
 	}
 	btusage = bottype.FullUsage{
 		Uploadtd:   0,
 		Downloadtd: 0,
-		Download:   dbconf.Download,
-		Upload:     dbconf.Upload,
+		Download:   conf.Download,
+		Upload:     conf.Upload,
 	}
-
-	cstatus, err := c.ctrl.sbox.GetstatusUser(conf)
-
+	cstatus, err := c.ctrl.Boxapi.GetStatusConfig(conf)
 	if err == nil {
 		btusage.Download += cstatus.Download
 		btusage.Upload += cstatus.Upload
@@ -504,68 +382,149 @@ func (c *CtrlSession) GetConfigFullUsage(confid int64) (bottype.FullUsage, sbox.
 }
 
 func (c *CtrlSession) GetconfigQuota(confid int64) C.Bwidth {
-	var (
-		conf *sbox.Userconfig
-		err  error
-	)
-	if conf, _, err = c.getsboxconf(confid); err != nil {
+	conf, ok := c.configmap[confid]
+	if !ok {
 		return 0
 	}
-
 	return conf.Quota
 }
 
-func (c *CtrlSession) Getstatus(confid int64) (sbox.Sboxstatus, error) {
-	if c.ctx.Err() != nil {
-		return sbox.Sboxstatus{}, C.ErrContextDead
+func (c *CtrlSession) Getstatus(confid int64) (sbConf.Sboxstatus, error) {
+	conf, ok := c.configmap[confid]
+	if !ok {
+		return sbConf.Sboxstatus{}, C.CErrConfigNotFound
 	}
-
-	var (
-		conf *sbox.Userconfig
-		err  error
-	)
-	if conf, _, err = c.getsboxconf(confid); err != nil {
-		return sbox.Sboxstatus{}, err
-	}
-	return c.ctrl.sbox.GetstatusUser(conf)
+	return c.ctrl.Boxapi.GetStatusConfig(conf)
 
 }
 
-func (c *CtrlSession) FullUsageHistory() {
+// this returns left quota for user
+// userquota - quota elpsed for configs
+func (c *CtrlSession) LeftQuota() C.Bwidth {
+	var dedicated C.Bwidth = 0
+	for _, conf := range c.configmap {
+		dedicated += conf.Quota
+	}
+	if c.user.IsCapped {
+		return c.user.CappedQuota - dedicated
+	}
+
+	return (c.user.CalculatedQuota + c.user.AdditionalQuota) - dedicated
 }
 
-func (c *CtrlSession) ChangeInbound(confid, inboundid int64) error {
+// this is special for gift command
+func (c *CtrlSession) LeftQuotaFromOrigin() C.Bwidth {
+	var dedicated C.Bwidth = 0
+	for _, conf := range c.configmap {
+		dedicated += conf.Quota
+	}
+	if c.user.IsCapped {
+		return c.user.CappedQuota - dedicated
+	}
+
+	//to exclude already gifted bandwidth
+	if c.user.GiftQuota < 0 {
+		dedicated += -(c.user.GiftQuota)
+	}
+
+	return C.Bwidth(c.ctrl.CommonQuota.Load()) - dedicated
+}
+
+func (c *CtrlSession) LeftUsage() C.Bwidth {
+	return c.user.CalculatedQuota + c.user.AdditionalQuota - c.TotalUsage()
+}
+
+
+
+
+
+
+
+func (c *CtrlSession) AddInboundConf(confid int64, inboundid int16) error {
+	return c.addorremin("add", confid, inboundid)
+}
+
+func (c *CtrlSession) RemoveInboudConf(confid int64, inboundid int16) error {
+	return c.addorremin("rem", confid, inboundid)
+}
+
+func(c *CtrlSession)  addorremin(op string, confid int64, inboundid int16 ) error {
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
-	conf, dbconf, err := c.getsboxconf(confid)
-	if err != nil {
-		return err
-	}
-	in, ok := c.ctrl.Getinbound(int(inboundid))
+	conf, ok := c.configmap[confid]
 	if !ok {
-		return C.ErrInboundNotFound
+		return C.CErrConfigNotFound
 	}
-
-	dbconf.InboundID = int16(in.Id)
-	status, err := c.ctrl.sbox.RemoveUser(conf)
-	if err != nil {
-		if !errors.Is(err, C.ErrResultMalformed) {
-			return err
+	switch op {
+	case "rem":
+		for i, id := range conf.InboundIds {
+			if id == int16(inboundid) {
+				conf.InboundIds = append(conf.InboundIds[:i], conf.InboundIds[i+1:]...)
+				break
+			}
 		}
-
+	case "add":
+		//err := c.typeCheckConfig(conf, inboundid)
+		// if err != nil {
+		// 	return err
+		// }
+		conf.InboundIds = append(conf.InboundIds, int16(inboundid))
 	}
-	conf.InboundId = int16(in.Id)
-	conf.Inboundtag = in.Tag
-	conf.Usage += (status.Download + status.Upload)
-
-	c.CreateUsagehistory(status, confid)
-	_, err = c.ctrl.sbox.AddUser(conf)
-	return err
-
+	return c.ctrl.Boxapi.ResetInbounds(conf)
 }
 
-func (c *CtrlSession) CreateUsagehistory(status sbox.Sboxstatus, confid int64) error {
+func (c *CtrlSession) typeCheckConfig(conf *db.Config) error {
+	
+	if conf.UUID == "" {
+		var uid uuid.UUID 
+		for {
+			uid, err := uuid.NewV4()
+			if err != nil {
+				return C.Erruuidcreatefailed
+			}
+			var exists bool
+			if err = c.ctrl.db.Raw("SELECT EXISTS(SELECT 1 FROM configs WHERE uuid = ?)", uid.String()).Scan(&exists).Error; err != nil {
+				return C.ErrDbopration
+			}
+			if exists {
+				continue
+			}
+			break
+		}
+		conf.UUID = uid.String()
+	}
+
+	if conf.Password == "" {
+		conf.Password = strconv.Itoa(int(conf.UserID)) + strconv.Itoa(int(rand.Int63()))
+	}
+	//TODO: add more proto later
+	return nil
+	
+}
+
+func (c *CtrlSession) ChangeOutbound(confid int64, outboundID int16) error {
+	if c.ctx.Err() != nil {
+		return C.ErrContextDead
+	}
+	conf, ok := c.configmap[confid]
+	if !ok {
+		return C.CErrConfigNotFound
+	}
+	out, ok := c.ctrl.Getoutbound(outboundID)
+	if !ok {
+		return C.ErrOutboundNotFound
+	}
+	conf.OutboundID = int16(out.Id)
+	return 	c.ctrl.Boxapi.ChangeOutbound(conf)
+}
+
+
+
+
+
+
+func (c *CtrlSession) CreateUsagehistory(status sbConf.Sboxstatus, confid int64) error {
 	return c.ctrl.db.Model(&db.UsageHistory{}).Create(&db.UsageHistory{
 		Upload:   status.Upload,
 		Download: status.Download,
@@ -574,44 +533,6 @@ func (c *CtrlSession) CreateUsagehistory(status sbox.Sboxstatus, confid int64) e
 		Date:     time.Now(),
 		ConfigID: confid,
 	}).Error
-}
-
-func (c *CtrlSession) ChangeOutbound(confid, inboundid int64) error {
-	if c.ctx.Err() != nil {
-		return C.ErrContextDead
-	}
-
-	conf, dbconf, err := c.getsboxconf(confid)
-	if err != nil {
-		return err
-	}
-	out, ok := c.ctrl.Getoutbound(int(inboundid))
-	if !ok {
-		return C.ErrOutboundNotFound
-	}
-
-	dbconf.OutboundID = int16(out.Id)
-	c.ctrl.sbox.RemoveAllRuleForuser(conf.GetuniqName())
-	// if err != nil {
-	// 	if !errors.Is(err, C.ErrResultMalformed) {
-	// 		return err
-	// 	}
-	// }
-	conf.OutboundID = int16(out.Id)
-	conf.Outboundtag = out.Tag
-	//conf.Usage += (status.Download + status.Upload) / C.AsGB
-	_, err = c.ctrl.sbox.AddUser(conf)
-	return err
-}
-
-func (c *CtrlSession) ChangeIO(ioboundname string, confid, ioid int64) error {
-	switch ioboundname {
-	case C.Inbound:
-		return c.ChangeInbound(confid, ioid)
-	case C.Outbound:
-		return c.ChangeOutbound(confid, ioid)
-	}
-	return errors.New("no inbound or outbound found")
 }
 
 func (c *CtrlSession) Chatupdate(chat string, val bool) {
@@ -623,6 +544,13 @@ func (c *CtrlSession) Chatupdate(chat string, val bool) {
 	}
 }
 
+
+
+
+
+func (c *CtrlSession) GetUser() *db.User {
+	return c.user
+}
 func (c *CtrlSession) Banuser(chat string) {
 	switch chat {
 	case C.Group:
@@ -645,11 +573,23 @@ func (c *CtrlSession) RemoveRestrict() {
 	c.ActivateAll()
 }
 
+
+
+
+
+
 func (c *CtrlSession) Save() error {
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
 	return c.save()
+}
+func (c *CtrlSession) SaveConfig(confid int64) error {
+	conf, ok := c.configmap[confid]
+	if !ok {
+		return C.CErrConfigNotFound
+	}
+	return c.ctrl.db.Save(conf).Error
 }
 
 func (c *CtrlSession) SaveConfigs() error {
@@ -677,17 +617,15 @@ func (c *CtrlSession) save() error {
 
 func (c *CtrlSession) saveConfigs() error {
 	if c.user.ConfigCount > 0 {
-		return c.ctrl.db.Save(c.user.Configs).Error
+		return c.ctrl.db.Save(&c.user.Configs).Error
 	}
 	return nil
 }
 
 func (c *CtrlSession) Close() error {
-	
 	if c.closed {
 		return nil
 	}
-
 	var err error
 	c.ctrl.RemoveSesion(c.user.TgID)
 	c.closed = true
@@ -699,98 +637,6 @@ func (c *CtrlSession) Close() error {
 	return nil
 }
 
-func (c *CtrlSession) GetUser() *db.User {
-	return c.user
-}
-
 func (c *CtrlSession) ForceClose() error {
 	return  c.Close()
 }
-
-// this returns left quota for user
-// userquota - quota elpsed for configs
-func (c *CtrlSession) LeftQuota() C.Bwidth {
-	var dedicated C.Bwidth = 0
-	for _, conf := range c.configmap {
-		dedicated += conf.Quota
-	}
-	if c.user.IsCapped {
-		return c.user.CappedQuota - dedicated
-	}
-
-	return (c.user.CalculatedQuota + c.user.AdditionalQuota) - dedicated // TODO: should change here
-}
-
-// this is special for gift command
-func (c *CtrlSession) LeftQuotaFromOrigin() C.Bwidth {
-	var dedicated C.Bwidth = 0
-	for _, conf := range c.configmap {
-		dedicated += conf.Quota
-	}
-	if c.user.IsCapped {
-		return c.user.CappedQuota - dedicated
-	}
-
-	//to exclude already gifted bandwidth
-	if c.user.GiftQuota < 0 {
-		dedicated += -(c.user.GiftQuota)
-	}
-
-	return C.Bwidth(c.ctrl.CommonQuota.Load()) - dedicated
-}
-
-func (c *CtrlSession) LeftUsage() C.Bwidth {
-
-	return c.user.CalculatedQuota + c.user.AdditionalQuota - c.TotalUsage()
-}
-
-func (c *CtrlSession) getsboxconf(confid int64) (*sbox.Userconfig, *db.Config, error) {
-	config, ok := c.configmap[confid]
-	if !ok {
-		return nil, nil, C.ErrConfigNotFound
-	}
-
-	inbound, err := c.ctrl.GetdbInbound(int(config.InboundID))
-	if err != nil {
-		return nil, config, C.ErrInboundNotFound
-	}
-	outbound, err := c.ctrl.GetdbOutbound(int(config.OutboundID))
-	if err != nil {
-		return nil, config, C.ErrOutboundNotFound
-	}
-	var (
-		vlessgrp  *sbox.Vlessgroup
-		trojangrp *sbox.Trojangroup
-		commongrp *sbox.Commongroup
-	)
-
-	switch config.Type {
-	case C.Vless:
-		vlessgrp = &sbox.Vlessgroup{
-			UUID: config.GetUUID(),
-		}
-	//TODO: add other config types here when adding them
-	default:
-		c.ctrl.logger.Warn("Unsupported Config Type Detected "+  config.Type)
-	}
-
-	return &sbox.Userconfig{
-		Vlessgroup:  vlessgrp,
-		Trojangroup: trojangrp,
-		Commongroup: commongrp,
-		Type:        inbound.Type,
-		Name:        c.user.Name,
-		Usage:       config.Usage,
-		Quota:       config.Quota,
-		DbID:        config.Id,
-		Outboundtag: outbound.Tag,
-		Inboundtag:  inbound.Tag,
-		LoginLimit:  int32(config.LoginLimit),
-		UsercheckId: int(c.user.CheckID),
-		InboundId:   inbound.ID,
-		OutboundID:  outbound.ID,
-		TgId: c.user.TgID,
-	}, config, nil
-}
-
-

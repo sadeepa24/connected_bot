@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	//
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/builder/v1"
 	"github.com/sadeepa24/connected_bot/common"

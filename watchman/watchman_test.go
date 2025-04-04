@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	//
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	connected "github.com/sadeepa24/connected_bot"
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
@@ -200,9 +200,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 			Name:       "unused verified",
 			UUID:       uid1.String(),
 			UserID:     userID,
-			Type:       "vless",
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
 			Download:   0,
@@ -215,10 +213,8 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 			UUID:       uid2.String(),
 			UserID:     userID,
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
-			Type:       "vless",
 			Download:   0,
 			Upload:     0,
 			LoginLimit: 2,
@@ -271,9 +267,7 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 			Name:       "usaged user",
 			UUID:       uid1.String(),
 			UserID:     userID,
-			Type:       "vless",
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      usage1,
 			Download:   dwn1,
@@ -286,10 +280,8 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 			UUID:       uid2.String(),
 			UserID:     userID,
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      usage2,
-			Type:       "vless",
 			Download:   dwn2,
 			Upload:     usage2 - dwn2,
 			LoginLimit: 2,
@@ -402,9 +394,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 			Name:       "gift couple",
 			UUID:       uid1.String(),
 			UserID:     userID + 500,
-			Type:       "vless",
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
 			Download:   0,
@@ -417,10 +407,8 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 			UUID:       uid2.String(),
 			UserID:     userID + 500,
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
-			Type:       "vless",
 			Download:   0,
 			Upload:     0,
 			LoginLimit: 2,
@@ -735,10 +723,9 @@ func (r *Randomizer) ConfigUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: 5,
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
+
 		OutboundID: 1,
 
 	})
@@ -759,10 +746,8 @@ func (r *Randomizer) ConfigUnUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: int16(rand.Int31n(5)),
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
 		OutboundID: 1,
 	})
 	user.ConfigCount++
@@ -782,10 +767,8 @@ func (r *Randomizer) ConfigFullUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: int16(rand.Int31n(5)),
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
 		OutboundID: 1,
 	})
 	user.ConfigCount++
@@ -809,10 +792,8 @@ func (r *Randomizer) ConfigOverUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: int16(rand.Int31n(5)),
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
 		OutboundID: 1,
 	})
 	user.ConfigCount++
