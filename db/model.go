@@ -109,7 +109,7 @@ type Config struct {
 	UUID       string `gorm:"not null;uniqueIndex"` //common for all vless & vmess inbound
 	Password   string // common for all trojan, tuic, shadowsocks (everything which use a password)
 	Active     bool
-	UserID     int64 `gorm:"not null;column:user_id"`
+	UserID     int64 `gorm:"index;not null;column:user_id"`
 	
 	//InboundID  int16 `gorm:"not null"`
 	
@@ -248,7 +248,7 @@ type UsageHistory struct {
 	Name     string
 	Download C.Bwidth
 	Upload   C.Bwidth
-	UserID   int64
+	UserID   int64 `gorm:"index"`
 	Usage    C.Bwidth
 	Date     time.Time
 	ConfigID int64
@@ -263,31 +263,28 @@ type GiftLog struct {
 }
 
 type PointLog struct {
-	ID          int64
-	UserID      int64
+	ID          int64 `gorm:"primaryKey"`
+	UserID      int64 `gorm:"index"`
 	ElpsedPoint int64
 	Resong      string
 }
 
 type Gift struct {
-	ID      int64 `gorm:"primaryKey"`
-	Sender  int64
-	Reciver int64
-
-	SendValid   bool // used by watchman
-	ReciveValid bool //used by watchman when prosessing batch records in preprosess
+	ID          int64    `gorm:"primaryKey"`
+	Sender      int64    `gorm:"index:idx_sender_reciver"`
+	Reciver     int64    `gorm:"index:idx_sender_reciver"`
+	SendValid   bool     `gorm:"index:idx_valid_flags"`
+	ReciveValid bool     `gorm:"index:idx_valid_flags"`
 	Bandwidth   C.Bwidth
 	Date        time.Time
-	Valid       bool // used by watchman
-
-	ComQuota C.Bwidth //Maincommon quota which was exist when gift was created
+	ComQuota    C.Bwidth // Main common quota which was exist when gift was created
 	//DeletedAt  gorm.DeletedAt `gorm:"index"`
 }
 
 type SboxConfigs struct {
 	ID       int64 `gorm:"primaryKey"`
 	Name     string
-	UserID   int64
+	UserID   int64 `gorm:"index"`
 	ConfPath string
 }
 
@@ -296,11 +293,6 @@ func (u *Gift) Isgifttimeover() bool {
 }
 
 // All thinsgs Downthere will store in ram until program kill
-type Admin struct {
-	Id int64
-	//DeletedAt gorm.DeletedAt `gorm:"index"`
-
-}
 
 type Inbound struct {
 	ID   int16  `gorm:"primaryKey"`

@@ -107,9 +107,7 @@ func (c *configState) home() error {
 		return nil
 	}
 	if c.lastconfig, err = c.Usersession.GetConfig(int64(confID)); err != nil {
-		if errors.Is(err, C.ErrConfigNotFound) {
-			c.Alertsender(C.GetMsg(C.MsgConfUnfoun))
-		}
+		c.Alertsender(C.GetMsg(C.MsgConfUnfoun))
 		return nil
 	}
 	c.State = stconfaction
@@ -136,6 +134,7 @@ func (c *configState) action() error {
 		ConfigName: c.lastconfig.Name,
 		TotalQuota:  c.lastconfig.Quota.BToString(),
 		ConfName: c.lastconfig.Name,
+		Active: c.lastconfig.Active,
 		//FIXME: add other fields later
 	}, c.btns, C.TmpConfiConfigure); err != nil {
 		return err
@@ -161,6 +160,7 @@ func (c *configState) action() error {
 		}
 		name, err := common.ReciveName(c.Tgcalls)
 		if err != nil {
+			c.Messagesession.SendError(err, "")
 			return nil
 		}
 		ok, err = c.conform(struct {
@@ -180,9 +180,11 @@ func (c *configState) action() error {
 		}
 		if ok {
 			c.lastconfig.Name = name
-			err = c.Usersession.Save()
+			err = c.Usersession.SaveConfig(c.lastconfig.Id)
 			if err != nil {
 				c.Alertsender(C.GetMsg(C.MsgNameChangeFailed))
+				c.Messagesession.SendError(err, "")
+				return nil
 			}
 			c.Alertsender(C.GetMsg(C.MsgNamechangeSuc))
 		}
@@ -198,11 +200,11 @@ func (c *configState) action() error {
 			err = c.Usersession.DeleteConfig(c.lastconfig.Id)
 			if err != nil {
 				c.Alertsender(C.GetMsg(C.MsgdelFail))
-				if errors.Is(err, C.ErrOnDeactivation) || errors.Is(err, C.ErrOnDb) {
+				c.Messagesession.SendError(err, "")
+				if  errors.Is(err, C.ErrDbopration) {
 					c.Usersession.ActivateConfig(c.lastconfig.Id)
-					return err
 				}
-
+				return nil
 			} else {
 				c.Messagesession.SendAlert(C.GetMsg(C.MsgdelSuccses), nil)
 				c.Usersession.Save()
@@ -241,19 +243,16 @@ func (c *configState) action() error {
 		return nil
 	
 	case C.BtnChangeLogin:
-		c.Messagesession.Edit("send new login limit count (0 < x <= 5)", nil, "") 
+		c.Messagesession.Edit("send new login limit count 0 < x <= " + strconv.Itoa(int(c.wiz.ctrl.LoginLimit)), nil, "") 
 		limit, err := common.ReciveInt(c.Tgcalls, int(c.wiz.ctrl.LoginLimit), 0)
 		if err != nil {
+			c.Messagesession.SendError(err, "")
 			return nil
 		}
-		if limit <= 0 || limit > 5 {
-			c.Alertsender("login should be between 0 and 5")
-			return nil
-		}
-
 		_, err = c.Usersession.ChangeLoginLimit(c.lastconfig.Id, int16(limit))
 		if err != nil {
-			c.Alertsender("failed")
+			c.Alertsender("login limit change failed")
+			c.Messagesession.SendError(err, "")
 		}
 
 	}
@@ -330,13 +329,10 @@ func (c *configState) changeIn() error {
 		} else {
 			err = c.Usersession.AddInboundConf(c.lastconfig.Id, inid)
 		}
-		
 		if err != nil {
-			switch {
-			case errors.Is(err, C.ErrInboundNotFound):
-				c.Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-				return nil
-			}
+			c.Messagesession.SendError(err, C.GetMsg(C.Msgwrong))
+			return nil
+			
 		}
 		c.Usersession.SaveConfig(c.lastconfig.Id)
 		c.Messagesession.SendAlert(C.GetMsg(C.MsgInchangesucses), nil)
@@ -401,17 +397,20 @@ func (c *configState) changeOut() error {
 			err = c.Usersession.ChangeOutbound(c.lastconfig.Id, outid)
 			if err != nil {
 				if !errors.Is(err, C.ErrContextDead) {
-					c.Messagesession.DeleteAllMsg()
 					c.Messagesession.SendAlert("outbound change failed", nil)
-					c.Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-
+					c.Messagesession.SendError(err, "")
+					c.wiz.logger.Error("Outbound Change Failed User " + c.dbuser.Name, zap.Error(err))
 					return nil
-
 				}
 				return err
 
 			}
-			c.Usersession.Save()
+			err = c.Usersession.SaveConfigs()
+			if err != nil {
+				c.Alertsender("outbound change failed")
+				c.Messagesession.SendError(err, "")
+				return nil
+			}
 			c.Messagesession.SendAlert(C.GetMsg(C.MsOutchangesucses), nil)
 			return nil
 		}

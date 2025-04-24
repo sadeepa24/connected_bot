@@ -1,20 +1,22 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/sadeepa24/connected_bot/botapi"
+	"github.com/sadeepa24/connected_bot/builder/v2"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
@@ -22,6 +24,7 @@ import (
 	"github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
+	"github.com/sadeepa24/walker"
 	"github.com/sagernet/sing-box/connectedbot/opts"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
@@ -89,16 +92,12 @@ func (a *Adminsrv) Exec(upx *update.Updatectx) error {
 
 	return errors.New("admin exec not implemented")
 }
-
 func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
 	//Upx.User is nil in this scope
 	Messagesession := botapi.NewMsgsession(upx.Ctx, a.botapi, upx.FromChat().ID, upx.FromChat().ID, "en")
 	switch {
-	case upx.Update.Message.IsCommand():
-		return a.Commandhandler(upx, Messagesession)
 	case upx.Update.Message.ReplyToMessage != nil:
 		replyMg := upx.Update.Message.ReplyToMessage
-
 		parts := strings.Split(replyMg.Text, ",")
 		if len(parts) == 0 {
 			return nil
@@ -108,6 +107,8 @@ func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
 			return err
 		}
 		Messagesession.CopyMessageTo(int64(id), int64(upx.Update.Message.MessageID))
+	case upx.Update.Message.IsCommand():
+		return a.Commandhandler(upx, Messagesession)
 	case upx.Update.Message.ForwardFrom != nil:
 		forward := upx.Update.Message.ForwardFrom
 		_ = forward
@@ -118,11 +119,9 @@ func (a *Adminsrv) handleMessage(upx *update.Updatectx) error {
 	}
 	return nil
 }
-
 func (a *Adminsrv) Name() string {
 	return C.Adminservicename
 }
-
 func (a *Adminsrv) Init() error {
 	a.adminuser = db.User{
 		TgID: a.ctrl.SudoAdmin,
@@ -141,11 +140,9 @@ func (a *Adminsrv) Init() error {
 
 	return nil
 }
-
 func (a *Adminsrv) Canhandle(upx *update.Updatectx) (bool, error) {
 	return upx.Service == C.Adminservicename, nil
 }
-
 func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	calls := common.Tgcalls{
 		//TODO: Create Function That construct below three function
@@ -187,18 +184,27 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 		a.ctrl.Addquemg(controller.RefreshSignal(1))
 		upx.Cancle()
 		return nil
+	case "vpnconfig", "editconf":
+		return a.vpnConfig(Messagesession, calls)
 	case "activeconfs":
 		return a.activeUserStatus(upx, Messagesession, calls)
 	case "manage":
 		return a.manage(Messagesession, calls)
 	case "template":
 		return a.editTemplate(upx, Messagesession, calls)
+	case "botconfig":
+		return a.botconfig(Messagesession, calls)
+	case "restart":
+		a.Restart(Messagesession)
 	default:
 		upx.Cancle()
 	}
 
 	return nil
 }
+
+
+
 
 func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
 	Messagesession.Edit("send brodcast message", nil, "")
@@ -253,7 +259,6 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 
 	return nil
 }
-
 func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msgsession, calls common.Tgcalls) error {
 	message, err := calls.Sendreciver("send user id or username")
 	if err != nil {
@@ -262,6 +267,168 @@ func (a *Adminsrv) getuserinfo(upx *update.Updatectx, Messagesession *botapi.Msg
 	defer Messagesession.DeleteAllMsg()
 	return a.loaduserinfo(upx, Messagesession, calls, message.Text)
 }
+func (a *Adminsrv) getserverinfo() error {
+	var memorystate = runtime.MemStats{}
+	runtime.ReadMemStats(&memorystate)
+
+	info := fmt.Sprintf(`
+
+	Memory:
+	- Total Allocated: %f MB
+	- Total 
+
+	Prosess:
+	- CPU %d
+	- Goroutine %d
+
+	Debug:
+	- Lookups %d
+	- HeapObjects %d
+	- StackInuse %d
+	- Frees %d
+
+	`, 
+	//memory
+	float64(memorystate.Sys)/(1024*1024), 
+	
+	//prosess
+	runtime.NumCPU(),
+	runtime.NumGoroutine(),
+
+	//debug
+	memorystate.Lookups,
+	memorystate.HeapObjects,
+	memorystate.StackInuse,
+	memorystate.Frees,
+
+)
+	a.ctrl.Addquemg( &botapi.Msgcommon{
+		Infocontext: &botapi.Infocontext{
+			ChatId: a.ctrl.SudoAdmin,
+		},
+		Text: info,
+	})
+
+	return nil
+}
+func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	Messagesession.Edit("send target user", nil, "")
+	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
+	if err != nil {
+		calls.Alertsender("chat creation failed" + err.Error())
+		return err
+	}
+
+	var dbuser *db.User
+
+	id, err := strconv.Atoi(message.Text)
+	if err != nil {
+		message.Text = strings.ReplaceAll(message.Text, "@", "")
+		dbuser, err = a.ctrl.GetUserByUserName(message.Text)
+	} else {
+		dbuser, err = a.ctrl.GetUserById(int64(id))
+	}
+
+
+	if err != nil {
+		return err
+	}
+
+	if dbuser.TgID == a.adminuser.TgID {
+		calls.Alertsender("You can't chat weith your self 😅")
+		return nil
+	}
+	a.ctrl.Addquemg(&botapi.Msgcommon{
+		Infocontext: &botapi.Infocontext{
+			ChatId: dbuser.TgID,
+		},
+		Text: "admin created chat session with you, you can't use any command or anything until he ends the session ",
+	})
+	calls.Alertsender("chat started if you want to end chat you must /cancel session, if not it will hold for 30 min")
+	chatctx, chatcancel := context.WithTimeout(a.ctx, 30 * time.Minute)
+	Messagesession.SetNewcontext(chatctx)
+
+	mgcoping := func (src, dst int64, admin bool)  {
+		mgcopy:
+		for {
+			select {
+			case <- chatctx.Done():
+				break mgcopy
+			default:
+			}
+			mg, err := a.defaultsrv.ExcpectMsgContext(chatctx, src, src) // this will check context automatically
+			if err != nil{
+				if admin {
+					a.ctrl.Addquemg(&botapi.Msgcommon{
+						Infocontext: &botapi.Infocontext{
+							ChatId: upx.User.TgID,
+						},
+						Text: "chat session ended",
+					})
+				}
+				break
+			}
+			if mg.IsCommand() {
+				if mg.Command() == "cancel" && admin {
+					chatcancel()
+					break
+				}
+			}
+			Messagesession.CopyMessageRawTo(dst, int64(mg.MessageID), src)
+		}
+		if !admin {
+			a.ctrl.Addquemg(&botapi.Msgcommon{
+				Infocontext: &botapi.Infocontext{
+					ChatId: dbuser.TgID,
+				},
+				Text: "admin closed chat session",
+			})
+		}
+
+	}
+	
+	go mgcoping(upx.User.TgID, dbuser.TgID, true)
+	go mgcoping(dbuser.TgID, upx.User.TgID, false)
+	return nil
+}
+func (a *Adminsrv) overview(calls common.Tgcalls ) error {
+	calls.Alertsender(a.ctrl.Overview.String() + fmt.Sprintf("Updates Since Last Refresh: %d", a.ctrl.UpdateCounter.Load()))
+	return nil
+}
+func (a *Adminsrv) SwapMode() {
+	a.modeUser.Store(!a.modeUser.Load()) //this is okay with this, no heavy concurrent calls to this
+}
+func (a *Adminsrv) AdminMode() bool {
+	return !a.modeUser.Load()
+}
+func(a *Adminsrv) Restart(Messagesession *botapi.Msgsession) {
+	err := common.SendSIGHUP()
+	if err != nil {
+		Messagesession.SendAlert("Restart Signal Sending Failed "+ err.Error(), nil)
+	}
+}
+
+
+
+const (
+	btnpereach = 16
+)
+var editable = []string{
+	"msg_template", 
+	"alt_med_url", 
+	"parse_mode", 
+	"include_media", 
+	"media_type", 
+	"media_id", 
+	"continue_media", 
+	"disabled", 
+	"skip_text", 
+	"contin_skip_text", 
+	"alt_med_path",  
+	"supercontinue", 
+	"btnconf",
+}
+
 
 func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Msgsession, calls common.Tgcalls, IDorUserName string) error {
 	if a.inspecifcUse.Swap(true) {
@@ -358,7 +525,16 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			if enduserupx.User.IsCapped {
 				btns.AddBtcommon("Remove Cap")
 			}
-			btns.Addbutton("🔴 Distribute",  "Distribute","" )
+			if enduserupx.User.IsDistributedUser {
+				btns.Addbutton("🔴 Distribute",  "Distribute","" )
+			} else {
+				btns.Addbutton("Remove Distribute",  "Distribute","" )
+			}
+
+			btns.AddBtcommon("Change Point Count")
+			if enduserupx.User.Verified() {
+				btns.AddBtcommon("Create Config")
+			}
 			btns.AddCloseBack()
 			tusage := endusersession.TotalUsage()
 			Messagesession.Edit(userinfo{
@@ -383,7 +559,7 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				CapEndin:  enduserupx.User.Captime.AddDate(0, 0, int(enduserupx.User.CapDays)).String(),
 				CapDays: enduserupx.User.CapDays,
 				AlltimeUsage: (upx.User.AlltimeUsage+tusage).BToString(),
-
+				Points: enduserupx.User.Points,
 				Disendin:     ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
 				UsageResetIn: ((a.ctrl.ResetCount - a.ctrl.CheckCount.Load()) * a.ctrl.RefreshRate) / 24,
 
@@ -404,11 +580,23 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			case C.BtnClose:
 				break main
 			case "Distribute":
-				if enduserupx.User.IsCapped || enduserupx.User.IsDistributedUser {
-					alertsender("can't distribute, either user capped or already distributed")
+				if enduserupx.User.IsDistributedUser {
+					endusersession.GetUser().IsDistributedUser = false
+					err = endusersession.ActivateAll()
+					if err != nil {
+						calls.Alertsender("activation failed " + err.Error())
+						endusersession.DeactivateAll()
+						endusersession.GetUser().IsDistributedUser = true
+						continue
+					}
+					alertsender("distribution removed")
+					endusermsg.SendAlert("you'r distribution removed by admin", nil)
 					continue
 				}
-				
+				if enduserupx.User.IsCapped {
+					alertsender("can't distribute, user is capped")
+					continue
+				}
 				endusersession.GetUser().IsDistributedUser = true
 				endusersession.DeactivateAll()
 				endusermsg.SendAlert("you'r quota has being Distributed By Admin ", nil)
@@ -433,10 +621,6 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				endusermsg.SendAlert("🎉you'r monthlimitation removed by admin 🍾", nil)
 				Messagesession.SendAlert("make a db refresh to change bandiwdth, it will automatically change in next refresh cycle", nil)
 			case "Remove Templimit":
-				if endusersession.GetUser().WarnRatio != 0 {
-					Messagesession.SendAlert("Temporary limitation can be removed by himself. his war rate is n't zero", nil)
-					continue
-				}
 				endusersession.GetUser().Templimited = false
 				endusersession.GetUser().WarnRatio = a.ctrl.GetWarnRate()
 				err = endusersession.ActivateAll()
@@ -452,50 +636,50 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				if err = a.ctrl.RecalculateConfigquotas(endusersession.GetUser()); err != nil {
 					Messagesession.SendAlert(C.GetMsg(C.MsgcapRecalFail), nil)
 				}
-				endusermsg.SendAlert("🎉 Your Cap Removed By Admin🍾", nil)
-			
+				endusermsg.SendAlert("🎉 Your Cap Removed By Admin🍾", nil)	
+			case "Create Config":
+				opts := common.OptionExcutors{
+					Tgcalls: calls,
+					Btns: btns,
+					Usersession: endusersession,
+					MessageSession: Messagesession,
+					Ctrl: a.ctrl,
+					Logger: a.logger,
+
+				}
+				err := CreateConfig(opts)
+				if err != nil {
+					Messagesession.SendAlert(err.Error(), nil)
+				}
+				endusermsg.SendAlert("Admin Created Config For you Check /getinfo to see it", nil)
+			case "Change Point Count":
+				pt, err := common.ReciveInt(calls, 10000, 0)
+				if err != nil {
+					Messagesession.SendAlert(err.Error(),  nil)
+				}
+				endusersession.GetUser().Points = int64(pt)
+				endusermsg.SendAlert("admin changed you'r point count to" + strconv.Itoa(pt), nil)
 			}
-		
 		case 4:
-			if _, ok := a.xraywiz.builds.Load(enduserupx.User.TgID); ok {
+			if _, ok := a.xraywiz.builds.LoadOrStore(enduserupx.User.TgID, true); ok {
 				Messagesession.SendAlert("user have already opend a builder session please wait until he closes it", nil)
-				return nil
+				state = 0 
+				continue
 			}
-			
-			tra := alltransportadder(sendreciver, callbackreciver, alertsender, btns)			
-			buildstate := BuildState{
+			build := &confBuilder{
+				Tgcalls: calls,
+				disableTimeout: true,
 				ctx: upx.Ctx,
 				State: 0,
 				Messagesession: Messagesession,
-				dbuser: endusersession.GetUser(),
-				userID: endusersession.GetUser().TgID,
 				btns: btns,
 				wiz: a.xraywiz,
-				sendreciver: sendreciver,
-				callbackreciver: callbackreciver,
-				alertsender: alertsender,
-				otadders: alloutadders(sendreciver, callbackreciver, alertsender, btns, tra),
-				changers: allchangers(sendreciver, callbackreciver, alertsender, btns, tra),
-
+				store: a.xraywiz.bulderstore,
+				counter: new(atomic.Int32),
+				userId: enduserupx.Dbuser().TgID,
 			}
-			a.xraywiz.builds.Store(enduserupx.User.TgID, struct{}{})
-			err = buildstate.run()
-			if buildstate.Builder != nil {
-				buildstate.Builder.Close()
-			}
-			a.xraywiz.builds.Delete(enduserupx.User.TgID)
-			if err != nil {
-				a.logger.Error("admin: builder run failed ", zap.Error(err))
-				if errors.Is(err, C.ErrContextDead) {
-					tmpctx, cancle := context.WithTimeout(a.ctx, 10*time.Second)
-					Messagesession.SetNewcontext(tmpctx)
-					Messagesession.SendAlert("context timeouts", nil)
-					cancle()
-					break main
-				}
-			}
+			build.run()
 			state = 0
-
 		case 5:
 			
 			configState := &configState{
@@ -579,143 +763,225 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 	return nil
 }
 
-func (a *Adminsrv) getserverinfo() error {
-	var memorystate = runtime.MemStats{}
-	runtime.ReadMemStats(&memorystate)
-
-	info := fmt.Sprintf(`
-
-	Memory:
-	- Total Allocated: %f MB
-	- Total 
-
-	Prosess:
-	- CPU %d
-	- Goroutine %d
-
-	Debug:
-	- Lookups %d
-	- HeapObjects %d
-	- StackInuse %d
-	- Frees %d
-
-	`, 
-	//memory
-	float64(memorystate.Sys)/(1024*1024), 
+// after change of config, it should restart program
+func (a *Adminsrv) activeUserStatus(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	activeusr := a.ctrl.Boxapi.GetAllUserStatus()
+	btns := botapi.NewButtons([]int16{2})
 	
-	//prosess
-	runtime.NumCPU(),
-	runtime.NumGoroutine(),
+	var (
+		callback *tgbotapi.CallbackQuery
+		err error
+		online map[int]opts.UserStatus
+		onlineIDS []int
+	)
+	m:
+	for {
+		btns.Reset([]int16{2})
+		btns.AddBtcommon("Online")
+		btns.AddBtcommon("All")
+		btns.AddClose(false)
 
-	//debug
-	memorystate.Lookups,
-	memorystate.HeapObjects,
-	memorystate.StackInuse,
-	memorystate.Frees,
+		callback, err = calls.Callbackreciver("select option", btns)
+		if err != nil {
+			break
+		}
 
-)
-	a.ctrl.Addquemg( &botapi.Msgcommon{
-		Infocontext: &botapi.Infocontext{
-			ChatId: a.ctrl.SudoAdmin,
-		},
-		Text: info,
-	})
+		switch callback.Data {
+		case "Online":
+			if online != nil || len(online) == len(activeusr) {
+				online = make(map[int]opts.UserStatus, len(activeusr))
+				onlineIDS = make([]int, len(activeusr))
+				for id, user := range activeusr {
+					if len(user.Ip) > 0 {
+						online[id] = user
+						onlineIDS = append(onlineIDS, id)
+					}
+				}
+			}
+		case "All":
+			online = activeusr
+			onlineIDS = C.MapToSliceKey(activeusr)
+		case C.BtnClose:
+			break m
+		}
 
-	return nil
-}
+		if len(online) == 0 {
+			calls.Alertsender("no any active conf can be found")
+			continue
+		}
 
-func (a *Adminsrv) createchat(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
-	Messagesession.Edit("send target user", nil, "")
-	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
-	if err != nil {
-		calls.Alertsender("chat creation failed" + err.Error())
-		return err
-	}
-
-	var dbuser *db.User
-
-	id, err := strconv.Atoi(message.Text)
-	if err != nil {
-		message.Text = strings.ReplaceAll(message.Text, "@", "")
-		dbuser, err = a.ctrl.GetUserByUserName(message.Text)
-	} else {
-		dbuser, err = a.ctrl.GetUserById(int64(id))
-	}
-
-
-	if err != nil {
-		return err
-	}
-
-	if dbuser.TgID == a.adminuser.TgID {
-		calls.Alertsender("You can't chat weith your self 😅")
-		return nil
-	}
-	a.ctrl.Addquemg(&botapi.Msgcommon{
-		Infocontext: &botapi.Infocontext{
-			ChatId: dbuser.TgID,
-		},
-		Text: "admin created chat session with you, you can't use any command or anything until he ends the session ",
-	})
-	calls.Alertsender("chat started if you want to end chat you must /cancel session, if not it will hold for 30 min")
-	chatctx, chatcancel := context.WithTimeout(a.ctx, 30 * time.Minute)
-	Messagesession.SetNewcontext(chatctx)
-
-	mgcoping := func (src, dst int64, admin bool)  {
-		mgcopy:
+	
+		pagecount := len(online)/btnpereach
+		currentPage := 1
+		configs:
 		for {
-			select {
-			case <- chatctx.Done():
-				break mgcopy
+			btns.Reset([]int16{2})
+			to := currentPage*btnpereach
+			if to > len(online) {
+				to = (currentPage-1)*btnpereach + len(online)%btnpereach
+			}
+			for i := (currentPage-1)*btnpereach; i < to; i++ {
+				btns.AddBtcommon(strconv.Itoa(onlineIDS[i]))
+			}
+			
+			if currentPage < pagecount || (currentPage == pagecount &&  len(online)%btnpereach > 0) {
+				btns.AddBtcommon(C.BtnNext)
+			}
+			btns.AddCloseBack()
+			callback, err = calls.Callbackreciver("select config to see info", btns)
+			if err != nil {
+				return err
+			}
+			switch callback.Data {
+			case C.BtnNext:
+				currentPage++
+			case C.BtnClose:
+				break configs
+			case C.BtnBack:
+				if currentPage == 1 {
+					break configs
+				}
+				currentPage--
 			default:
-			}
-			mg, err := a.defaultsrv.ExcpectMsgContext(chatctx, src, src) // this will check context automatically
-			if err != nil{
-				if admin {
-					a.ctrl.Addquemg(&botapi.Msgcommon{
-						Infocontext: &botapi.Infocontext{
-							ChatId: upx.User.TgID,
-						},
-						Text: "chat session ended",
-					})
+				id, err := strconv.Atoi(callback.Data)
+				if err != nil {
+					continue
 				}
-				break
-			}
-			if mg.IsCommand() {
-				if mg.Command() == "cancel" && admin {
-					chatcancel()
-					break
+				user, err := a.ctrl.GetUserByConfID(int64(id))
+				if err != nil {
+					calls.Alertsender("user loading failed " + err.Error())
+					continue
 				}
+				err = a.loaduserinfo(upx, Messagesession, calls, strconv.Itoa(int(user.TgID)))
+				if err != nil {
+					if errors.Is(err, C.ErrContextDead) {
+						return err
+					}
+					a.logger.Error("failed loaduser ", zap.Error(err))
+					calls.Alertsender("user loading failed " + err.Error())
+				}
+				Messagesession.ResetState()
 			}
-			Messagesession.CopyMessageRawTo(dst, int64(mg.MessageID), src)
 		}
-		if !admin {
-			a.ctrl.Addquemg(&botapi.Msgcommon{
-				Infocontext: &botapi.Infocontext{
-					ChatId: dbuser.TgID,
-				},
-				Text: "admin closed chat session",
-			})
-		}
-
 	}
-	
-	go mgcoping(upx.User.TgID, dbuser.TgID, true)
-	go mgcoping(dbuser.TgID, upx.User.TgID, false)
-	return nil
-}
+	Messagesession.DeleteAllMsg()
+	return err
 
-func (a *Adminsrv) overview(calls common.Tgcalls ) error {
-	calls.Alertsender(a.ctrl.Overview.String() + fmt.Sprintf("Updates Since Last Refresh: %d", a.ctrl.UpdateCounter.Load()))
-	return nil
-}
 
+}
+func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	callbackreciver := calls.Callbackreciver
+	alertsender := calls.Alertsender
+	btns := botapi.NewButtons([]int16{2})
+	var (
+		callback *tgbotapi.CallbackQuery
+		err error
+	)
+	mainloop:
+	for {
+
+		btns.Reset([]int16{2})
+		btns.Addbutton("🔴 Reset Usage", "reset-usage", "")
+		btns.Addbutton("🔴 Restart", "Restart", "")
+		btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
+		btns.Addbutton("Reset Lang Codes", "langchg", "")
+		btns.AddClose(true)
+		
+		if callback, err = callbackreciver("select", btns); err != nil {
+			break mainloop
+		}
+
+		switch callback.Data {
+		case "reset-usage":
+				calls.Alertsender("warning: If you Reset Usages New 30Days Cycle Begin From Here")
+				reply, err := calls.Sendreciver("if you want to continue send ok")
+				if err != nil {
+					return err
+				}
+				if reply.Text != "ok" {
+					calls.Alertsender("canceld usage reset")
+					continue mainloop
+				}
+				calls.Alertsender("Usage Reset Added, If you want to undo this You have backup DB")
+				a.ctrl.Addquemg(controller.ForceResetUsage(1))
+				break mainloop
+		case "Restart":
+				Messagesession.DeleteAllMsg()
+				err = common.SendSIGHUP()
+				if err != nil {
+					Messagesession.SendAlert("Restart Signal Sending Failed "+ err.Error(), nil)
+				}
+				break mainloop
+		case "remlimit":
+				
+				btns.Reset([]int16{2})
+				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴 do thease if you realy want")
+				btns.Addcancle()
+				btns.AddBtcommon("proceed")
+				if callback, err = callbackreciver("this will remove everyone's monthlimitations do you want to continue ?", btns); err != nil {
+					break mainloop
+				}
+
+				if callback.Data != "proceed" {
+					continue
+				}
+				Messagesession.DeleteAllMsg()
+				err = a.ctrl.RemoveAllLimits()
+				if err != nil {
+					Messagesession.SendAlert("db update err "+ err.Error(), nil)
+					continue
+				}
+				a.ctrl.Addquemg( &botapi.Msgcommon{
+					Infocontext: &botapi.Infocontext{
+						User_id: a.ctrl.SudoAdmin,
+						ChatId: a.ctrl.SudoAdmin,
+					},
+					Text: "Month Limitation Remove And Db Refreshed",
+				})
+				return nil
+		case "langchg":
+								
+				btns.Reset([]int16{2})
+				btns.Addcancle()
+				btns.AddBtcommon("proceed")
+				if callback, err = callbackreciver("this will reset everyone's lang code to default lang code", btns); err != nil {
+					break mainloop
+				}
+
+				if callback.Data != "proceed" {
+					continue
+				}
+				Messagesession.DeleteAllMsg()
+				err = a.ctrl.ResetLangCode()
+				if err != nil {
+					Messagesession.SendAlert("db update err "+ err.Error(), nil)
+					continue
+				}
+				a.ctrl.Addquemg( &botapi.Msgcommon{
+					Infocontext: &botapi.Infocontext{
+						User_id: a.ctrl.SudoAdmin,
+						ChatId: a.ctrl.SudoAdmin,
+					},
+					Text: "lang code changed",
+				})
+				return nil
+		case C.BtnClose:
+				Messagesession.DeleteAllMsg()
+				alertsender("manager closed")
+				break mainloop
+		default:
+				Messagesession.DeleteAllMsg()
+				alertsender("not Available yet")
+				break mainloop
+		}
+	}
+	return err
+
+}
 func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
 	// This Editing Does Not Affect Running Templates Due Running Template is in memory, only loads at start up 
 	// Admin need to restart after editig
 	// I don't add realtime changes due to syncing overhead for small feture, it does not worth
-	
-	
 
 	if a.templateEditin.Swap(true) {
 		calls.Alertsender("Already opend template editor")
@@ -724,11 +990,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 	}
 
 	defer a.templateEditin.Swap(false)
-
-	
-
-
-	path := a.msgstore.GetPath() //TODO: GetPath Later
+	path := a.msgstore.GetPath()
 
 
 	file, err := os.ReadFile(path)
@@ -750,8 +1012,8 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 		return nil
 	}
 	nameslice := C.MapToSliceKey(Templates)
-	btnpereach := 16
 	maxpages := len(nameslice)/btnpereach
+	
 	currentpage := 0
 	btns := botapi.NewButtons([]int16{2})
 	var (
@@ -771,18 +1033,25 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 	calls.Alertsender("You will Recive All Media Before initing Template Editor")
 	botapi.TemplateInit(a.botapi, a.adminuser.TgID, a.logger, t)
 	t = nil
-
 	defer func ()  {
+		rep, err := calls.Sendreciver("you'r current template will save,  do you want to continue, then send ok")
+		if err != nil {
+			return
+		}
+		if rep.Text != "ok" {
+			calls.Alertsender("All changes you made will not be saved.")
+			Messagesession.DeleteAllMsg()
+			return
+		}
+		calls.Alertsender("Editor Closed, Saving Template..")
 		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			calls.Alertsender("file opening err - " + err.Error())
 		}
-
 		output, err := yaml.Marshal(Templates)
 		if err != nil {
 			calls.Alertsender("yaml marshling err - " + err.Error())
 		}
-
 		_, err = file.Write(output)
 		if err != nil {
 			calls.Alertsender("file writing err - " + err.Error())
@@ -790,20 +1059,18 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 		if err = file.Close(); err != nil {
 			calls.Alertsender("file closing err - " + err.Error())
 		}
+		Messagesession.DeleteAllMsg()
 		calls.Alertsender("succesfully save new template, you need to restart program to take effect new template")
 	}()
-
-
 	selecttmpl:
 	for {
 		btns.Reset([]int16{2})
-
 		switch state {
 		case 0:
 			btns.AddBtcommon("Upload Media")
 			btns.AddBtcommon("Create New Template")
 			btns.AddBtcommon("Edit Templates")
-			btns.AddClose(false)
+			btns.AddClose(true)
 	
 			if callback, err = calls.Callbackreciver("select option", btns); err != nil {
 				return err
@@ -819,9 +1086,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 			case C.BtnClose:
 				break selecttmpl
 			}
-
 		case 1: //Upload Img
-			
 			replymg, err = calls.Sendreciver("send you'r media (only support photo or video),  media should below 20MB")
 			if err != nil {
 				return err
@@ -838,16 +1103,13 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					continue selecttmpl
 				} 
 				fileid = replymg.Photo[len(replymg.Photo)-1].FileID
-
 			}
-
 			replymg, err = calls.Sendreciver("send new file name for the file name with extetion ex - example.mp4")
 			if err != nil {
 				calls.Alertsender("fileName Recive Error")
 				return err
 			}
 			filename := replymg.Text
-
 			file, err := a.botapi.GetFile(fileid)
 				
 			if err != nil {
@@ -862,9 +1124,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 				file.Close()
 				continue selecttmpl
 			}
-
 			_, err = io.Copy(endfile, file)
-
 			if err != nil {
 				endfile.Close()
 				file.Close()
@@ -874,46 +1134,165 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 			endfile.Close()
 			file.Close()
 			state = 0
-
-
 		case 2:
-			btns.AddBtcommon("Add Help Pages")
-			btns.AddBtcommon("Add Inline Post")
-			btns.AddCloseBack()
+			var templatename string
+			replymg, err = calls.Sendreciver("Send Name for New template")
+			if err != nil {
+				return err
+			}
+			templatename = replymg.Text
+			if _, ok := Templates[replymg.Text]; ok {
+				calls.Alertsender("their is alredy template with this name try again")
+				continue selecttmpl
+			}
+			btns.Reset([]int16{2})
+			btns.AddButtonSlice(a.ctrl.Langs)
+
+			se, err := calls.Callbackreciver("select lang tag", btns)
+			if err != nil {
+				break selecttmpl
+			}
+			treplymg, err := calls.Sendreciver("Send MSG template string")
+			if err != nil {
+				return err
+			}
+			Templates[replymg.Text] = map[string]*botapi.MgItem{
+				se.Data: {
+					Msgtmpl: treplymg.Text,
+				},
+			}
+			nameslice = append(nameslice, replymg.Text)
+			maxpages = len(nameslice)/btnpereach
+			
+		
+			btns.Reset([]int16{2})
+			btns.AddBtcommon("As Help Page")
+			btns.AddBtcommon("As Inline Post")
+			btns.AddBtcommon("Default")
 
 			callback, err  = calls.Callbackreciver("select option", btns)
 			if err != nil {
 				return err
 			}
-
 			switch callback.Data {
-			case "Add Help Pages":
-				calls.Alertsender("This feature is not available yet. Please check back later.")
-			case "Add Inline Post":
-				replymg, err = calls.Sendreciver("Send Name for New template")
+			case "As Help Page":
+				btns.Reset([]int16{2})
+				
+				btns.AddBtcommon(C.TmpHelpInfoPage)
+				btns.AddBtcommon(C.TmplHelpBuilderHelp)
+				btns.AddBtcommon(C.TmplHelpTuto)
+				btns.AddBtcommon(C.TmpHelpCmPage)
+
+				callback, err = calls.Callbackreciver("select help page type ", btns) 
 				if err != nil {
 					return err
 				}
-				if _, ok := Templates[replymg.Text]; ok {
-					calls.Alertsender("their is alredy template with this name try again")
-					continue selecttmpl
+				template := Templates[templatename]
+				delete(Templates, templatename)
+
+				help := *a.ctrl.GetHelepCmdInfo()
+				
+				switch callback.Data {
+				case C.TmpHelpInfoPage:
+					help.InfoPageCount++
+					templatename = C.TmpHelpInfoPage+ strconv.Itoa(int(help.InfoPageCount))
+				case C.TmplHelpBuilderHelp:
+					help.BuilderHelp++
+					templatename = C.TmplHelpBuilderHelp+ strconv.Itoa(int(help.BuilderHelp))
+				case C.TmplHelpTuto:
+					help.TutorialPageCount++
+					templatename = C.TmplHelpTuto+ strconv.Itoa(int(help.TutorialPageCount))
+				case C.TmpHelpCmPage:
+					help.CommandPageCount++
+					templatename = C.TmpHelpCmPage+ strconv.Itoa(int(help.CommandPageCount))
 				}
-				Templates[replymg.Text] = map[string]*botapi.MgItem{
-					"en": {
-
-					},
+				Templates[templatename] = template
+				file, err := os.OpenFile("./config.json", os.O_RDWR, 0644)
+				if err != nil {
+					calls.Alertsender("config.json file open error " + err.Error())
+					break
 				}
-				calls.Alertsender("New Template Created, Now You can Edit It, Also You have to Add this Template Name Into config.json's metadata.inline_post in order to recive the post via inline mode")
+				cont, err := io.ReadAll(file)
+				if err != nil {
+					calls.Alertsender("config.json file read err: " + err.Error())
+					file.Close()
+					break
+				}
+				var cf C.Botoptions
+				err = json.Unmarshal(cont, &cf)
+				if err != nil {
+					calls.Alertsender("config.json file unmarshal json err: " + err.Error())
+					file.Close()
+					break
+				}
+				if cf.Metadata != nil {
+					cf.Metadata.HelperInfo = help
+				}
 
-			case C.BtnClose:
-				return nil
-			case C.BtnBack:
-				state = 0
-
-
+				bt, err := json.Marshal(cf)
+				if err == nil {
+					file.Seek(0, 0)
+					n, err := file.Write(bt)
+					if err != nil {
+						calls.Alertsender("config.json file write err: " + err.Error())
+						file.Close()
+						break
+					}
+					file.Truncate(int64(n))
+				}
+				file.Close()
+				calls.Alertsender("✅ New Help template created successfully! (need restart)")
+			case "Default":
+				break
+			case "As Inline Post":
+				file, err := os.OpenFile("./config.json", os.O_RDWR, 0644)
+				if err != nil {
+					calls.Alertsender("config.json file open error " + err.Error())
+					break
+				}
+				cont, err := io.ReadAll(file)
+				if err != nil {
+					calls.Alertsender("config.json file read err: " + err.Error())
+					file.Close()
+					break
+				}
+				var cf C.Botoptions
+				err = json.Unmarshal(cont, &cf)
+				if err != nil {
+					calls.Alertsender("config.json file unmarshal json err: " + err.Error())
+					file.Close()
+					break
+				}
+				var post C.InlinePost
+				post.Name = replymg.Text
+				replymg, err = calls.Sendreciver("Send Discription for the inline post")
+				if err != nil {
+					return err
+				}
+				post.Dis = replymg.Text
+				replymg, err = calls.Sendreciver("Send Title for the inline post")
+				if err != nil {
+					return err
+				}
+				post.Title = replymg.Text
+				if cf.Metadata != nil {
+					cf.Metadata.InlinePost = append(cf.Metadata.InlinePost, post)
+				}
+				bt, err := json.Marshal(cf)
+				if err == nil {
+					file.Seek(0, 0)
+					n, err := file.Write(bt)
+					if err != nil {
+						calls.Alertsender("config.json file write err: " + err.Error())
+						file.Close()
+						break
+					}
+					file.Truncate(int64(n))
+				}
+				file.Close()
+				calls.Alertsender("✅ New template created successfully! (need restart)")
 			}
-
-
+			state = 0
 		case 3:
 			btns.Reset([]int16{2})
 			if currentpage < maxpages {
@@ -929,11 +1308,9 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 				btns.AddBtcommon("next")
 			}
 			btns.AddCloseBack()
-	
 			if callback, err = calls.Callbackreciver("select template", btns); err != nil {
 				return err
 			}
-	
 			switch callback.Data {
 			case "next":
 				currentpage++
@@ -946,38 +1323,19 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 				currentpage--
 				continue selecttmpl
 			case C.BtnClose:
-				
-				rep, err := calls.Sendreciver("you'r current template will save,  do you want to continue, then send ok")
-				if err != nil {
-					return err
-				}
-			
-				if rep.Text != "ok" {
-					calls.Alertsender("Closing Canceld Continue Editing")
-				}
-				calls.Alertsender("Editor Closed, Saving Template..")
-	
 				break selecttmpl
 			}
-	
-	
 			btns.Reset([]int16{2})
-	
 			selectedtemplate := Templates[callback.Data]
-	
 			for langcode := range selectedtemplate {
 				btns.AddBtcommon(langcode)
 			}
-	
 			btns.Addbutton("create lang template","crtt", "")
 	
 			if callback, err = calls.Callbackreciver("select langcode or create template using new langcode", btns); err != nil {
 				return err
 			}
-	
-	
 			var replymg *tgbotapi.Message
-	
 			if callback.Data == "crtt" {
 				replymg, err = calls.Sendreciver("send new langcode, if you send exting code current item will replace with new template boilerplate")
 				if err != nil {
@@ -986,37 +1344,26 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 				selectedtemplate[replymg.Text] = &botapi.MgItem{}
 				callback.Data = replymg.Text
 			}
-	
 			selectedItem := selectedtemplate[callback.Data]
 	
 	
-			editable := []string{
-				"msg_template", 
-				"alt_med_url", 
-				"parse_mode", 
-				"include_media", 
-				"media_type", 
-				"media_id", 
-				"continue_media", 
-				"disabled", 
-				"skip_text", 
-				"contin_skip_text", 
-				"alt_med_path",  
-				"supercontinue", 
-	
-			}
-	
 			var mode = "prv"
 			
-	
+			buf := &botapi.PreBuuf{
+				Buffer: &bytes.Buffer{},
+			}
 			var msghook = func (original *botapi.MgItem) any {
 				switch mode {
 				case "dt":
-					kk, err := json.MarshalIndent(original, "", " ")
+					buf.Reset()
+					dc := json.NewEncoder(buf)
+					dc.SetIndent("", " ")
+					err = dc.Encode(original)
 					if err != nil {
-						return "Errpr"		
+						buf = nil
+						return "Encoding Error"		
 					}
-					return botapi.Htmlstring("<pre>" + string(kk) + "</pre>")
+					return buf
 				default:
 					return &botapi.Message{
 						Msg: original.Msgtmpl            ,
@@ -1027,17 +1374,12 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 						ContinueMed: false,
 						SuperContinue: false,
 					}
-				}
-	
-				
+				}				
 			}
 	
 			itemchange:
 			for {
-				
-				
 				btns.Reset([]int16{2})
-	
 				switch mode {
 				case "prv":
 					btns.Addbutton("As Detail 💠", "modebt", "")
@@ -1048,8 +1390,6 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					btns.AddBtcommon(editname)
 				}
 				btns.AddBtcommon("Done")
-
-	
 				if callback, err  = calls.Callbackreciver(msghook(selectedItem), btns); err != nil {
 					if errors.Is(err, C.ErrContextDead) {
 						return err
@@ -1059,7 +1399,6 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					continue itemchange
 					
 				}
-	
 				switch callback.Data {
 				case "modebt":
 					switch mode {
@@ -1114,7 +1453,10 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					}
 
 					calls.Alertsender("If this Newly Uploded Media You will Need to Restart Editor to See it In preview Mode")
-
+				case "btnconf":
+					calls.Alertsender("example button := btn1[https://t.me]" )
+					Messagesession.SendExtranal(botapi.Htmlstring(`Example Btn JSON Config : {\n\"btns\": [[\"line1btn1[https://t.me]\", \"line1btn1[https://t.me]\"],\n[\"line2btn1[https://t.me]\"],\n[\"line3btn1[https://t.me]\"\n]]}`), nil, "", true)
+					fallthrough
 				default:
 					value, err := calls.Sendreciver("send you'r new value for, send /cancel to cancel " + callback.Data)
 					if err != nil {
@@ -1126,330 +1468,166 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					if err = selectedItem.ChangeField(callback.Data, value.Text); err != nil {
 						calls.Alertsender(" field changing failed err - "+ err.Error())
 					}
-	
 				}
-	
 			}
-
 		}
 	}
-	Messagesession.DeleteAllMsg()
-	return nil
-
-}
-
-func (a *Adminsrv) SwapMode() {
-	a.modeUser.Store(!a.modeUser.Load()) //this is okay with this, no heavy concurrent calls to this
-}
-
-func (a *Adminsrv) AdminMode() bool {
-	return !a.modeUser.Load()
-}
-
-func (a *Adminsrv) activeUserStatus(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
-	activeusr := a.ctrl.Boxapi.GetAllUserStatus()
-	btns := botapi.NewButtons([]int16{2})
-	
-	var (
-		callback *tgbotapi.CallbackQuery
-		err error
-		online map[int]opts.UserStatus
-		onlineIDS []int
-	)
-	for {
-		btns.Reset([]int16{2})
-		btns.AddBtcommon("Online")
-		btns.AddBtcommon("All")
-		btns.AddClose(false)
-
-		callback, err = calls.Callbackreciver("select option", btns)
-		if err != nil {
-			break
-		}
-
-		switch callback.Data {
-		case "Online":
-			if online != nil || len(online) == len(activeusr) {
-				online = make(map[int]opts.UserStatus, len(activeusr))
-				onlineIDS = make([]int, len(activeusr))
-				for id, user := range activeusr {
-					if len(user.Ip) > 0 {
-						online[id] = user
-						onlineIDS = append(onlineIDS, id)
-					}
-				}
-			}
-
-		case "All":
-			online = activeusr
-			onlineIDS = C.MapToSliceKey(activeusr)
-		}
-
-		if len(online) == 0 {
-			calls.Alertsender("no any active conf can be found")
-			continue
-		}
-
-	
-		pagecount := len(online)/eachpagebtn
-		currentPage := 1
-		configs:
-		for {
-			btns.Reset([]int16{2})
-			to := currentPage*eachpagebtn
-			if to > len(online) {
-				to = (currentPage-1)*eachpagebtn + len(online)%eachpagebtn
-			}
-			for i := (currentPage-1)*eachpagebtn; i < to; i++ {
-				btns.AddBtcommon(strconv.Itoa(onlineIDS[i]))
-			}
-			
-			if currentPage < pagecount || (currentPage == pagecount &&  len(online)%eachpagebtn > 0) {
-				btns.AddBtcommon(C.BtnNext)
-			}
-			btns.AddCloseBack()
-			callback, err = calls.Callbackreciver("select config to see info", btns)
-			if err != nil {
-				return err
-			}
-			switch callback.Data {
-			case C.BtnNext:
-				currentPage++
-			case C.BtnClose:
-				return nil
-			case C.BtnBack:
-				if currentPage == 1 {
-					break configs
-				}
-				currentPage--
-			default:
-				id, err := strconv.Atoi(callback.Data)
-				if err != nil {
-					continue
-				}
-				user, err := a.ctrl.GetUserByConfID(int64(id))
-				if err != nil {
-					calls.Alertsender("user loading failed " + err.Error())
-					continue
-				}
-				err = a.loaduserinfo(upx, Messagesession, calls, strconv.Itoa(int(user.TgID)))
-				if err != nil {
-					if errors.Is(err, C.ErrContextDead) {
-						return err
-					}
-					a.logger.Error("failed loaduser ", zap.Error(err))
-					calls.Alertsender("user loading failed " + err.Error())
-				}
-			}
-		}
-		
-		
-
-	}
-	Messagesession.DeleteAllMsg()
-	return err
-
-
-}
-
-var eachpagebtn = 10
-
-
-//TODO: edit templates. edit configs, edit usermsgs, make restarts
-// after change of config, it should restart program
-
-func (a *Adminsrv) RefreshMsgsession() error {
 	return nil
 }
-
-
-func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
-	callbackreciver := calls.Callbackreciver
-	sendreciver := calls.Sendreciver
-	alertsender := calls.Alertsender
-	
-	
-	btns := botapi.NewButtons([]int16{2})
-
-
-	var (
-		state int
-		callback *tgbotapi.CallbackQuery
-		err error
-	)
-	mainloop:
-	for {
-
-		btns.Reset([]int16{2})
-
-		switch state {
-		case 0:
-			btns.AddBtcommon("🔴 Change Config Settings")
-			btns.Addbutton("🔴 Reset Usage", "reset-usage", "")
-			btns.Addbutton("🔴 Restart", "Restart", "")
-			btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
-			btns.Addbutton("Reset Lang Codes", "langchg", "")
-			btns.AddClose(true)
-			
-			if callback, err = callbackreciver("select", btns); err != nil {
-				break mainloop
-			}
-
-			switch callback.Data {
-			case "reset-usage":
-				calls.Alertsender("warning: If you Reset Usages New 30Days Cycle Begin From Here")
-				reply, err := calls.Sendreciver("if you want to continue send ok")
-				if err != nil {
-					return err
-				}
-				if reply.Text != "ok" {
-					calls.Alertsender("canceld usage reset")
-					continue mainloop
-				}
-				calls.Alertsender("Usage Reset Added, If you want to undo this You have backup DB")
-				a.ctrl.Addquemg(controller.ForceResetUsage(1))
-				break mainloop
-			case "Change Config Settings":
-				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴")
-				alertsender("very carefull when you changing the config, if you make something wrong program will not restart correctly")
-				state = 1
-			case "Restart":
-				Messagesession.DeleteAllMsg()
-				err = sendSIGHUP()
-				if err != nil {
-					Messagesession.SendAlert("Restart Signal Sending Failed "+ err.Error(), nil)
-				}
-				break mainloop
-			case "remlimit":
-				
-				btns.Reset([]int16{2})
-				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴 do thease if you realy want")
-				btns.Addcancle()
-				btns.AddBtcommon("proceed")
-				if callback, err = callbackreciver("this will remove everyone's monthlimitations do you want to continue ?", btns); err != nil {
-					break mainloop
-				}
-
-				if callback.Data != "proceed" {
-					continue
-				}
-				Messagesession.DeleteAllMsg()
-				err = a.ctrl.RemoveAllLimits()
-				if err != nil {
-					Messagesession.SendAlert("db update err "+ err.Error(), nil)
-					continue
-				}
-				a.ctrl.Addquemg( &botapi.Msgcommon{
-					Infocontext: &botapi.Infocontext{
-						User_id: a.ctrl.SudoAdmin,
-						ChatId: a.ctrl.SudoAdmin,
-					},
-					Text: "Month Limitation Remove And Db Refreshed",
-				})
-				return nil
-			case "langchg":
-								
-				btns.Reset([]int16{2})
-				btns.Addcancle()
-				btns.AddBtcommon("proceed")
-				if callback, err = callbackreciver("this will reset everyone's lang code to default lang code", btns); err != nil {
-					break mainloop
-				}
-
-				if callback.Data != "proceed" {
-					continue
-				}
-				Messagesession.DeleteAllMsg()
-				err = a.ctrl.ResetLangCode()
-				if err != nil {
-					Messagesession.SendAlert("db update err "+ err.Error(), nil)
-					continue
-				}
-				a.ctrl.Addquemg( &botapi.Msgcommon{
-					Infocontext: &botapi.Infocontext{
-						User_id: a.ctrl.SudoAdmin,
-						ChatId: a.ctrl.SudoAdmin,
-					},
-					Text: "lang code changed",
-				})
-				return nil
-
-			case C.BtnClose:
-				Messagesession.DeleteAllMsg()
-				alertsender("manager closed")
-				break mainloop
-			default:
-				Messagesession.DeleteAllMsg()
-				alertsender("not Available yet")
-				break mainloop
-			}
-		case 1:
-			config, err := os.ReadFile("config.json")
-			if err != nil {
-				Messagesession.SendAlert("config open err" + err.Error(), nil)
-				state = 0
-				continue
-			}
-
-			cont := "<code>" + string(config) + "</code>"
-
-			btns.AddBtcommon("Replace")
-			btns.AddBack(false)
-			btns.AddClose(false)
-			
-
-			if callback, err = callbackreciver(botapi.Htmlstring(cont), btns); err != nil {
-				fmt.Println(err)
-				break mainloop 
-			}
-
-			switch callback.Data {
-			case C.BtnClose:
-				break mainloop
-			case C.BtnBack:
-				state = 0 
-				continue
-			case "Replace":
-				//TODO:ADD warning
-				newcont, err := sendreciver("warning: you must send correct config, if not program will not restart correctly, also you have to restart program to take effect new config,  send new config")
-				if err != nil {
-					break mainloop
-
-				}
-				file, err := os.OpenFile("config.json", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-				if err != nil {
-					Messagesession.SendAlert("file opening err " + err.Error(), nil)
-				}
-				file.Truncate(0)
-				_, err = file.Write([]byte(newcont.Text))
-				file.Close()
-				if err != nil {
-					Messagesession.SendAlert("file opening err " + err.Error(), nil)
-				}
-				Messagesession.SendAlert("you need to restart program to take effect", nil)
-				state = 0
-
-			}
-		case 2:
-		default:
-			Messagesession.DeleteAllMsg()
-			break mainloop
+func (a *Adminsrv) vpnConfig(Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	calls.Alertsender("⚠️ Please proceed with caution! Even a small mistake can disrupt the system. Double-check before making changes.")
+	build := &confBuilder{
+		Tgcalls: calls,
+		ctx: a.ctx,
+		Messagesession: Messagesession,
+		btns: botapi.NewButtons([]int16{2}),
+		wiz: a.xraywiz,
+		store: a.xraywiz.bulderstore,
 		
-		}
-
-
+		disableTimeout: true,
+		singlemode: true,
+		disableAutoSave: true,
+		disableFieldSkip: true,
 	}
-	
-	return err
 
-}
-
-
-func sendSIGHUP() error{
-	pid := os.Getpid()
-	process, err := os.FindProcess(pid)
+	var err error
+	build.Builder, err = builder.NewBuilderFromFile(build, a.ctrl.SboxConfPath())
 	if err != nil {
-		return errors.New("Error finding process: " + err.Error())
+		Messagesession.SendAlert("builder creare failed "+ err.Error(), nil)
+		return nil
 	}
-	return process.Signal(syscall.SIGHUP)
+	build.Builder.CallBack = func() builder.Buf {
+		return &botapi.PreBuuf{
+			Buffer: &bytes.Buffer{},
+		}
+	}
+	build.Builder.Disableautosave = true
+	calls.Alertsender("after doing all edits close the builder then you will be asked to save or cancel")
+	time.Sleep(3 * time.Second)
+	build.run()
+	return nil
+}
+func (a *Adminsrv) botconfig(Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	calls.Alertsender("⚠️ Please proceed with caution! Even a small mistake can disrupt the system. Double-check before making changes.")
+	
+	conf := C.Botoptions{}
+	f, err := os.ReadFile("config.json")
+	if err != nil {
+		Messagesession.SendAlert("file open error: " + err.Error(), nil)
+		return err
+	}
+	err = json.Unmarshal(f, &conf)
+	if err != nil {
+		Messagesession.SendAlert("json unmarshal err: " + err.Error(), nil)
+		return err
+	}
+
+	a.ctrl.IncCriticalOp()
+	defer a.ctrl.DecCriticalOp()
+
+	pre := botapi.PreBuuf{
+		Buffer: &bytes.Buffer{},
+	}
+	conec := builder.NewConnector(calls)
+	wlkr, _ := walker.NewWalker(&conf)
+	wlkr.SetValue = func(curval reflect.Value, path string, wlkr *walker.Walker, item any)  (reflect.Value, bool) {
+		switch curval.Kind() {
+		case reflect.String:
+			s, err := conec.ReciveVal("send new string value")
+			if err != nil {
+				break
+			}
+			return reflect.ValueOf(s), true
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+			s, err := conec.ReciveVal("send new string value")
+			if err != nil {
+				break
+			}
+			d, err := strconv.Atoi(s)
+			if err != nil {
+				break
+			}
+			switch curval.Kind() {
+			case reflect.Int16:
+				return reflect.ValueOf(int16(d)), true
+			case reflect.Int32:
+				return reflect.ValueOf(int32(d)), true
+			case reflect.Int64:
+				return reflect.ValueOf(int64(d)), true
+			case reflect.Int:
+				return reflect.ValueOf(d), true
+			}
+		default:
+			if curval.Type().String() == "constbot.InlinePost" {
+				return reflect.ValueOf(C.InlinePost{
+					//TODO: fill here
+				}), true
+			}
+		}
+
+		return reflect.Value{}, false
+	}
+	wlkr.CanSetCheck = func(val reflect.Value, nextItemPath string, wlkr *walker.Walker) bool {
+		switch val.Type().String() {
+		case "constbot.InlinePost":
+			return true
+		}
+		return false
+	}
+
+	//TODO: remove this after stablizing the walker (almost)
+	defer func() {
+		if r := recover(); r != nil {
+			a.logger.Error("panic recovered in botconfig", zap.Any("recover", r))
+			Messagesession.SendAlert("An unexpected error occurred. Please try again later. Or send the error to dev", nil)
+		}
+	}()
+
+	err = builder.AnyFieldChange(wlkr, &conf, conec, func(item any) any {
+		itm, ok := wlkr.CurrentPtrIface()
+		if ok {
+			pre.Reset()
+			enc := json.NewEncoder(&pre)
+			enc.SetIndent("", " ")
+			err = enc.Encode(itm)
+			if err != nil {
+				return "json Encode Err " + err.Error()
+			}
+			return &pre
+		} else {
+			return "current item cannot be marshal"
+		}
+	})
+
+	if err != nil {
+		Messagesession.SendAlert("field change got err: " + err.Error(), nil)
+		return err
+	}
+
+	rep, err := calls.Sendreciver("you'r current template will save,  do you want to continue, then send ok")
+	if err != nil {
+		Messagesession.SendAlert("field change got err: " + err.Error(), nil)
+		return err
+	}
+	if rep.Text != "ok" {
+		calls.Alertsender("All changes you made will not be saved.")
+		return nil
+	}
+	file, err := os.OpenFile("config.json", os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	m, err := json.MarshalIndent(&conf, "", " ")
+	if err != nil {
+		calls.Alertsender( "Encode Err " + err.Error() + "All changes you made will not be saved.")
+		return nil
+	}
+	n, err := file.Write(m)
+	if err != nil {
+		calls.Alertsender( "Write Err " + err.Error() + "All changes you made will not be saved.")
+		return nil
+	}
+	file.Truncate(int64(n))
+	return nil
 }

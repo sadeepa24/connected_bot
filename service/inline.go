@@ -41,30 +41,33 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 	if upx.Update.InlineQuery == nil {
 		return errors.New("no inline quary found")
 	}
-
-	if upx.Update.InlineQuery.Query != "" {
-		return errors.New("empty inline quary")
-	}
 	quary := upx.Update.InlineQuery
-
 	//var sendquary io.Reader 
 	answere := &tgbotapi.AnswerInlineQuery{
 		InlineQueryId: quary.ID,
+		Is_personal: true,
+		ChacheTIme: 3600,
 	}
 
 	posts := a.ctrl.GetInlinePost()
+	if len(posts) == 0 {
+		return nil
+	}
 	btns := botapi.NewButtons([]int16{2, 1})
-
 	btns.AddUrlbutton("Channel", a.ctrl.Channelink)
 	btns.AddUrlbutton("Group", a.ctrl.GroupLink)
 	btns.AddUrlbutton("Bot", a.ctrl.Botlink)
 	btns.SetOveride()
 
 	for i, post := range posts {
-		message, err := a.botapi.GetMgStore().GetMessage(post, "en", struct{}{})
+		message, err := a.botapi.GetMgStore().GetMessage(post.Name, "en", struct{}{})
 		if err != nil {
 			continue
 		}
+		if message.Keyboard != nil {
+			btns.OverideKeyboard(message.Keyboard)
+		}
+
 		if message.Includemed {
 			switch message.MedType {
 				case constbot.MedPhoto:
@@ -73,11 +76,9 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 						Caption: message.Msg,
 						ID: strconv.Itoa(i),
 						Type: "photo",
-						ReplyMarkup: struct{
-							Keyboard [][]botapi.InlineKeyboardButton `json:"inline_keyboard,omitempty"`
-						}{
-							Keyboard: btns.Getkeyboard().Inline_keyboard,
-						},
+						Description: "post.Dis",
+						Title: "post Title",
+						ReplyMarkup: btns.GetkeyboardCopy(),
 						PhotoID: message.MediaId,
 					})	
 				case constbot.MedVideo:
@@ -85,17 +86,28 @@ func (a *InlineService) Exec(upx *update.Updatectx) error {
 						ParseMode: message.ParseMode,
 						Caption: message.Msg,
 						Type: "video",
-						ReplyMarkup: struct{
-							Keyboard [][]botapi.InlineKeyboardButton `json:"inline_keyboard,omitempty"`
-						}{
-							Keyboard: btns.Getkeyboard().Inline_keyboard,
-						},
+						Description: post.Dis,
+						Title: post.Title,
+						ReplyMarkup: btns.GetkeyboardCopy(),
 					})
 			}
-		} else {
+		}
+
+		if message.Keyboard != nil {
+			btns.ResetNoOveride([]int16{2})
+			btns.AddUrlbutton("Channel", a.ctrl.Channelink)
+			btns.AddUrlbutton("Group", a.ctrl.GroupLink)
+			btns.AddUrlbutton("Bot", a.ctrl.Botlink)
 		}
 	}
-	a.botapi.Makerequest(upx.Ctx, "POST", constbot.ApiMethodAnswereInline, &botapi.BotReader{RealOb: answere})
+
+	if len(answere.Results) == 0 {
+		return errors.New("inline quary found with no answere")
+	}
+	_, err := a.botapi.Makerequest(upx.Ctx, "POST", constbot.ApiMethodAnswereInline, &botapi.BotReader{RealOb: answere})
+	if err != nil {
+		a.logger.Error("Inline Quary Send Error: " + err.Error())
+	}
 	return nil
 }
 

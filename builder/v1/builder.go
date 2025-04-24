@@ -7,12 +7,13 @@ import (
 	"io"
 	"net/netip"
 	"os"
+	"reflect"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/sbox"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
 	sboxConst "github.com/sagernet/sing-box/constant"
 
 	// option "github.com/sagernet/sing-box/option"
@@ -20,6 +21,15 @@ import (
 	singJson "github.com/sagernet/sing/common/json"
 	"go.uber.org/zap"
 )
+
+
+type ItemEditor struct {
+	item reflect.Value
+}
+
+
+
+
 
 type BuildConfig struct {
 	ctx context.Context //builder life
@@ -109,11 +119,6 @@ func NewBuilder(ctx context.Context, path string, store *ConfigStore, logger *za
 	return build, nil
 }
 
-// optional
-func (b *BuildConfig) AddExperminatl() error {
-
-	return nil
-}
 
 func (b *BuildConfig) preconfig() {
 	b.config = option.Options{
@@ -219,9 +224,11 @@ func (b *BuildConfig) BuildDefaultLog() error {
 func (b *BuildConfig) BuildDefaultDns() error {
 	if b.config.DNS == nil {
 		b.config.DNS = &option.DNSOptions{
-			Servers:          []option.DNSServerOptions{},
-			DNSClientOptions: option.DNSClientOptions{},
-			Rules:            []option.DNSRule{},
+		
+				Servers:          []option.DNSServerOptions{},
+				DNSClientOptions: option.DNSClientOptions{},
+				Rules:            []option.DNSRule{},
+			
 		}
 		//b.DnsOpt = b.config.DNS
 	}
@@ -991,7 +998,7 @@ func (b *BuildConfig) RemoveOutbound(tagName string) error {
 }
 
 // this can add outbound via userconfig only support vless ws
-func (b *BuildConfig) AddOutbound(sboxot db.Config, serverIN sbox.Inboud, sni string) error {
+func (b *BuildConfig) AddOutbound(sboxot db.Config, serverIN sbConf.Inboud, sni string) error {
 
 	if _, ok := b.outbounds[sboxot.Name]; ok {
 		return errors.New("outbound already exit")
@@ -1001,12 +1008,13 @@ func (b *BuildConfig) AddOutbound(sboxot db.Config, serverIN sbox.Inboud, sni st
 		sni = "connectebot"
 	}
 
+	//TODO: fetch the inbound according to config selection use it to make config
 	vlessOutbound := option.Outbound{
-		Type: sboxot.Type,
+		Type: "notype yet", //TODO: change later critical
 		Tag:  sboxot.Name,
 	}
 
-	switch sboxot.Type {
+	switch "sboxot.Type" {
 	case C.Vless:
 		vlessOutbound.VLESSOptions = option.VLESSOutboundOptions{
 			UUID: sboxot.UUID,
@@ -1023,10 +1031,10 @@ func (b *BuildConfig) AddOutbound(sboxot db.Config, serverIN sbox.Inboud, sni st
 	//obfshost := b.ReqSni()
 	obfshost := sni
 
-	switch serverIN.Transporttype {
+	switch serverIN.TransPortType {
 	case "ws":
 		vlessOutbound.VLESSOptions.Transport = &option.V2RayTransportOptions{
-			Type: serverIN.Transporttype,
+			Type: serverIN.TransPortType,
 			WebsocketOptions: option.V2RayWebsocketOptions{
 
 				Headers: option.HTTPHeader{
@@ -1119,6 +1127,7 @@ func (b *BuildConfig) ChangeDialer(outname, changer, value string) error {
 	if !ok {
 		return errors.New("outbound not found")
 	}
+
 	return out.ChangeDialer(changer, value)
 }
 func (b *BuildConfig) ChangeMultiplex(outname, changer, value string) error {
@@ -1243,13 +1252,7 @@ func (b *BuildConfig) RemoveTls(tag string) error {
 	return errors.New("outbound not found")
 }
 
-// Inbounds handling
-func (b *BuildConfig) AddInbound(preName string) error {
 
-	//TODO: should add default inbound tun
-	// can add proxy inbounds stuff
-	return nil
-}
 
 func (b *BuildConfig) RemoveInbound(tagName string) error {
 
@@ -1536,3 +1539,4 @@ func readConfigAt(file io.Reader) (*OptionsEntry, error) {
 		options: options,
 	}, nil
 }
+

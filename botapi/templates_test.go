@@ -19,22 +19,22 @@ func TestTmpl(t *testing.T) {
 	fmt.Println(mg)
 }
 
-func TestKeyboardMarshell(t *testing.T ) {
-	buf, err := botapi.Createkeyboard(&botapi.InlineKeyboardMarkup{
-		InlineKeyboard: [][]botapi.InlineKeyboardButton{
-			{
-				{
-					Text: "btn1",
-					URL: "btnurl1",
-				},	
-			},
-			{
-				{
-					Text: "btn2",
-					URL: `https://t.me`,
-				},	
-			},
-		},
-	})
-	fmt.Println(string(buf), err)
-}
+// func TestKeyboardMarshell(t *testing.T ) {
+// 	buf, err := botapi.Createkeyboard(&botapi.InlineKeyboardMarkup{
+// 		InlineKeyboard: [][]botapi.InlineKeyboardButton{
+// 			{
+// 				{
+// 					Text: "btn1",
+// 					URL: "btnurl1",
+// 				},	
+// 			},
+// 			{
+// 				{
+// 					Text: "btn2",
+// 					URL: `https://t.me`,
+// 				},	
+// 			},
+// 		},
+// 	})
+// 	fmt.Println(string(buf), err)
+// }

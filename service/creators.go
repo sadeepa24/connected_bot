@@ -22,8 +22,7 @@ func CreateConfig(opts common.OptionExcutors) error {
 		callback *tgbotapi.CallbackQuery
 	)
 
-	cuurentIns := map[int16]string{}
-
+	cuurentIns := make(map[int16]string, len(opts.Ctrl.Inbounds))
 	//select inbound for new config
 	inselectloop:
 	for {
@@ -170,13 +169,17 @@ func CreateConfig(opts common.OptionExcutors) error {
 	if err != nil {
 		Messagesession.DeleteAllMsg()
 		Messagesession.SendAlert("Bandwidth Recive Failed", nil)
+		Messagesession.SendError(err, "")
 		return err
 	}
-	if _, err = Messagesession.SendNew(C.GetMsg(C.MsgGetName), nil, ""); err != nil {
+	if _, err = Messagesession.Edit(C.GetMsg(C.MsgGetName), nil, ""); err != nil {
 		return err
 	}
 	confName, err := common.ReciveName(opts.Tgcalls)
 	if err != nil {
+		Messagesession.DeleteAllMsg()
+		Messagesession.SendAlert("Name Recive Failed", nil)
+		Messagesession.SendError(err, "")
 		return err
 	}
 	if _, err := Messagesession.EditText(C.GetMsg(C.MsgCrLogin), nil); err != nil {
@@ -186,13 +189,18 @@ func CreateConfig(opts common.OptionExcutors) error {
 	}
 	LoginLimit, err := common.ReciveInt(opts.Tgcalls, int(opts.Ctrl.LoginLimit), 0)
 	if err != nil {
+		Messagesession.SendAlert("LoginLimit Recive Failed", nil)
+		Messagesession.SendError(err, "")
 		return err
 	}
+	opts.Ctrl.IncCriticalOp()
+	defer opts.Ctrl.DecCriticalOp()
 	newconfig, err := Usersession.AddNewConfig(C.MapToSliceKey(cuurentIns), int16(outID), C.Bwidth(quotafroconfig).GbtoByte(), int16(LoginLimit), confName)
 	if err != nil {
 		Messagesession.SendError(err, C.GetMsg(C.MsgCrFailed))
 		return err
 	}
+
 	Messagesession.DeleteAllMsg()
 	Messagesession.SendAlert(C.GetMsg(C.MsgCrsuccsess), nil)
 	Messagesession.SendExtranal(struct {

@@ -25,6 +25,7 @@ type Inboud struct {
 	Custom_info     string
 	Domain          string
 	PublicIp        string
+	//opts 			*option.Options
 }
 
 type ExportInfo struct {
@@ -124,8 +125,6 @@ func (in *Inboud) AddOption(opts option.Inbound) error {
 		}
 		in.setListenInfo(tuic.ListenOptions)
 		in.setTLSInfo(tuic.TLS)
-	//TODO: add proto
-
 	default:
 		return C.ErrNotsupported
 

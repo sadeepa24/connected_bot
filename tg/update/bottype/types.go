@@ -83,9 +83,4 @@ func (f FullUsage) Today() C.Bwidth {
 	return f.Uploadtd + f.Downloadtd
 }
 
-type HelpCommandInfo struct {
-	InfoPageCount     int16 `json:"info_pages"`
-	TutorialPageCount int16 `json:"tuto_pages"`
-	CommandPageCount  int16 `json:"cmd_pages"`
-	BuilderHelp       int16 `json:"builder_pages"`
-}
+

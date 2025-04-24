@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	connected "github.com/sadeepa24/connected_bot"
+	C "github.com/sadeepa24/connected_bot/constbot"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -30,7 +31,7 @@ func main() {
 	}
 }
 
-func runConnected(botoptions connected.Botoptions) error {
+func runConnected(botoptions C.Botoptions) error {
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(osSignals)
@@ -69,22 +70,15 @@ func runConnected(botoptions connected.Botoptions) error {
 }
 
 
-func getBotOption() (connected.Botoptions, error) {
+func getBotOption() (C.Botoptions, error) {
 	botoption, err := readBotConfig()
 	if err != nil {
 		return botoption, err
 	}
 	botoption.Ctx = Mainctx
-	// opt, err := readsboxconfigAT(botoption.SboxConfPath)
-	// if err != nil {
-	// 	return botoption, err
-	// }
-	// botoption.Sboxoption = opt.options
-
 	if botoption.LoggerOption.Encoding == "" {
 		botoption.LoggerOption.Encoding = "console"
 	}
-	
 	if len(botoption.LoggerOption.Paths) == 0 {
 		botoption.LoggerOption.Paths = append(botoption.LoggerOption.Paths, "stdout")
 	}
@@ -121,17 +115,12 @@ func getBotOption() (connected.Botoptions, error) {
 		log.Fatal("logger Building err - "+ err.Error() )
 	}
 	botoption.Logger = logger
-	
-	// if botoption.Templates, err = readTmpl(botoption.TemplatesPath); err != nil {
-	// 	return botoption, err
-	// }
-
 	return botoption, nil
 }
 
-func readBotConfig() (connected.Botoptions, error) {
+func readBotConfig() (C.Botoptions, error) {
 	file, err := os.ReadFile("./config.json")
-	var opts connected.Botoptions
+	var opts C.Botoptions
 	if err != nil {
 		return opts, err
 	}

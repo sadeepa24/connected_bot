@@ -35,7 +35,7 @@ const (
 	MB string = "MB"
 	GB string = "GB"
 
-	Dbbatchsize int = 100
+	Dbbatchsize int = 500
 
 	Vless  string = "vless"
 	Trojan string = "trojan"

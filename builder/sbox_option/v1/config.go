@@ -3,8 +3,6 @@ package sboxoption
 import (
 	"bytes"
 
-	"github.com/jinzhu/copier"
-	singopt "github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 )
 
@@ -33,12 +31,7 @@ func (o *Options) UnmarshalJSON(content []byte) error {
 	return nil
 }
 
-func (o *Options) SagerNetOpt() singopt.Options {
-	//TODO: Remove this copy method, and add manual coping
-	var singoptions singopt.Options
-	copier.Copy(&singoptions, o)
-	return singoptions
-}
+
 
 type LogOptions struct {
 	Disabled     bool   `json:"disabled,omitempty"`

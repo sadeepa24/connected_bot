@@ -118,9 +118,9 @@ const (
 	TmplGetinfoHome string = "getinfo_home"
 	TmpUserInfo string = "getinfo_user"
 	TmplOutInfo string = "getinfo_out"
-	TmpConfigInfo string = "getinfo_usage"
+	TmpConfigInfo string = "getinfo_config"
 	TmplAllIn string = "getinfo_allin"
 	TmplConfIn string = "getinfo_confin"
-	TmplExport string = "getinfo_in_export"
+	//TmplExport string = "getinfo_in_export"
 )
 

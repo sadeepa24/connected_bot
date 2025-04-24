@@ -9,7 +9,7 @@ import (
 
 	//
 	"github.com/sadeepa24/connected_bot/botapi"
-	"github.com/sadeepa24/connected_bot/builder/v1"
+	"github.com/sadeepa24/connected_bot/builder/v2"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
@@ -30,7 +30,8 @@ type Xraywiz struct {
 
 	MessageStore *botapi.MessageStore
 
-	confstore *builder.ConfigStore
+	bulderstore *builder.Store
+	//confstore *builder.ConfigStore
 
 	builds *sync.Map // current building session
 }
@@ -81,7 +82,7 @@ func (x *Xraywiz) Name() string {
 
 func (x *Xraywiz) Init() error {
 	var err error
-	if x.confstore, err = builder.NewConfStore(x.ctrl.StorePath()); err != nil {
+	if x.bulderstore, err = builder.Newstore(x.ctrl.StorePath()); err != nil {
 		return err
 	}
 	return nil
@@ -137,7 +138,6 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx, Messagesession *botapi.
 	}
 	defer Usersession.Close()
 	opts := common.OptionExcutors{
-		Upx:            upx,
 		Ctrl:           u.ctrl,
 		Usersession:    Usersession,
 		MessageSession: Messagesession,
@@ -193,6 +193,7 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 		return nil
 	}
 
+	//FIXME: change usage
 	usage := Usersession.GetFullUsage()
 
 	if len(Usersession.GetUser().Configs) > 0 {
@@ -201,7 +202,7 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 			btns.Addbutton(config.Name, strconv.Itoa(int(config.Id)), "")
 		}
 		btns.AddClose(true)
-		Messagesession.SendNew(struct {
+		Messagesession.Edit(struct {
 			TDownload     string
 			TUpload       string
 			MDownload     string

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/server"
 	"go.uber.org/zap"
 )
@@ -16,7 +17,7 @@ var ctx = context.Background()
 var zLogger, _ = zap.NewDevelopment()
 
 func TestServer(t *testing.T) {
-	newserver := server.New(context.Background(), &server.ServerOption{}, nil, zLogger)
+	newserver := server.New(context.Background(), &C.ServerOption{}, nil, zLogger)
 
 	go newserver.Start(nil, nil)
 	time.Sleep(2 * time.Second)

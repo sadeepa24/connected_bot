@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	option "github.com/sadeepa24/connected_bot/builder/sbox_option/v1"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"

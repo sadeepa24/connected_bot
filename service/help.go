@@ -10,7 +10,6 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
-	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 )
 
 const (
@@ -31,7 +30,7 @@ type HelpState struct {
 	MaxPages       int
 	PageName       string
 
-	helperinfo bottype.HelpCommandInfo
+	helperinfo *C.HelpCommandInfo
 }
 
 func (h *HelpState) home() error {
@@ -210,7 +209,7 @@ func (u *Usersrv) commandHelpV2(upx *update.Updatectx, Messagesession *botapi.Ms
 			break help
 		}
 		if err != nil || upx.Ctx.Err() != nil {
-			return nil
+			return err
 		}
 	}
 	return nil

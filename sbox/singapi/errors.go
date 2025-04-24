@@ -7,11 +7,16 @@ type Error struct {
 	error
 }
 
+var _ C.Error = (*Error)(nil)
+
 func (e Error) IsBoxErr() bool {
 	return e.boxerr
 }
 func (e Error) UserMsg() string {
 	return e.usermsg
+}
+func (e Error) Exit() bool {
+	return false
 }
 
 var ErrInboundNotFound = Error{

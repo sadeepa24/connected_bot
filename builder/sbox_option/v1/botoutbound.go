@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/gofrs/uuid"
+	"github.com/gofrs/uuid/v5"
 	C "github.com/sagernet/sing-box/constant"
 	E "github.com/sagernet/sing/common/exceptions"
 )

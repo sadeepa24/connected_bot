@@ -38,7 +38,7 @@ type configinfo struct {
 	//*botapi.CommonUsage
 
 	TotalQuota string
-
+	Active bool
 	ConfName string
 	ConfigName string
 	ConfigUUID string
@@ -71,10 +71,7 @@ type configinfo struct {
 
 	//conf.Outbound
 
-	OutName string
-	OutType string
-	OutInfo string
-	Latency int32
+	commonout
 
 	UsageDuration string
 
@@ -100,6 +97,7 @@ type userinfo struct {
 	UsagePercentage float64
 	NonUseCycle int16
 	CapDays int32
+	Points  int64
 
 	CappedQuota string
 
@@ -122,4 +120,11 @@ type exportConfig struct {
 type exportin struct {
 	ProtoUrl string
 	conf.ExportInfo
+}
+
+type commonout struct {
+	OutName string
+	OutType	string
+	OutInfo	string
+	Latency int32
 }

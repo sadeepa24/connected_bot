@@ -44,6 +44,7 @@ const (
 	infostateinbn = 3
 	infostateoutbn = 4
 	infostateconf = 5
+	infostategift = 12
 
 	infostateconfins = 6
 	infostateconfin = 7
@@ -54,9 +55,11 @@ const (
 
 func (g *getinfo) home() error {
 	
-	g.btns.Reset([]int16{2, 2, 1})
+	g.btns.Reset([]int16{2})
 	g.btns.Addbutton(C.BtnUserInfo, C.BtnUserInfo, "")
 	g.btns.Addbutton(C.BtnConfigs, C.BtnConfigs, "")
+	g.btns.AddBtcommon(C.BtnGifts)
+	g.btns.Passline()
 	g.btns.AddBtcommon(C.BtnCheckOutbounds)
 	g.btns.AddBtcommon(C.BtnCheckInbounds)
 	g.btns.AddClose(false)
@@ -82,6 +85,8 @@ func (g *getinfo) home() error {
 		g.state = infostateoutbn
 	case C.BtnCheckInbounds:
 		g.state = infostateinbn
+	case C.BtnGifts:
+		g.state = infostategift
 	}
 	
 	return nil
@@ -172,18 +177,11 @@ func (g *getinfo) alloutinfo() error {
 		g.btns.Reset([]int16{2})
 		g.btns.AddBtcommon(C.BtnoutLatancy)
 		g.btns.AddCloseBack()
-		if _, err = g.Messagesession.Edit(struct {
-			OutName string
-			Info string
-			Latency int32
-			Type string
-
-		}{
+		if _, err = g.Messagesession.Edit(commonout{
 			OutName: out.Name,
-			Info: out.Custom_info,
+			OutType: out.Type,
+			OutInfo: out.Custom_info,
 			Latency: out.Latency.Load(),
-			Type: out.Type,
-
 		}, g.btns, C.TmplOutInfo); err != nil {
 			return nil
 		}
@@ -244,6 +242,7 @@ func (g *getinfo) userinfo() error {
 		ConfCount: g.Usersession.GetUser().ConfigCount,
 		CapEndin:  g.dbuser.Captime.AddDate(0, 0, int(g.dbuser.CapDays)).String(),
 		CapDays: g.dbuser.CapDays,
+		Points: g.dbuser.Points,
 
 		Disendin:     ((g.ctrl.ResetCount - g.ctrl.CheckCount.Load()) * g.ctrl.RefreshRate) / 24,
 		UsageResetIn: ((g.ctrl.ResetCount - g.ctrl.CheckCount.Load()) * g.ctrl.RefreshRate) / 24,
@@ -261,8 +260,6 @@ func (g *getinfo) userinfo() error {
 	if err != nil {
 		return err
 	}
-
-	//TODO: add some user settings like langauge switching 
 	switch callbackqr.Data {
 	case C.BtnBack:
 		g.state = infostatehome
@@ -299,7 +296,53 @@ func (g *getinfo) userinfo() error {
 	}
 	return nil	
 }
+func (g *getinfo) gifts() error {
+	gifts, err := g.Usersession.AllGifts()
+	if err != nil {
+		g.calls.Alertsender("fetching gift failed try again later")
+		g.callback.logger.Error("fetching gifts err" + err.Error())
+		g.state = infostatehome
+		return nil
+	}
+	if len(gifts) == 0 {
+		g.state = infostatehome
+		g.calls.Alertsender("no gifts (sent or recived)")
+		return nil
+	}
 
+	for {
+		g.btns.Reset([]int16{2})
+		for i := range gifts {
+			g.btns.AddBtcommon(strconv.Itoa(i))
+		}
+		g.btns.AddBack(true)
+		giftnum, err := g.calls.Callbackreciver("select gift number to see info", g.btns)
+		if err != nil {
+			return err
+		}
+
+		if giftnum.Data == C.BtnBack {
+			g.state = infostatehome
+			break
+		}
+		giftp, err := strconv.Atoi(giftnum.Data)
+		if err  != nil {
+			continue
+		}
+		gift := gifts[giftp]
+		gifttyp := "recived" 
+		if gift.Sender == g.Usersession.GetUser().TgID {
+			gifttyp = "sent"
+		}
+		err = g.Messagesession.Callbackanswere(giftnum.ID, `Type `+ gifttyp+`\nBandwidth `+ gift.Bandwidth.BToString(), true)
+
+		if err != nil {
+			g.callback.logger.Error("callback answere err: " + err.Error())
+		}
+	}
+
+	return nil
+}
 
 
 func (g *getinfo) configs() error {
@@ -334,7 +377,7 @@ func (g *getinfo) configs() error {
 	}
 	g.lastselectConf, err = g.Usersession.GetConfig(int64(selectedconf))
 	if err != nil {
-		g.Messagesession.Callbackanswere(callback.Data, C.GetMsg(C.Msgwrong), true)
+		g.Messagesession.SendError(err, C.GetMsg(C.Msgwrong))
 		return nil
 	}
 	g.state = infostateconf
@@ -345,16 +388,16 @@ func (g *getinfo) configinfo() error {
 	confid := g.lastselectConf.Id
 	
 	//btns.Addbutton(C.BtnFullUsage, C.BtnFullUsage, "")
-	g.btns.AddBtcommon(C.BtnInbounds)
+	g.btns.AddBtcommon(C.BtnCInbounds)
 	g.btns.AddBtcommon(C.BtnCloseConn)
 	g.btns.AddBtcommon(C.BtnRefresh)
 	g.btns.AddCloseBack()
 
 	status, err := g.Usersession.Getstatus(int64(confid))
 
-	if err != nil {
+	if err != nil &&  errors.Is(err, C.ErrConfigNotFound)  {
 		g.Messagesession.SendError(err, C.GetMsg(C.Msgconfcannotfind))
-		return err
+		return nil
 	}
 	sboxout, ok := g.ctrl.Getoutbound(g.lastselectConf.OutboundID)
 
@@ -370,6 +413,7 @@ func (g *getinfo) configinfo() error {
 			Username: g.dbuser.Username.String,
 			TgId:     g.dbuser.TgID,
 		},
+		Active: g.lastselectConf.Active,
 
 		TotalQuota:     g.lastselectConf.Quota.BToString(),
 		ConfigName:     g.lastselectConf.Name,
@@ -390,10 +434,13 @@ func (g *getinfo) configinfo() error {
 
 		UsageDuration:  time.Since(g.ctrl.GetLastRefreshtime()).Round(1 * time.Second).String(),
 		
-		OutName: sboxout.Name,
-		OutType: sboxout.Type,
-		OutInfo: sboxout.Custom_info,
-		Latency: sboxout.Latency.Load(),
+		commonout: commonout{
+			OutName: sboxout.Name,
+			OutType: sboxout.Type,
+			OutInfo: sboxout.Custom_info,
+			Latency: sboxout.Latency.Load(),
+		},
+
 
 		Online: len(status.Online_ip),
 		IpMap:  status.Online_ip,
@@ -417,14 +464,14 @@ func (g *getinfo) configinfo() error {
 	case C.BtnBack:
 		g.state = infostateconfs
 		return nil
-	case C.BtnInbounds:
+	case C.BtnCInbounds:
 		g.state = infostateconfins
 	case C.BtnRefresh:
 		return nil
 	}
 
 	if callback.Data == C.BtnFullUsage {
-		//TODO: code here
+		//TODO: maybe later
 		g.Messagesession.SendAlert(C.GetMsg(C.Msgconfcannotfind), nil)
 		g.Messagesession.SendAlert("usage history function is not avalable yet", nil)
 	}
@@ -477,13 +524,22 @@ func (g *getinfo) confallin() error {
 		g.Messagesession.Edit("send info to export config", nil, "")
 		expinfo, err := common.ReciveExpInfo(g.calls)
 		if err != nil {
-			return nil
+			if _, ok := err.(botapi.Error); ok {
+				return err
+			}
+			g.Messagesession.SendError(err, "")
 		}
 		for i := range all {
 			all[i].exportin.ProtoUrl = g.lastselectConf.ExportUrlLink(all[i].Inboud, &expinfo)
 			all[i].ExportInfo = expinfo
 		}
-		//TODO: export all to single msg
+		g.Messagesession.SendExtranal(struct {
+			AllIn []exportConfig
+			InboundCount int
+		}{
+			AllIn: all,
+			InboundCount: len(all),
+		}, nil, C.TmplAllIn, true)
 	}
 
 	sin, err := strconv.Atoi(callback.Data)
@@ -528,10 +584,13 @@ func (g *getinfo) confinboundinfo() error {
 		g.Messagesession.Edit("send info to export config", nil, "")
 		tm.ExportInfo, err = common.ReciveExpInfo(g.calls)
 		if err != nil {
-			return nil
+			if _, ok := err.(botapi.Error); ok {
+				return err
+			}
+			g.Messagesession.SendError(err, "")
 		}
 		tm.ProtoUrl = g.lastselectConf.ExportUrlLink(g.lastselectInbn, &tm.ExportInfo)
-		g.Messagesession.SendExtranal(tm, nil, C.TmplExport, true)
+		g.Messagesession.SendExtranal(tm, nil, C.TmplConfIn, true)
 	}
 	return nil
 }
@@ -567,6 +626,8 @@ func (g *getinfo) run() error {
 			err = g.confallin()
 		case infostateconfin:
 			err =  g.confinboundinfo()
+		case infostategift:
+			err = g.gifts()
 		case infostateclosed:
 			break info
 		}
@@ -575,7 +636,6 @@ func (g *getinfo) run() error {
 			break
 		}
 	}
-	
 	return err
 }
 
@@ -635,6 +695,7 @@ func (u *Xraywiz) commandInfoV2(upx *update.Updatectx,  Messagesession *botapi.M
 	err = infoistate.run()
 	if err != nil {
 		Messagesession.SetNewcontext(u.ctx)
+		Messagesession.SendError(err, "")
 	}
 	Messagesession.DeleteAllMsg()
 	return err

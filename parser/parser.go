@@ -58,11 +58,8 @@ func New(
 		logger:     logger,
 		srvs:       services,
 		botapi:     botapi,
-		GetBaseCtx: ctrl.GetBaseContext, //TODO: change later
+		GetBaseCtx: ctrl.GetBaseContext,
 		uctxPool: update.NewupdatePool(),
-
-		//xrayservice: make(map[string]bool, 10),
-		//usrservice:  make(map[string]bool, 10),
 	}
 	return parser
 }
@@ -226,7 +223,9 @@ func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, e
 		if upx.FromChat().ID != p.ctrl.ChannelId && upx.FromChat().ID != p.ctrl.GroupID {
 			return nil, errors.New("user from elsewhere group")
 		}
-
+		if upx.Update.ChatMember == nil && upx.Update.MyChatMember == nil {
+			return nil, errors.New("update from group")
+		}
 	}
 	p.logger.Info("user updated recived " + tgbotapimsg.Info())
 	//replacing context
@@ -313,7 +312,6 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 		}
 		
 		if !upx.Update.FromChat().IsPrivate() {
-			//return C.ErrUserIsNotinPrivate
 			return false, nil
 		}
 		if !upx.User.Isverified() {
@@ -387,14 +385,4 @@ func (p *Parser) commandparser(msg *tgbotapi.Message) (string, string, error) {
 		return msg.Command(), serviceName, nil
 	}
 	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
-
-
-	// switch msg.Command() {
-	// case C.CmdStart, C.CmdFree,  C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact, C.CmdSource:
-	// 	return msg.Command(), C.Userservicename, nil
-	// case C.CmdCreate, C.CmdStatus, C.CmdConfigure, C.CmdInfo, C.CmdBuild:
-	// 	return msg.Command(), C.Xraywizservicename, nil
-	// default:
-	// 	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
-	// }
 }

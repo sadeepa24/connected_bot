@@ -26,6 +26,7 @@ const (
 const (
 	BtnUserInfo  string = "UserInfo"
 	BtnConfigs   string = "Configs"
+	BtnGifts	string = "Gifts"
 	BtnFullInfo  string = "full info"
 	BtnFullUsage string = "Get Full Usage Alltime"
 
@@ -60,7 +61,7 @@ const (
 	BtnTutorial string = "Tutorial"
 
 	BtnCloseConn string = "Close Conns"
-	BtnInbounds string = "All Inbounds"
+	BtnCInbounds string = "Config Inbounds"
 
 	BtnRefresh string = "Refresh"
 
@@ -78,4 +79,8 @@ const (
 const (
 	BtnInfo string = "info"
 	BtnBuy  string = "buy points"
+)
+
+const (
+	BtnSave string = "save"
 )

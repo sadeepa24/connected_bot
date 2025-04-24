@@ -33,8 +33,7 @@ type Controller struct {
 	Lockval    *atomic.Int32
 	wLockCounter *atomic.Int32
 	UpdateCounter *atomic.Int64
-	metaconfig *MetadataConf
-	//sboxio     *SboxIO
+	metaconfig *C.MetadataConf
 	*Metadata
 	Overview *Overview
 
@@ -56,7 +55,7 @@ type Controller struct {
 	mu sync.RWMutex //mutext only use to read context I tried to create completly with out sync.bottlenext but i had to add this for small opration and it's allright
 }
 
-func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
+func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *C.MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
 	if metaconf.WatchMgbuf <= 0 {
 		metaconf.WatchMgbuf = 100
 	}
@@ -89,10 +88,9 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *Met
 			Botlink:       metaconf.Botlink,
 			GroupLink:     metaconf.GroupLink,
 			Channelink:    metaconf.Channelink,
+			boxpath: sboxpath,
 		},
 		critical: new(atomic.Int32),
-		//critchan: make(chan interface{}),
-		//cond: &sync.Cond{},
 		metaconfig: metaconf,
 		botapi:     btapi,
 		Lockval:    new(atomic.Int32),
@@ -292,20 +290,18 @@ func (c *Controller) Init() error {
 	dbMeta.LoginLimit = int32(c.metaconfig.LoginLimit)
 	
 	//initilizing db first time
+	dbMeta.ChannelId = c.metaconfig.ChannelID
+	dbMeta.GroupID = c.metaconfig.GroupID
 	if dbnotfound { 
-
 		if dbMeta.BandwidthAvelable, err = C.BwidthString(c.metaconfig.BandwidthAvelable); err != nil {
 			return err
 		}
-		dbMeta.ChannelId = c.metaconfig.ChannelID
-		dbMeta.GroupID = c.metaconfig.GroupID
 		dbMeta.CommonQuota = dbMeta.BandwidthAvelable
 		dbMeta.ResetCount = (30 * 24) / c.metaconfig.RefreshRate
 		dbMeta.RefreshRate = c.metaconfig.RefreshRate
 		dbMeta.PublicDomain = c.metaconfig.DefaultDomain
 		dbMeta.PublicIp = c.metaconfig.DefaultPublicIp
 		dbMeta.CommonWarnRatio = c.GetWarnRate()
-		
 		var userct int64
 		if err = c.db.Model(&db.User{}).Count(&userct).Error; err != nil {
 			dbMeta.Dbusercount = 0
@@ -447,15 +443,15 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 	// all inbounds which are nolonger availble  will be removed
 
 	var listConfig []db.Config
+	save := make([]*db.Config, 0, C.Dbbatchsize)
 	c.db.Model(&db.Config{}).FindInBatches(&listConfig, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
-		
+		var newinbounds []int16
 		for i := range listConfig {
 			if len(listConfig[i].InboundIds) == 0 {
 				listConfig[i].InboundIds = append(listConfig[i].InboundIds, c.defaultinbound.Id)
-				tx.Save(&listConfig[i])
+				save = append(save, &listConfig[i])
 				continue
-			}
-			var newinbounds []int16
+			}			
 			for _, id := range listConfig[i].InboundIds {
 				if changedID[id] {
 					continue
@@ -470,10 +466,12 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 			if mustchange {
 				bufsender.Send("you'r config " + listConfig[i].Name +"'s inbound has been changed due to configuration changes please check new nbound or reconfigure you'r config's inbound as you need ", listConfig[i].UserID )
 				listConfig[i].InboundIds = newinbounds
-				tx.Save(&listConfig[i])
+				save = append(save, &listConfig[i])
 			}
+			newinbounds = newinbounds[:0]
 		}
-		tx.Commit()
+		tx.Save(&save)
+		save = save[:0]
 		return nil
 	})
 	c.db.Unscoped().Where("1 = 1").Delete(&db.Inbound{})
@@ -506,7 +504,6 @@ func (c *Controller) GetAllUserList(in *[]int64) error {
 func (c *Controller) GetUserList(listType string, in *[]int64) error  {
 	
 	switch listType {
-	
 	case C.UserLstAll:
 		return c.GetAllUserList(in)
 	case C.UserLstVerified:
@@ -657,11 +654,6 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 	if touser.IsCapped {
 		return touser, C.ErrUserCanootReciveUserCapped
 	}
-
-	// if touser.GiftQuota != 0 {
-	// 	return touser, C.ErrUserGiftAlready
-	// }
-
 	if len(touser.Configs) <= 0 {
 		return touser, C.ErrConfigNotFound
 	}
@@ -704,7 +696,6 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 	//record
 	tx.Model(&db.Gift{}).Create(&db.Gift{
 		Date:        time.Now(),
-		Valid:       true,
 		ComQuota:    C.Bwidth(c.CommonQuota.Load()),
 		SendValid:   true,
 		ReciveValid: true,
@@ -712,9 +703,7 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 		Reciver:     touser.TgID,
 		Bandwidth:   quota,
 	})
-
-	//TODO: remove this
-	tx.Model(&db.GiftLog{}).Create(&db.GiftLog{
+	c.db.CreateGiftLog(&db.GiftLog{
 		SendID:    fromuser.TgID,
 		RecivedID: touser.TgID,
 		Bandwidth: quota,
@@ -736,23 +725,21 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 	}
 
 	for i := range user.Configs {
-
-		k := oldQuota.Float64() / user.Configs[i].Quota.Float64()      // findig ratio between oldquota and old configs quota
-		newConfigQuota := C.Bwidth(user.CalculatedQuota.Float64() / k) // subpressing quota according to ratio, k is the constant
-		user.Configs[i].Quota = newConfigQuota
+		k := oldQuota / user.Configs[i].Quota      // findig ratio between oldquota and old configs quota
+		user.Configs[i].Quota = C.Bwidth(user.CalculatedQuota / k) // subpressing quota according to ratio, k is the constant
+		
 		status, err := c.Boxapi.AddConfigReset(&user.Configs[i])
+		
 		if err != nil {c.DirectMg("config adding failed you may need to contact admin with error err - " + err.Error(), user.TgID, user.TgID)}
+		
 		user.Configs[i].UpdateUsages(status)
 		user.MonthUsage += (status.Download + status.Upload)
 
 		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || user.IsDistributedUser || (user.IsCapped && user.CappedQuota > C.Bwidth(c.CommonQuota.Load())) || (user.MonthUsage >= user.CalculatedQuota) {
-			// if (user.Configs[i].Quota - user.Configs[i].Usage) <= 0 {
-			// 	c.DirectMg("your config "+user.Configs[i].Name+" Usage is over, config wo'nt work until renew", user.TgID, user.TgID)
-			// }
 			c.Boxapi.RemoveConfig(&user.Configs[i])
 		}
 		if err == nil && !user.IsDistributedUser && status.FullUsage() > 0 {
-			c.db.Create(&db.UsageHistory{
+			c.db.CreateUsageHistory(&db.UsageHistory{
 				Usage:    status.Download + status.Upload,
 				Download: status.Download,
 				Upload:   status.Upload,
@@ -769,7 +756,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 
 func (c *Controller) DirectMg(text string, UserId int64, ChatID int64) error {
 	mgcontext, cancle := context.WithTimeout(c.ctx, 2*time.Minute)
-	c.botapi.SendContext(mgcontext, &botapi.Msgcommon{
+	_, err := c.botapi.SendContext(mgcontext, &botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId:  ChatID,
 			User_id: UserId,
@@ -777,7 +764,7 @@ func (c *Controller) DirectMg(text string, UserId int64, ChatID int64) error {
 		Text: text,
 	})
 	cancle()
-	return nil
+	return err
 }
 
 func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype.User, error) {
@@ -825,17 +812,13 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		IsBotStarted:  false,
 		GroupBanned:   false,
 		ChannelBanned: false,
-		
-		//IsVipUser:     false,
-		// WebToken: sql.NullString{
-		// 	String: "no token", //TODO: change after making wqb app
-		// 	Valid:  true,
-		// },
 	}
 
 	dbUser, err := c.db.AddUser(newuser)
 	if err != nil {
-		return nil, C.ErrDatabaseCreate
+		return nil, DbError{
+			error: errors.Join(errors.New("new user adding failed user " + user.String()), err),
+		}
 	}
 	c.Metadata.Dbusercount.Add(1)
 	gotuser := bottype.Newuser(user, dbUser)
@@ -848,11 +831,10 @@ func (c *Controller) IncreaseUserCount(count int) {
 	c.signals <- UserCount(count)
 }
 
+
 func (c *Controller) Checksession(UserId int64) (any, bool) {
 	return c.Usermgrsession.Load(UserId)
-
 }
-
 func (c *Controller) Addsession(closefunc ForceCloser, UserId int64) {
 	c.Usermgrsession.Store(UserId, closefunc)
 
@@ -860,12 +842,21 @@ func (c *Controller) Addsession(closefunc ForceCloser, UserId int64) {
 func (c *Controller) RemoveSesion(UserId int64) {
 	c.Usermgrsession.Delete(UserId)
 }
+func (c *Controller) CloseAllUserSession() {
+	c.Usermgrsession.Range(func(key, value any) bool {
+		cls, ok := key.(ForceCloser) 
+		if ok {
+			cls.ForceClose()
+		}
+		return true	
+	})
+}
 
-// Do not use this func its slow
+
+
 func (c *Controller) SetIsbotarted(userID int64, val bool) error {
 	return c.db.Model(&db.User{}).Where(&db.User{TgID: userID}).Update("is_bot_started", val).Error
 }
-
 func (c *Controller) Getadminchat() (map[int64]string, error) {
 	chat := make(map[int64]string)
 	if c.Metadata.GroupID != 0 {
@@ -874,22 +865,11 @@ func (c *Controller) Getadminchat() (map[int64]string, error) {
 	if c.Metadata.GroupID != 0 {
 		chat[c.Metadata.ChannelId] = C.Channel
 	}
-
 	return chat, nil
-	//return c.db.Getadminchat()
 }
-
-func (c *Controller) GetHelepCmdInfo() bottype.HelpCommandInfo {
-	// return bottype.HelpCommandInfo{
-	// 	CommandPageCount: 3,
-	// 	BuilderHelp: 2,
-	// 	TutorialPageCount: 2,
-	// 	InfoPageCount: 2,
-
-	// }
-	return c.HelperInfo
+func (c *Controller) GetHelepCmdInfo() *C.HelpCommandInfo {
+	return &c.HelperInfo
 }
-
 // return reffrld, verified, error
 func (c *Controller) ReffralCount(owenerid int64) (int64, int64, error) {
 
@@ -1011,7 +991,6 @@ func (c *Controller) CreateSboxConf(userId int64, name string) (db.SboxConfigs, 
 		Name:     name,
 		ConfPath: strconv.Itoa(int(userId)) + "-" + name + ".json",
 	}
-
 	if err := c.db.Model(&db.SboxConfigs{}).Create(conf).Error; err != nil {
 		return *conf, err
 	}
@@ -1025,7 +1004,7 @@ func (c *Controller) GetUserConfigs(userID int64) ([]db.Config, error) {
 	return confs, c.db.Model(&db.Config{}).Where("user_id = ?", userID).Find(&confs).Error
 }
 // Deletes buildconfig not releted to server configs
-func (c *Controller) DeleteConf(confId int64) error {
+func (c *Controller) DeleteSboxConf(confId int64) error {
 	return c.db.Model(&db.SboxConfigs{}).Delete(&db.SboxConfigs{
 		ID: confId,
 	}).Error
@@ -1135,6 +1114,9 @@ func (c *Controller) SendMsgContext(ctx context.Context, msg any) (*tgbotapi.Mes
 			},
 		}
 		if unwrapedmg.Buttons != nil {
+			if texttmpl.Keyboard !=nil {
+				unwrapedmg.Buttons.OverideKeyboard(texttmpl.Keyboard)
+			}
 			sendmg.Reply_markup = unwrapedmg.Buttons.Getkeyboard()
 		}
 		sendmg.Meadiacommon = &botapi.Meadiacommon{}
@@ -1201,36 +1183,16 @@ func (c *Controller) startbox() error {
 func (c *Controller) Close() error { return c.Boxapi.Close() }
 
 
-// func (c *Controller) AdduserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
-// 	return c.sbox.AddUser(conf)
-// }
-// func (c *Controller) AddResetUserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
-// 	return c.sbox.AddUserReset(conf)
-// }
-// func (c *Controller) RemoveUserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
-// 	return c.sbox.RemoveUser(conf)
-// }
-// func (c *Controller) GetstatusUserSbox(conf *db.Config) (sbConf.Sboxstatus, error) {
-// 	return c.sbox.GetStatusUser(conf)
-// }
-// func (c *Controller) UrlTestOut(tag string) (int16, error) {
-// 	return c.sbox.UrlTest(tag)
-// }
-// func (c *Controller) RefreshUrlTest() {
-// 	c.sbox.RefreshUrlTest()
-// }
 
 
 
 
 
 
-//func (c *Controller) Getinbounds() ([]sbox.Inboud) { return c.Metadata.Inbounds }
 //concurrent area
 func (c *Controller) WatchmanLock() {
 	c.Lockval.Swap(1)
 }
-
 func (c *Controller) WatchmanUnlock() {
 	c.Lockval.Swap(0)
 	waiters := c.wLockCounter.Swap(0)
@@ -1238,7 +1200,6 @@ func (c *Controller) WatchmanUnlock() {
 		c.lockchan <- struct{}{}
 	}
 }
-
 // check is that controller locked by watchman
 // if locked this function wait for it to unlock
 func (c *Controller) CheckLock() bool {
@@ -1249,11 +1210,12 @@ func (c *Controller) CheckLock() bool {
 	<-c.lockchan
 	return true
 }
-
+func (c *Controller) FCheckLock() bool {
+	return c.Lockval.Load() != 0 
+}
 func (c *Controller) IncCriticalOp() {
 	c.critical.Add(1)
 }
-
 func (c *Controller) DecCriticalOp() {
 	if c.critical.Add(-1) == 0  {
 		if c.waitCritical.Load() {
@@ -1271,21 +1233,16 @@ func (c *Controller) WaitCriticalop() {
 	<-c.critchan
 	c.waitCritical.Swap(false)
 }
-
 func (c *Controller) SetLastRefreshtime() {
 	c.lastDbRefresh.Store(time.Now())
 }
-
 func (c *Controller) GetLastRefreshtime() time.Time {
 	return c.lastDbRefresh.Load().(time.Time)
-	
 }
-
 func (c *Controller) GetBaseContext() context.Context {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.basectx
-	
 }
 
 // canceling all ongoing upx

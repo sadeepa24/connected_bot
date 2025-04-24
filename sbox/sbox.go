@@ -14,7 +14,7 @@ type Controller interface {
 	AddConfig(dbconf *db.Config) (conf.Sboxstatus, error)
 	AddConfigReset(dbconf *db.Config) (conf.Sboxstatus, error)
 	RemoveConfig(dbconf *db.Config) (conf.Sboxstatus, error)
-	GetStatusConfig(dbconf *db.Config) (conf.Sboxstatus, error) //TODO: handle all error return by this with call hirachy
+	GetStatusConfig(dbconf *db.Config) (conf.Sboxstatus, error)
 
 	GetAllUserStatus() map[int]opts.UserStatus
 	//GetAllInbound() ([]conf.Inboud, error)

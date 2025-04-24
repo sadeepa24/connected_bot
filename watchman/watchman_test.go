@@ -13,7 +13,6 @@ import (
 
 	//
 	"github.com/gofrs/uuid/v5"
-	connected "github.com/sadeepa24/connected_bot"
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
@@ -102,21 +101,21 @@ type preconfdata struct {
 	db            *db.Database
 	botapi        botapi.BotAPI
 	msgstore      *botapi.MessageStore
-	watchmaconfig *watchman.Watchmanconfig
+	watchmaconfig *C.Watchmanconfig
 }
 
 func preconfigure(ctx context.Context) (data preconfdata) {
 	data = preconfdata{}
 
 	//options := testingfirst()
-	options := connected.Botoptions{}
+	options := C.Botoptions{}
 	options.Ctx = ctx
 
-	options.Metadata = &controller.MetadataConf{
+	options.Metadata = &C.MetadataConf{
 		WatchMgbuf: 100,
 	}
 
-	data.db = db.New(options.Ctx, options.Logger, options.Dbpath)
+	data.db, _ = db.New(options.Ctx, options.Logger, options.Dbpath, options.UsageDbpath)
 	data.msgstore, _ = botapi.NewMessageStore("./store.json")
 	data.botapi = botapi.NewBot(options.Ctx, options.Bottoken, options.Botmainurl, data.msgstore)
 	data.botapi = &TestBotapiWatchman{

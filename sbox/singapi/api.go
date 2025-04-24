@@ -42,13 +42,11 @@ func NewsingAPI(ctx context.Context, optpath string, logger *zap.Logger) (*BoxAp
 	filecont, err := os.ReadFile(optpath)
 	if err!= nil {
 		return nil, option.Options{}, err
-	}
-
-	var opts option.Options
+	}	
 	globalCtx := service.ContextWith(ctx, deprecated.NewStderrManager(log.StdLogger()))
 	globalCtx = box.Context(globalCtx, include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry())
 
-	opts, err = json.UnmarshalExtendedContext[option.Options](globalCtx,  filecont)
+	opts, err := json.UnmarshalExtendedContext[option.Options](globalCtx,  filecont)
 	if err != nil {
 		return nil, opts, errors.New("sing box option unmarshelling error "+ err.Error())
 	}
@@ -60,7 +58,6 @@ func NewsingAPI(ctx context.Context, optpath string, logger *zap.Logger) (*BoxAp
 		return nil, opts, errors.Join(err, errors.New( "sing box insrance creation failed "))
 	}
 	logger.Debug("sing box instance created successfully")
-	
 	
 	outbounds := make(map[int16]string, len(opts.Outbounds))
 	for _, out := range opts.Outbounds {
@@ -270,7 +267,7 @@ func (b *BoxApi) GetAllUserStatus() map[int]opts.UserStatus {
 // Copied Function from singbox
 func URLTest(ctx context.Context, link string, detour N.Dialer) (t int16, err error) {
 	if link == "" {
-		link = "https://1.1.1.1/"
+		link = "https://google.com/"
 	}
 	linkURL, err := url.Parse(link)
 	if err != nil {

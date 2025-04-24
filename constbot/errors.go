@@ -5,17 +5,20 @@ import "errors"
 
 type Error interface {
 	error
+	Exit() bool
 	UserMsg() string
 }
 
 
+
 type customErr struct {
 	error
+	exit bool
 	msg string
 
 }
 func (c customErr) UserMsg() string { return c.msg }
-
+func (c customErr) Exit() bool { return c.exit }
 func WrapError(err error, usermsg string) error {
 	return customErr{
 		error: err,
@@ -24,25 +27,17 @@ func WrapError(err error, usermsg string) error {
 }
 
 
-var CErrConfigNotFound =  WrapError(ErrConfigNotFound, "Can't Find Config Please Try Again")
-var CErrQuotaExceed  = WrapError(ErrQuotaExceed, "Cannot Activate Config: Config's Quota Already Exceed")
+var (
+	CErrConfigNotFound =  WrapError(ErrConfigNotFound, "Can't Find Config Please Try Again")
+	CErrQuotaExceed  = WrapError(ErrQuotaExceed, "Cannot Activate Config: Config's Quota Already Exceed")
+	CErrContextDead = WrapError(ErrContextDead, "Context DeadLine: Maybe Session Timeout")
+	CErrRetryFailed = WrapError(ErrRetryFailed, "Don't Be idiot :(")
+	CErrNoPerm = WrapError(ErrNoPerm, "Operation not permitted. Please check your account status.")
+)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+var ErrNoPerm = errors.New("operation not permitted due to user's current state")
 var ErrContextDead = errors.New("context cancled")
 var ErrConfigNotFound = errors.New("config Notfound")
 var ErrInboundNotFound = errors.New("inbound Notfound")
@@ -78,7 +73,6 @@ var ErrServiceNotFound = errors.New("service not found")
 // Usersession
 var ErrOnDeactivation = errors.New("deactivation failed")
 var ErrQuotaExceed = errors.New("config quota exceed")
-var ErrOnDb = errors.New("db tx failed")
 var ErrSessionExcit = errors.New("already session excist")
 var ErrSessioForceClose = errors.New("old session force closing errored ")
 var Erruuidcreatefailed = errors.New("uuid create failed")

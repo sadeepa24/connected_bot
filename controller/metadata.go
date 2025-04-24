@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,57 +11,9 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/sbox/conf"
-	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 	"github.com/sagernet/sing-box/option"
 	"go.uber.org/zap"
 )
-
-type MetadataConf struct {
-	//ForceAdd          bool   `json:"forceAdd,omitempty"`
-	ChannelID         int64  `json:"channel_id,omitempty"`
-	GroupID           int64  `json:"groupd_id,omitempty"`
-	BandwidthAvelable string `json:"bandwidth,omitempty"`
-	LoginLimit        int16  `json:"login_limit,omitempty"`
-	//Userquota         int32  `json:"userquota,omitempty"`
-	//Verifiedcount     int32  `json:"verifiedcount,omitempty"`
-	Maxconfigcount    int16  `json:"max_config_count,omitempty"`
-	//CheckCount        int32  `json:"checkcount,omitempty"`  // database checked count for exting period
-	RefreshRate       int32  `json:"refresh_rate,omitempty"` //rate of db refresh in hours
-
-	GroupLink  string `json:"group_link,omitempty"`
-	Channelink string `json:"channel_link,omitempty"`
-	Botlink    string `json:"bot_link,omitempty"`
-
-	GroupName   string `json:"group_name,omitempty"`
-	ChannelName string `json:"channel_name,omitempty"`
-	BotName     string `json:"bot_name,omitempty"`
-
-	//SudoAdminId int64 `json:"adminId,omitempty"`
-	//AllAdmin  []int64 `json:"alladmin,omitempty"`
-	SudoAdmin int64   `json:"admin,omitempty"`
-
-	WatchMgbuf int	  `json:"group_maxmg,omitempty"`
-
-	DefaultDomain   string `json:"default_domain,omitempty"`
-	DefaultPublicIp string `json:"default_publicip,omitempty"`
-
-	StorePath    string `json:"store_path,omitempty"`
-	ConfigFolder string `json:"config_folder,omitempty"`
-
-	HelperInfo bottype.HelpCommandInfo `json:"help_cmd,omitempty"`
-
-	InlinePost []string `json:"inline_posts,omitempty"`
-	Langs []string  `json:"allowed_langs,omitempty"`
-	DefaultLang string	`json:"default_lang,omitempty"`
-
-	CommonWarnRatio int16  `json:"warn_rate,omitempty"`
-
-	
-}
-
-func (mn *Metadata) GetWarnRate() int16 {
-	return mn.CommonWarnRate/int16(mn.RefreshRate)
-}
 
 type Metadata struct {
 	ChannelId int64
@@ -106,22 +59,26 @@ type Metadata struct {
 	DefaultDomain string
 	DefaultPubip  string
 
-	MaxRecurtion int
 
 	SudoAdmin    int64
 	ConfigFolder string
 
-	HelperInfo bottype.HelpCommandInfo
+	HelperInfo C.HelpCommandInfo
 
-	inlineposts []string
+	inlineposts []C.InlinePost
 
 	CommonWarnRate int16 
 
 	Langs []string
 
+	boxpath string
+
+
+
 }
 
-func (m *Metadata) Init(metaconf MetadataConf, logger *zap.Logger) error {
+
+func (m *Metadata) Init(metaconf C.MetadataConf, logger *zap.Logger) error {
 
 	if metaconf.StorePath == "" {
 		return errors.New("configs store path not found")
@@ -130,6 +87,9 @@ func (m *Metadata) Init(metaconf MetadataConf, logger *zap.Logger) error {
 		return errors.New("config folder path not found")
 	}
 	m.inlineposts = metaconf.InlinePost
+	if !strings.HasSuffix(metaconf.ConfigFolder, "/") {
+		metaconf.ConfigFolder = metaconf.ConfigFolder + "/"
+	}
 	m.ConfigFolder = metaconf.ConfigFolder
 
 	m.storePath = metaconf.StorePath
@@ -141,10 +101,6 @@ func (m *Metadata) Init(metaconf MetadataConf, logger *zap.Logger) error {
 	m.CheckCount = new(atomic.Int32)
 
 	m.HelperInfo = metaconf.HelperInfo
-
-	m.MaxRecurtion = 20 //TODO: change this: remove it
-
-
 	if metaconf.DefaultLang == "" {
 		return errors.New("default lang should be select")
 	}
@@ -165,6 +121,12 @@ func (m *Metadata) Init(metaconf MetadataConf, logger *zap.Logger) error {
 	m.CommonWarnRate = metaconf.CommonWarnRatio
 	m.SudoAdmin = metaconf.SudoAdmin
 	return nil
+}
+func (mn *Metadata) GetWarnRate() int16 {
+	return mn.CommonWarnRate/int16(mn.RefreshRate)
+}
+func (m *Metadata) SboxConfPath() string {
+	return m.boxpath
 }
 
 func (m *Metadata) DefaultInboud() (conf.Inboud, db.Inbound) {
@@ -206,6 +168,11 @@ func (m *Metadata) Getinbound(id int16) (conf.Inboud, bool) {
 	in, ok := m.inboundasMap[id]
 	return in, ok
 }
+func (m *Metadata) GetAllinbound() map[int16]conf.Inboud {
+	return m.inboundasMap
+}
+
+
 func (m *Metadata) GetinboundList(ids []int16) (map[int16]conf.Inboud) {
 	inlist := make(map[int16]conf.Inboud, len(ids))
 	for _, id := range ids {
@@ -253,17 +220,19 @@ func (m *Metadata) GetdbOutbound(id int16) (db.Outbound, error) {
 	}, nil
 }
 
-func (m *Metadata) GetInlinePost() []string {
+func (m *Metadata) GetInlinePost() []C.InlinePost {	
 	return m.inlineposts
 }
 
-
+// func (m *Metadata) UpdateInlinePost(newposts []C.InlinePost) {	
+// 	m.postmu.Lock()
+// 	defer m.postmu.Unlock()
+// 	m.inlineposts = newposts
+// }
 type Overview struct {
 	Mu *sync.RWMutex
 
 	BandwidthAvailable C.Bwidth
-	//DownLoad C.Bwidth
-	//Upload C.Bwidth
 	MonthTotal C.Bwidth
 	AllTime C.Bwidth
 
@@ -285,9 +254,6 @@ type Overview struct {
 	MonthLimitedUser int64
 
 
-
-
-	//TODO: add days count to reset
 	DaysToReset int32
 	LastRefresh time.Time
 
@@ -336,3 +302,15 @@ func (o *Overview) String() string {
 		o.TotalUpdates,
 	)
 }
+
+
+type DbError struct {
+	error
+	exit bool
+	msg string
+}
+
+func (c DbError) UserMsg() string { return c.msg }
+func (c DbError) Exit() bool { return c.exit }
+
+var _ C.Error = (*DbError)(nil)
