@@ -725,6 +725,9 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 	}
 
 	for i := range user.Configs {
+		if user.Configs[i].Quota == 0 {
+			continue
+		}
 		k := oldQuota / user.Configs[i].Quota      // findig ratio between oldquota and old configs quota
 		user.Configs[i].Quota = C.Bwidth(user.CalculatedQuota / k) // subpressing quota according to ratio, k is the constant
 		
