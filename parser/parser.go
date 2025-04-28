@@ -79,6 +79,7 @@ func (p *Parser) Init() error {
 		C.CmdPoints, 
 		C.CmdContact, 
 		C.CmdSource,
+		C.CmdState,
 	}
 
 	xray_service_cmd := []string{

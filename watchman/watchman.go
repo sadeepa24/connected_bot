@@ -483,7 +483,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				var (
 					forceremove bool
 				)
-				if (newConfigQuota - user.Configs[i].Usage > 0) && userVerifycity && !user.IsDistributedUser && !user.IsMonthLimited && !user.Restricted && !user.Templimited {
+				if (newConfigQuota - user.Configs[i].Usage > 0) && userVerifycity && !user.IsDistributedUser && !user.IsMonthLimited && !user.Restricted && !user.Templimited && !user.IsPaused {
 					status, err := w.ctrl.Boxapi.AddConfigReset(&user.Configs[i])
 					if err != nil {
 						if cerr, ok := err.(C.Error); ok {
@@ -544,7 +544,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				allconfigs = append(allconfigs, &user.Configs[i])
 			}
 			user.UsedQuota = usedquota
-			if user.Verified() && !user.Templimited && !user.IsMonthLimited && !user.IsDistributedUser && docount && user.MonthUsage <= user.CalculatedQuota && user.ConfigCount > 0 {
+			if user.Verified() && !user.IsPaused && !user.Templimited && !user.IsMonthLimited && !user.IsDistributedUser && docount && user.MonthUsage <= user.CalculatedQuota && user.ConfigCount > 0 {
 				if oldUsage == user.MonthUsage   { //which means user did n't use the config for last refresh cycle
 					user.EmptyCycle++
 					if user.EmptyCycle >= user.WarnRatio && user.WarnRatio != 0 {
@@ -746,7 +746,6 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 		users []db.User
 	)
 	tosaveuser := make([]*db.User, 0, C.Dbbatchsize)
-	var added int
 	err := w.db.Model(&db.User{}).FindInBatches(&users, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
 		// Retrieve the current batch of records
 		for i := range users {
@@ -759,7 +758,6 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 				if user.Iscaptimeover(int(user.CapDays)) {
 					user.IsCapped = false
 					user.CappedQuota = 0
-					added++
 					tosaveuser = append(tosaveuser, user)
 					bufsender.Send("you're captime is over, you're no longer capped if you want to set a cap again use /setcap", user.TgID)
 				} else {
@@ -785,7 +783,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 				preData.templimiteduser++
 			}
 			
-			if user.Verified() && (user.Restricted || user.IsDistributedUser || user.IsMonthLimited || user.Templimited || user.ConfigCount == 0) {
+			if user.Verified() && (user.Restricted || user.IsDistributedUser || user.IsMonthLimited  || user.IsPaused || user.Templimited || user.ConfigCount == 0) {
 				if user.IsCapped {
 					preData.unUsedUser--
 					if user.GiftQuota > 0 && user.CappedQuota < C.Bwidth(w.ctrl.CommonQuota.Load()) {
@@ -804,14 +802,12 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 			preData.savings += user.SavedQuota
 		}
 
-		if added > 0 {
-			tosaveuser = tosaveuser[:added]
+		if len(tosaveuser) > 0 {
 			err := tx.Save(&tosaveuser).Error
 			if err != nil {
 				w.logger.Error("db save failed while preprocess ", zap.Int("batch", batch), zap.Error(err))
 				return err
 			}
-			added = 0
 			tosaveuser = tosaveuser[:0]
 		}
 		return nil // Return nil to continue to the next batch

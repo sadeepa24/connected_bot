@@ -422,6 +422,8 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 		return u.cmdSendSource(Messagesession)
 	case C.CmdFree:
 		return u.cmdFree(upx, Messagesession)
+	case C.CmdState:
+		return u.cmdState(upx, Messagesession)
 	default:
 		u.logger.Warn("unknown cmd recived by userservice - ", zap.String("cmd", cmd), zap.String("user", upx.User.Info()))
 		return u.defaultsrv.FromserviceExec(upx)
@@ -1314,4 +1316,76 @@ func (u *Usersrv) Canhandle(upx *update.Updatectx) (bool, error) {
 
 func (u *Usersrv) Name() string {
 	return C.Userservicename
+}
+
+func (u *Usersrv) cmdState(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
+	if upx.User.Templimited || upx.User.IsMonthLimited {
+		Messagesession.SendAlert(C.GetMsg(C.MsgTempNoLimit), nil)
+		return nil
+	}
+
+	Usersession, err := controller.NewctrlSession(u.ctrl, upx, false)
+	if err != nil {
+		if errors.Is(err, C.ErrSessionExcit) {
+			Messagesession.SendAlert(C.GetMsg(C.MsgSessionExcist), nil)
+		} else {
+			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
+		}
+		return nil
+
+	}
+	defer Usersession.Close()
+
+	btns := botapi.NewButtons([]int16{2})
+	
+	if upx.User.IsPaused {
+		btns.AddBtcommon("Resume")
+	} else {
+		btns.AddBtcommon("Pause")
+	}
+	btns.AddClose(true)
+	_, err = Messagesession.Edit(
+	struct{
+		botapi.CommonUser
+		IsPaused bool
+		NonUseCycle int16
+		Points  int64
+		LeftQuota    string
+		TUsage       string
+	}{
+		CommonUser: botapi.CommonUser{		
+			Name: upx.User.Name,
+			Username: upx.Chat.UserName,
+			TgId: upx.User.TgID,
+		},
+		IsPaused: upx.User.IsPaused,
+		Points: upx.User.Points,
+		LeftQuota: Usersession.LeftQuota().BToString(),
+		TUsage: Usersession.TotalUsage().BToString(),
+	}, btns, C.TmpStateInfo)
+	if err != nil {
+		return err
+	}
+	callback, err := u.callback.Getcallback(btns.ID())
+	if err != nil {
+		return err
+	}
+	switch callback.Data {
+		case "Resume":
+			err = Usersession.Reseume()
+		case "Pause":
+			Messagesession.SendAlert("1 point will be deducted from your account.", nil)
+			err = Usersession.Pause()
+		case C.BtnClose:
+			Messagesession.DeleteAllMsg()
+			return nil
+	}
+	Messagesession.Edit("done", nil, "")
+	if err != nil {
+		Messagesession.SendError(err, C.GetMsg(C.Msgwrong))
+	} else {
+		Messagesession.SendExtranal("Operation completed successfully!", nil, "", true)
+	}
+	return err
+	
 }

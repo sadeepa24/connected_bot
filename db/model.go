@@ -31,6 +31,7 @@ type User struct {
 	Restricted 		  bool `gorm:"column:restricted"` // admin can restrict users
 	GroupBanned       bool `gorm:"column:group_banned"`
 	ChannelBanned     bool `gorm:"column:channel_banned"`
+	IsPaused		  bool	`gorm:"column:paused"`
 	//IsVipUser         bool `gorm:"column:is_vip_user"`
 	IsBotStarted      bool `gorm:"column:is_bot_started"`
 	//IsAdmin           bool `gorm:"column:is_admin"`

@@ -226,6 +226,7 @@ func (g *getinfo) userinfo() error {
 			TgId:     g.dbuser.TgID,
 			Username: g.dbuser.Username.String,
 		},
+		Paused: g.dbuser.IsPaused,
 		CappedQuota: g.dbuser.CappedQuota.BToString(),
 		IsTemplimited: g.dbuser.Templimited,
 		TempLimitRate: g.dbuser.WarnRatio,

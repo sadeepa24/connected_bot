@@ -33,6 +33,7 @@ var (
 	CErrContextDead = WrapError(ErrContextDead, "Context DeadLine: Maybe Session Timeout")
 	CErrRetryFailed = WrapError(ErrRetryFailed, "Don't Be idiot :(")
 	CErrNoPerm = WrapError(ErrNoPerm, "Operation not permitted. Please check your account status.")
+	CErrNoPoints = WrapError(errors.New("no points"), "Cannot Pause Service User Does not have enogf points")
 )
 
 

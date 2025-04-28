@@ -13,9 +13,10 @@ const (
 	CmdDistribute = "distribute"
 	CmdPoints     = "points"
 	CmdRecheck    = "recheck"
-	CmdSource	  = "source"
-	CmdFree		  = "free"
+	CmdSource     = "source"
+	CmdFree       = "free"
 	CmdCancel     = "cancel"
+	CmdState      = "state"
 
 	//xraywiz
 	CmdInfo      = "getinfo"
@@ -28,11 +29,11 @@ const (
 	CmdNull = "nullcmd"
 
 	//admin
-	CmdBrodcast = "broadcast"
-	CmdUserInfo = "getuser"
-	CmdServerInfo = "serverinfo"
+	CmdBrodcast    = "broadcast"
+	CmdUserInfo    = "getuser"
+	CmdServerInfo  = "serverinfo"
 	CmdChatSession = "chat"
-	CmdOverview = "overview"
-	CmdRefreshDb = "refreshdb"
-	CmdSwitch = "switch"
+	CmdOverview    = "overview"
+	CmdRefreshDb   = "refreshdb"
+	CmdSwitch      = "switch"
 )

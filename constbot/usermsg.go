@@ -65,6 +65,8 @@ var (
 	// Others
 	ButtonSelectEmjoi   string = " ✅"
 	MsgUserMonthLimited string = "🚫 You can't use this service until your punishment period is over."
+
+	
 )
 
 var (

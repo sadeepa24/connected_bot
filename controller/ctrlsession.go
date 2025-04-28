@@ -78,7 +78,7 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 
 	ctrl.Addsession(session, user.TgID)
 	session.olduser = *user
-	session.lowperm = user.IsDistributedUser || user.IsRemoved || user.Restricted || user.Templimited
+	session.lowperm = user.IsDistributedUser || user.IsRemoved || user.Restricted || user.Templimited || user.IsPaused
 	return session, nil
 }
 
@@ -434,8 +434,34 @@ func (c *CtrlSession) LeftUsage() C.Bwidth {
 }
 
 
-
-
+func (c *CtrlSession) Reseume() error {
+	newperm := c.user.IsDistributedUser || c.user.IsRemoved || c.user.Restricted || c.user.Templimited
+	if newperm {
+		return C.CErrNoPerm
+	}
+	c.ctrl.IncCriticalOp()
+	defer c.ctrl.DecCriticalOp()
+	c.user.IsPaused = false
+	c.updateperm()
+	return c.ActivateAll()
+}
+func (c *CtrlSession) Pause() error {
+	if c.lowperm {
+		return C.CErrNoPerm
+	}
+	if c.user.Points == 0  {
+		return C.CErrNoPoints
+	}
+	c.ctrl.IncCriticalOp()
+	defer c.ctrl.DecCriticalOp()
+	c.user.Points--
+	c.user.IsPaused = true
+	c.updateperm()
+	return c.DeactivateAll()
+}
+func (c *CtrlSession) updateperm()  {
+	c.lowperm = c.user.IsDistributedUser || c.user.IsRemoved || c.user.Restricted || c.user.Templimited || c.user.IsPaused
+}
 
 
 

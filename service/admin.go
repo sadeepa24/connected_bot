@@ -542,6 +542,7 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				IsTemplimited: enduserupx.User.Templimited,
 				TempLimitRate: enduserupx.User.WarnRatio,
 				IsVerified: enduserupx.User.Verified(),
+				Paused: enduserupx.User.IsPaused,
 				CommonUser: &botapi.CommonUser{
 					Name:     enduserupx.User.Name,
 					TgId:     enduserupx.User.TgID,

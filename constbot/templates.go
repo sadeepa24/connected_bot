@@ -124,3 +124,7 @@ const (
 	//TmplExport string = "getinfo_in_export"
 )
 
+//state 
+const (
+	TmpStateInfo            string = "state_info"
+)

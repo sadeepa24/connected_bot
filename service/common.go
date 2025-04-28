@@ -98,6 +98,7 @@ type userinfo struct {
 	NonUseCycle int16
 	CapDays int32
 	Points  int64
+	Paused 	bool
 
 	CappedQuota string
 
