@@ -138,6 +138,10 @@ func (s InIds) Value() (driver.Value, error) {
 }
 
 func (s *InIds) Scan(value interface{}) error {
+	if value == nil {
+		*s = []int16{}
+		return nil
+	}
 	bytes, ok := value.([]byte)
 	if !ok {
 		return errors.New("failed to scan InIds: expected []byte, got something else")

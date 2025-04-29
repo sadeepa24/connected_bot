@@ -403,7 +403,7 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 			c.logger.Warn(outDb.Name + " Will replace by default outbound")
 			//c.DefaultInboud()
 			c.db.Model(&db.Config{}).Where("outbound_id = ?", outDb.ID).Update("outbound_id", c.defaultoutbound.Id)
-			c.db.Model(&db.Outbound{}).Delete(outDb)
+			c.db.Delete(outDb)
 
 		}
 	}
@@ -414,7 +414,7 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 			return err
 		}
 	}
-	changedID := make(map[int16]bool, len(infromdb)) //ids which is not available with new sbox config 
+	changedID := map[int16]bool{} //ids which is not available with new sbox config 
 	for _, in := range infromdb {
 		_, ok := c.inboundasMap[(in.ID)]
 		if !ok {
@@ -436,6 +436,7 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 		bufct = 100
 	}
 	bufsender := NewBufSender(c.ctx, c,  int(bufct), time.Duration(meta.TotalConfigCount * 3) * time.Second)
+	go bufsender.Start()
 	defer bufsender.Close()
 	
 	// verify all config's inbounds according to exting db inbound
@@ -449,6 +450,7 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 		for i := range listConfig {
 			if len(listConfig[i].InboundIds) == 0 {
 				listConfig[i].InboundIds = append(listConfig[i].InboundIds, c.defaultinbound.Id)
+				bufsender.Send("you'r config " + listConfig[i].Name +"'s inbound has been changed due to zero inbound ", listConfig[i].UserID )
 				save = append(save, &listConfig[i])
 				continue
 			}			
@@ -464,7 +466,7 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 				mustchange = true
 			}
 			if mustchange {
-				bufsender.Send("you'r config " + listConfig[i].Name +"'s inbound has been changed due to configuration changes please check new nbound or reconfigure you'r config's inbound as you need ", listConfig[i].UserID )
+				bufsender.Send("you'r config " + listConfig[i].Name +"'s inbound has been changed due to configuration changes please check new inbound or reconfigure you'r config's inbound as you need ", listConfig[i].UserID )
 				listConfig[i].InboundIds = newinbounds
 				save = append(save, &listConfig[i])
 			}

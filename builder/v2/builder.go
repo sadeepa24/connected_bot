@@ -261,7 +261,9 @@ func (b *Builder) Close() error {
 		return nil
 	}
 	b.closed = true
-	b.buf.Reset()
+	if b.buf != nil {
+		b.buf = nil
+	}
 	if b.fromfile  && !b.Disableautosave {
 		return b.Save()
 	}
