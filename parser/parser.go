@@ -128,7 +128,6 @@ func (p *Parser) registerservice(services []service.Service) error {
 
 //FIXME: this function can be optimized further removing unneccary addservice calls
 func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
-
 	upx, err := p.Readrequest(tgbotapimsg)
 	if err != nil {
 		return errors.Join(errors.New("tg update read error from parser"), err)
@@ -141,7 +140,6 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 			upx.Ctx, upx.Cancle = context.WithTimeout(p.GetBaseCtx(), 2 * time.Second) //replace old context because chatmember update must be proceed
 		}
 	}
-
 	defer func ()  {
 		if upx != nil{
 			p.uctxPool.Put(upx)
@@ -201,6 +199,13 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
 		upx.Setservice(C.Userservicename)
 	}
+	user := upx.FromUser()
+	dbuser := upx.User.Getdbuser()
+	if user != nil {
+		dbuser.IsTgPremium = user.IsPremium
+		dbuser.Name = user.FirstName + " " + user.LastName
+		dbuser.Username = user.UserName
+	}
 	if upx.Serviceset {
 		return p.addtoservice(upx)
 	}
@@ -240,7 +245,6 @@ func (u *Parser) addtoservice(upx *update.Updatectx) error {
 		return service.Exec(upx)
 	}
 	return C.ErrServiceNotFound
-
 }
 
 func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {

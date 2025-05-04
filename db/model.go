@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"encoding/base64"
 	"encoding/binary"
@@ -20,7 +19,7 @@ type User struct {
 	CheckID  uint
 	TgID     int64          `gorm:"primaryKey;column:tg_id"`
 	Name     string         `gorm:"type:varchar(100)"`
-	Username sql.NullString `gorm:"type:varchar(100);column:username"`
+	Username string 		`gorm:"type:varchar(40);column:username"`
 	Lang     string         `gorm:"type:varchar(50);column:lang"`
 
 	IsTgPremium       bool `gorm:"column:is_tg_premium"`
@@ -89,7 +88,7 @@ func (u User) String() string {
 		"User{TgID: %d, Name: %s, Username: %s, Points: %d, Lang: %s, "+
 			"CalculatedQuota: %s, AdditionalQuota: %s, GiftQuota: %s, CappedQuota: %s, UsedQuota: %s, "+
 			"MonthUsage: %s, AlltimeUsage: %s}",
-		u.TgID, u.Name, u.Username.String, u.Points, u.Lang,
+		u.TgID, u.Name, u.Username, u.Points, u.Lang,
 		u.CalculatedQuota.BToString(), u.AdditionalQuota.BToString(), u.GiftQuota.BToString(),
 		u.CappedQuota.BToString(), u.UsedQuota.BToString(),
 		u.MonthUsage.BToString(), u.AlltimeUsage.BToString(),

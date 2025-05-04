@@ -168,7 +168,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 			}{
 				CommonUser: &botapi.CommonUser{
 					Name:     NewUser.Name,
-					Username: NewUser.Username.String,
+					Username: NewUser.Username,
 					TgId:     upx.User.TgID,
 				},
 				LeftQuota: Usersession.LeftQuota().BToString(),
@@ -191,7 +191,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 				}{
 					CommonUser: &botapi.CommonUser{
 						Name:     NewUser.Name,
-						Username: NewUser.Username.String,
+						Username: NewUser.Username,
 						TgId:     NewUser.TgID,
 					},
 					IsInChannel:  upx.User.IsInChannel,
@@ -253,7 +253,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 					}{
 						CommonUser: &botapi.CommonUser{
 							Name:     NewUser.Name,
-							Username: NewUser.Username.String,
+							Username: NewUser.Username,
 							TgId:     NewUser.TgID,
 						},
 						Chat: updatedchat,
@@ -306,7 +306,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 				}{
 					CommonUser: &botapi.CommonUser{
 						Name:     NewUser.Name,
-						Username: NewUser.Username.String,
+						Username: NewUser.Username,
 						TgId:     NewUser.TgID,
 					},
 					Chat: updatedchat,
@@ -346,7 +346,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 				}{
 					CommonUser: botapi.CommonUser{
 						Name:     NewUser.Name,
-						Username: NewUser.Username.String,
+						Username: NewUser.Username,
 						TgId:     NewUser.TgID,
 					},
 					Chat:        updatedchat,
@@ -729,7 +729,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 	reciver, err = strconv.Atoi(replymg.Text)
 	if err != nil {
 		reciver = replymg.Text
-		if replymg.Text == upx.User.Username.String {
+		if replymg.Text == upx.User.Username {
 			Messagesession.SendAlert("Lol, You can't send Gift You'r self", nil)
 			return nil
 		}
@@ -758,7 +758,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 		}{
 			CommonUser: &botapi.CommonUser{
 				Name:     targetuser.Name,
-				Username: targetuser.Username.String,
+				Username: targetuser.Username,
 				TgId:     targetuser.TgID,
 			},
 			FromUser: upx.User.Name,

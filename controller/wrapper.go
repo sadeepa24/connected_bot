@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -623,17 +622,23 @@ func (c *Controller) GetUserByConfID(confId int64) (*db.User, error) {
 }
 
 func (c *Controller) GetUserByUserName(userName string) (*db.User, error) {
+	if userName == "" {
+		return nil, errors.New("user name Cannot be empty")
+	}
 	var user = &db.User{}
 	err := c.db.Model(&db.User{}).Where("username = ?", userName).First(user).Error
-	if user.Username.String != userName {
+	if user.Username != userName {
 		return user, errors.New("user not found")
 	}
 	return user, err
 }
 
-func (c *Controller) SearchUserByUsername(username string) (*db.User, bool, error) {
+func (c *Controller) SearchUserByUsername(userName string) (*db.User, bool, error) {
+	if userName == "" {
+		return nil, false, errors.New("user name Cannot be empty")
+	}
 	var dbuser *db.User
-	err := c.db.Model(&db.User{}).Where("username = ?", username).First(dbuser).Error
+	err := c.db.Model(&db.User{}).Where("username = ?", userName).First(dbuser).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, false, nil
@@ -859,10 +864,7 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		TgID:    user.ID,
 		CheckID: uint(c.Metadata.Dbusercount.Load()),
 		Name:    user.FirstName + " " + user.LastName,
-		Username: sql.NullString{
-			String: user.UserName,
-			Valid:  true,
-		},
+		Username: user.UserName,
 		CalculatedQuota:   C.Bwidth(c.CommonQuota.Load()),
 		DeletedConfCount:  0,
 		AddtionalConfig:   0,
@@ -870,8 +872,7 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		RecheckVerificity: recheck,
 		Lang:        c.metaconfig.DefaultLang,
 		Points:      C.DefaultPoint,
-		IsTgPremium: false,
-
+		IsTgPremium: user.IsPremium,
 		IsInChannel:   inchan,
 		ConfigCount:   0,
 		IsInGroup:     ingroup,

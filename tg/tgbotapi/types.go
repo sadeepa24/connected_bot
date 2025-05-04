@@ -224,6 +224,8 @@ type User struct {
 	// Returned only in getMe.
 	//
 	// optional
+	IsPremium bool `json:"is_premium,omitempty"`
+
 	CanJoinGroups bool `json:"can_join_groups,omitempty"`
 	// CanReadAllGroupMessages is true, if privacy mode is disabled for the bot.
 	// Returned only in getMe.

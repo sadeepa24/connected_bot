@@ -224,7 +224,7 @@ func (g *getinfo) userinfo() error {
 		CommonUser: &botapi.CommonUser{
 			Name:     g.dbuser.Name,
 			TgId:     g.dbuser.TgID,
-			Username: g.dbuser.Username.String,
+			Username: g.dbuser.Username,
 		},
 		Paused: g.dbuser.IsPaused,
 		CappedQuota: g.dbuser.CappedQuota.BToString(),
@@ -416,7 +416,7 @@ func (g *getinfo) configinfo() error {
 	if _, err = g.Messagesession.Edit(configinfo{
 		CommonUser: &botapi.CommonUser{
 			Name:     g.dbuser.Name,
-			Username: g.dbuser.Username.String,
+			Username: g.dbuser.Username,
 			TgId:     g.dbuser.TgID,
 		},
 		Active: g.lastselectConf.Active,

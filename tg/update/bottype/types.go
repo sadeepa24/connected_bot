@@ -42,7 +42,7 @@ func (u *User) Info() string {
 		return u.chinfo
 	}
 	if u.User != nil {
-		u.chinfo = fmt.Sprintf("user [%s] tg_id [%d] username [%s]", u.User.Name, u.User.TgID, u.User.Username.String )
+		u.chinfo = fmt.Sprintf("user [%s] tg_id [%d] username [%s]", u.User.Name, u.User.TgID, u.User.Username )
 	}
 	return u.chinfo
 

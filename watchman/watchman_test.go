@@ -2,7 +2,6 @@ package watchman_test
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"math/rand"
@@ -147,10 +146,7 @@ func insertdummyuser(dB *db.Database, count int, initquota C.Bwidth, startfrom i
 			CheckID: uint(i),
 			TgID:    int64(i),
 			Name:    "testName" + strconv.Itoa(i),
-			Username: sql.NullString{
-				Valid:  true,
-				String: "testUserName" + strconv.Itoa(i),
-			},
+			Username: "sw",
 			Lang:              "en",
 			IsInGroup:         true,
 			IsInChannel:       true,
@@ -173,10 +169,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "verified unused",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         true,
 		IsInChannel:       true,
@@ -231,10 +224,7 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "usaged user",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         true,
 		IsInChannel:       true,
@@ -294,10 +284,7 @@ func insertMonthlimited(dB *db.Database, checkId int64, ctrl *controller.Control
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "testName randome",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         false,
 		IsInChannel:       false,
@@ -315,10 +302,7 @@ func insertUnverified(dB *db.Database, checkId int64, ctrl *controller.Controlle
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "testName randome",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         true,
 		IsInChannel:       false,
@@ -340,10 +324,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "gift couple",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:          "en",
 		IsInGroup:     true,
 		IsInChannel:   true,
@@ -365,10 +346,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 		CheckID: uint(checkId)+1,
 		TgID:    checkId+1,
 		Name:    "gift couple",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "gift couple",
-		},
+		Username: "Random user",
 		Lang:          "en",
 		IsInGroup:     true,
 		IsInChannel:   true,

@@ -87,7 +87,7 @@ func (c *configState) home() error {
 			CommonUser: &botapi.CommonUser{
 				Name:     c.dbuser.Name,
 				TgId:     c.userId,
-				Username: c.dbuser.Username.String,
+				Username: c.dbuser.Username,
 			},
 			ConfCount: c.Usersession.GetUser().ConfigCount,
 		},
@@ -169,7 +169,7 @@ func (c *configState) action() error {
 		}{
 			CommonUser: &botapi.CommonUser{
 				Name:     c.dbuser.Name,
-				Username: c.dbuser.Username.String,
+				Username: c.dbuser.Username,
 				TgId:     c.userId,
 			},
 			NewName: name,

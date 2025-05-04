@@ -551,7 +551,7 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				CommonUser: &botapi.CommonUser{
 					Name:     enduserupx.User.Name,
 					TgId:     enduserupx.User.TgID,
-					Username: enduserupx.User.User.Username.String,
+					Username: enduserupx.User.User.Username,
 				},
 				NonUseCycle: upx.User.EmptyCycle,
 				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota)).Float64(),
