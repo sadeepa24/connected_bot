@@ -33,11 +33,14 @@ type MetadataConf struct {
 	GroupID           int64  `json:"groupd_id,omitempty"`
 	BandwidthAvelable string `json:"bandwidth,omitempty"`
 	LoginLimit        int16  `json:"login_limit,omitempty"`
+	MaxGiftCount 	  int64  `json:"max_gift,omitempty"`
+	MaxBuildConf  	  int	 `json:"max_build_conf,omitempty"`
 	//Userquota         int32  `json:"userquota,omitempty"`
 	//Verifiedcount     int32  `json:"verifiedcount,omitempty"`
 	Maxconfigcount    int16  `json:"max_config_count,omitempty"`
 	//CheckCount        int32  `json:"checkcount,omitempty"`  // database checked count for exting period
 	RefreshRate       int32  `json:"refresh_rate,omitempty"` //rate of db refresh in hours
+	BackupRate 		  int     `json:"backup_rate,omitempty"`
 
 	GroupLink  string `json:"group_link,omitempty"`
 	Channelink string `json:"channel_link,omitempty"`

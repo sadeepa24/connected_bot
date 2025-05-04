@@ -96,7 +96,7 @@ func (g *getinfo) home() error {
 func (g *getinfo) allininfo() error {
 	allins := g.ctrl.Getinbounds()
 	if len(allins) == 0 {
-		g.Messagesession.SendAlert("no any inbound found",nil)
+		g.Messagesession.SendAlert("no inbound found",nil)
 		g.state = infostatehome
 		return nil
 	}
@@ -144,7 +144,7 @@ func (g *getinfo) allininfo() error {
 func (g *getinfo) alloutinfo() error {
 	allouts := g.ctrl.Getoutbounds()
 	if len(allouts) == 0 {
-		g.Messagesession.SendAlert("no any outbound found", nil)
+		g.Messagesession.SendAlert("no outbound found", nil)
 		g.state = infostatehome
 		return nil
 	}
@@ -232,7 +232,7 @@ func (g *getinfo) userinfo() error {
 		TempLimitRate: g.dbuser.WarnRatio,
 		IsVerified: g.dbuser.Verified(),
 		NonUseCycle: g.dbuser.EmptyCycle,
-		UsagePercentage: ((tusage * 100)/(g.Usersession.GetUser().CalculatedQuota + g.dbuser.AdditionalQuota)).Float64(),
+		UsagePercentage: float64(int(((tusage * 100)/(g.Usersession.GetUser().CalculatedQuota + g.dbuser.AdditionalQuota)) * 1000))/1000,
 		GiftQuota: g.dbuser.GiftQuota.BToString(),
 		Joined:    g.dbuser.Joined.Format("2006-01-02 15:04:05"),
 		Dedicated: C.Bwidth(g.ctrl.CommonQuota.Load()).BToString(),
@@ -298,7 +298,7 @@ func (g *getinfo) userinfo() error {
 	return nil	
 }
 func (g *getinfo) gifts() error {
-	gifts, err := g.Usersession.AllGifts()
+	gifts, err := g.Usersession.AllGifts(false)
 	if err != nil {
 		g.calls.Alertsender("fetching gift failed try again later")
 		g.callback.logger.Error("fetching gifts err" + err.Error())
@@ -407,6 +407,11 @@ func (g *getinfo) configinfo() error {
 		g.state = infostateconfs
 		return nil
 	}
+	var perctage float64
+
+	if g.lastselectConf.Quota > 0 {
+		perctage = float64(int(((g.lastselectConf.Usage+status.FullUsage()).Float64()/g.lastselectConf.Quota.Float64())*100*1000)) / 1000
+	}
 
 	if _, err = g.Messagesession.Edit(configinfo{
 		CommonUser: &botapi.CommonUser{
@@ -421,7 +426,7 @@ func (g *getinfo) configinfo() error {
 		ConfigUUID:     g.lastselectConf.UUID,
 		ConfigPassword: g.lastselectConf.Password,
 		Loginlimit: g.lastselectConf.LoginLimit,
-		UsedPresenTage: float64(int(((g.lastselectConf.Usage+status.FullUsage()).Float64()/g.lastselectConf.Quota.Float64())*100*1000)) / 1000,
+		UsedPresenTage: perctage,
 		ResetDays: ((g.ctrl.ResetCount - g.ctrl.CheckCount.Load()) * g.ctrl.RefreshRate) / 24,
 
 		ConfigDownload: (g.lastselectConf.Download + status.Download).BToString(),

@@ -17,6 +17,7 @@ const (
 	CmdFree       = "free"
 	CmdCancel     = "cancel"
 	CmdState      = "state"
+	CmdFClose     = "fclose"
 
 	//xraywiz
 	CmdInfo      = "getinfo"

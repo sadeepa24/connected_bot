@@ -36,22 +36,22 @@ type User struct {
 	IsBotStarted      bool `gorm:"column:is_bot_started"`
 	//IsAdmin           bool `gorm:"column:is_admin"`
 	IsDistributedUser bool `gorm:"column:is_dis_user"`
-	IsCapped          bool `gorm:"column:is_capped"`
+	IsCapped          bool `gorm:"index;column:is_capped"`
 	IsMonthLimited    bool `gorm:"column:is_month_limited"`
 	RecheckVerificity bool `gorm:"column:recheck_verificity"`
 	CapDays 		  int32 `gorm:"column:cap_days"`
 
 	Points int64
 
-	CalculatedQuota C.Bwidth // This value includes Main User quota which is calculated on watchman + Giftquota
-	AdditionalQuota C.Bwidth `gorm:"column:additional_quota"` // this is static does not reset, value always in byte (this value does not use yet in codebase may be future)
-	GiftQuota       C.Bwidth // this value can be +,-
-	CappedQuota     C.Bwidth `gorm:"column:capped_quota"`
+	CalculatedQuota C.Bwidth `gorm:"index"`// This value includes Main User quota which is calculated on watchman + Giftquota
+	AdditionalQuota C.Bwidth `gorm:"index;column:additional_quota"` // this is static does not reset, value always in byte (this value does not use yet in codebase may be future)
+	GiftQuota       C.Bwidth `gorm:"index"` // this value can be +,-
+	CappedQuota     C.Bwidth `gorm:"index;column:capped_quota"`
 	UsedQuota       C.Bwidth // current total quota used by the user
-	SavedQuota      C.Bwidth //this value used for when a user over use month usage this value store next months savings from him    (his quota - fake usage)
+	//SavedQuota      C.Bwidth //this value used for when a user over use month usage this value store next months savings from him    (his quota - fake usage)
 
-	MonthUsage       C.Bwidth `gorm:"column:month_usage"` //Usage of current Month will reset with end of month
-	AlltimeUsage     C.Bwidth `gorm:"column:all_time_usage"`
+	MonthUsage       C.Bwidth `gorm:"index;column:month_usage"` //Usage of current Month will reset with end of month
+	AlltimeUsage     C.Bwidth `gorm:"index;column:all_time_usage"`
 	AddtionalConfig  int16    `gorm:"column:max_config_count"`
 	ConfigCount      int16    `gorm:"column:config_count"`
 	DeletedConfCount int16    `gorm:"column:deleted_conf_count"`
@@ -103,6 +103,11 @@ func (u *User) Iscaptimeover(days int) bool {
 func (u *User) Verified() bool {
 	return u.IsInChannel && u.IsInGroup
 }
+
+func (u *User) CanUse() bool {
+	return !(u.Restricted || u.IsDistributedUser || u.IsMonthLimited  || u.IsPaused || u.Templimited) 
+}
+
 
 type Config struct {
 	Id         int64 `gorm:"primaryKey"`

@@ -58,7 +58,9 @@ type Metadata struct {
 
 	DefaultDomain string
 	DefaultPubip  string
-
+	MaxGiftCount int64
+	MaxBuildConf int
+	BackupCycle int
 
 	SudoAdmin    int64
 	ConfigFolder string
@@ -94,11 +96,17 @@ func (m *Metadata) Init(metaconf C.MetadataConf, logger *zap.Logger) error {
 
 	m.storePath = metaconf.StorePath
 
+	m.MaxGiftCount = metaconf.MaxGiftCount
+	m.MaxBuildConf = metaconf.MaxBuildConf
 	m.CommonQuota = new(atomic.Int64)
 	m.VerifiedUserCount = new(atomic.Int32)
 	m.Dbusercount = new(atomic.Int32)
 	m.Maxconfigcount = metaconf.Maxconfigcount
 	m.CheckCount = new(atomic.Int32)
+	m.BackupCycle = metaconf.BackupRate
+	if m.BackupCycle == 0 {
+		m.BackupCycle = 1
+	}
 
 	m.HelperInfo = metaconf.HelperInfo
 	if metaconf.DefaultLang == "" {

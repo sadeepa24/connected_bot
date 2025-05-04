@@ -34,6 +34,7 @@ var (
 	CErrRetryFailed = WrapError(ErrRetryFailed, "Don't Be idiot :(")
 	CErrNoPerm = WrapError(ErrNoPerm, "Operation not permitted. Please check your account status.")
 	CErrNoPoints = WrapError(errors.New("no points"), "Cannot Pause Service User Does not have enogf points")
+	CErrDbopration = WrapError(ErrDbopration, "Operation on db failed, may be try again later")
 )
 
 
@@ -129,4 +130,4 @@ var ErrNilRequest = errors.New("request is nil pointer")
 var ErrUnknownUserListType = errors.New("user list type error")
 var ErrUserObNil = errors.New("user struct cannot be nil")
 var ErrNoService = errors.New("no service")
-var ErrNoAnyInbound = errors.New("no any inbound")
+var ErrNoAnyInbound = errors.New("no inbound")

@@ -115,8 +115,8 @@ type userinfo struct {
 type exportConfig struct {
 	exportin
 	conf.Inboud
-	
 }
+
 
 type exportin struct {
 	ProtoUrl string

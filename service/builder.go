@@ -156,7 +156,7 @@ func (c *confBuilder) zero() error {
 		c.State = builderhome
 		return nil
 	}
-	if c.dbconfs == nil {
+	if c.sboxconfs == nil {
 		var err error
 		c.sboxconfs, err = c.wiz.ctrl.GetSboxConfig(c.userId)
 		if err != nil {return err}
@@ -181,7 +181,10 @@ func (c *confBuilder) zero() error {
 			c.Builder.Close()
 		}
 	case btnaddnew:
-
+		if c.wiz.ctrl.MaxBuildConf <= len(c.sboxconfs) {
+			c.Alertsender("you can't create config more than " + strconv.Itoa(c.wiz.ctrl.MaxBuildConf))
+			return nil
+		}
 		name, err := common.ReciveName(c.Tgcalls)
 		if err != nil {
 			return err
@@ -307,7 +310,7 @@ func (c *confBuilder) inbound() error {
 			allin = append(allin, in.Tag)
 		}
 		if len(allin) == 0 {
-			c.Alertsender("no any inbound available for editing please add inbound	")
+			c.Alertsender("no inbound available for editing please add inbound	")
 			return nil
 		}
 		sin, err := c.Select(allin, c.Builder.ExportAllIn())
@@ -335,8 +338,6 @@ func (c *confBuilder) inbound() error {
 	case C.BtnClose:	
 		c.State = buildclosed
 	}
-
-
 	return nil
 }
 func (c *confBuilder) addin() error {
@@ -387,7 +388,7 @@ func (c *confBuilder) outbound() error {
 			allout = append(allout, out.Tag)
 		}
 		if len(allout) == 0 {
-			c.Alertsender("no any outbound available for editing please add endpoint")
+			c.Alertsender("no outbound available for editing please add endpoint")
 			return nil
 		}
 		sout, err := c.Select(allout, "select outbound to edit")
@@ -519,7 +520,7 @@ func (c *confBuilder) endpoint() error {
 			allout = append(allout, out.Tag)
 		}
 		if len(allout) == 0 {
-			c.Alertsender("no any endpoints available for editing please add endpoint")
+			c.Alertsender("no endpoints available for editing please add endpoint")
 			return nil
 		}
 		sout, err := c.Select(allout, "select endpoint to edit")

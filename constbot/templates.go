@@ -21,7 +21,6 @@ const (
 
 // CommandCreate
 const (
-	TmpCrAlreadyHave string = "create_conf_limit"
 	TmpCrAvblQuota   string = "create_available_quota"
 	TmpSendConf     string = "create_result"
 	TmpCrOutInfo     string = "create_out_info"

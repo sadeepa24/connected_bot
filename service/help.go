@@ -140,7 +140,7 @@ func (h *HelpState) gotopage() error {
 	}
 	h.btns.AddClose(false)
 
-	h.Messagesession.Edit(struct {
+	_, err := h.Messagesession.Edit(struct {
 		*botapi.CommonUser
 	}{
 		&botapi.CommonUser{
@@ -149,10 +149,12 @@ func (h *HelpState) gotopage() error {
 			TgId:     h.upx.User.TgID,
 		},
 	}, h.btns, h.PageName+strconv.Itoa(h.Page))
+	if err != nil {
+		return err
+	}
 
 	var (
 		callback *tgbotapi.CallbackQuery
-		err      error
 	)
 
 	if callback, err = h.wiz.callback.GetcallbackContext(h.ctx, h.btns.ID()); err != nil {

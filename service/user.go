@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/sadeepa24/connected_bot/botapi"
@@ -149,14 +150,18 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 	btns.SetOveride()
 
 	switch NewchatMember.Status {
+	case C.Statuskicked:
+		Usersession.Banuser(updatedchat)
+		Messagesession.SendAlert(C.GetMsg(C.MsgBannedMem), nil)
+		upx.User.LeaveTime = time.Now()
 	case C.Statusleft:
 		Usersession.Chatupdate(updatedchat, false)
 		Usersession.GetUser().IsRemoved = true
+		Usersession.CancelSentGift()
 		Usersession.DeactivateAll()
+
 		upx.User.LeaveTime = time.Now()
-
 		if NewUser.Isbotstarted() {
-
 			Messagesession.Edit(struct {
 				*botapi.CommonUser
 				LeftQuota string
@@ -168,14 +173,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 				},
 				LeftQuota: Usersession.LeftQuota().BToString(),
 			}, btns, C.TmpChatmemLeft)
-
 		}
-
-	case C.Statuskicked:
-		Usersession.Banuser(updatedchat)
-		Messagesession.SendAlert(C.GetMsg(C.MsgBannedMem), nil)
-		upx.User.LeaveTime = time.Now()
-
 	case C.Statusmember:
 		switch {
 
@@ -373,9 +371,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 			}
 
 		}
-
 		Usersession.Chatupdate(updatedchat, true)
-		
 		if NewUser.Isverified() {
 			Usersession.GetUser().IsRemoved = false
 		}
@@ -424,10 +420,11 @@ func (u *Usersrv) Commandhandler(cmd string, upx *update.Updatectx) error {
 		return u.cmdFree(upx, Messagesession)
 	case C.CmdState:
 		return u.cmdState(upx, Messagesession)
+	case C.CmdFClose:
+		return u.cmdFclose(upx, Messagesession)
 	default:
 		u.logger.Warn("unknown cmd recived by userservice - ", zap.String("cmd", cmd), zap.String("user", upx.User.Info()))
 		return u.defaultsrv.FromserviceExec(upx)
-
 	}
 	if upx.User.IsDistributedUser {
 		u.ctrl.Addquemg(&botapi.Msgcommon{
@@ -655,10 +652,22 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 		return nil
 	}
 	defer Usersession.Close()
+
+	if Usersession.IsLowPerm() {
+		return nil
+	}
+
+	leftquotatogift := Usersession.LeftQuotaFromOrigin()
+
+	if leftquotatogift <= 0 {
+		Messagesession.SendAlert(C.GetMsg(C.MsgGiftNoQuota), nil)
+		return nil
+	}
+
 	Messagesession.Edit(struct {
 		LeftQuota string
 	}{
-		LeftQuota: Usersession.LeftQuotaFromOrigin().BToString(),
+		LeftQuota: leftquotatogift.BToString(),
 	}, nil, C.TmpGifSend)
 	var (
 		replymg  *tgbotapi.Message
@@ -691,7 +700,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 			continue
 		}
 
-		if C.Bwidth(usersend).GbtoByte() > Usersession.LeftQuotaFromOrigin() {
+		if C.Bwidth(usersend).GbtoByte() > leftquotatogift {
 			Messagesession.SendAlert(C.GetMsg(C.Msggifterr), nil)
 			continue
 		}
@@ -731,33 +740,13 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 		} 
 	}
 
-
-
-
-
 	targetuser, err = u.ctrl.Gift(upx, reciver, C.Bwidth(usersend).GbtoByte())
 
 	if err != nil {
 		Messagesession.DeleteAllMsg()
-		switch {
-		case errors.Is(err, C.ErrConfigNotFound):
-			Messagesession.SendAlert(C.GetMsg(C.MsgGifRecnOconfig), nil)
-		case errors.Is(err, C.ErrDbopration):
-			Messagesession.SendAlert(C.GetMsg(C.MsgDberr), nil)
-		case errors.Is(err, C.ErrConfigNotFound):
-			Messagesession.SendAlert(C.GetMsg(C.MsgUserNotFoun), nil)
-		case errors.Is(err, C.ErrUserCanootReciveUserCapped):
-			Messagesession.SendAlert(C.GetMsg(C.MsgTargetcapped), nil)
-		default:
-			Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-		}
-
-		return errors.Join(errors.New("errored when gifting " + upx.User.Info()), err)
+		Messagesession.SendError(err, C.GetMsg(C.Msgwrong))
+		return errors.Join(errors.New("gift err on user: " + upx.User.Info()), err)
 	}
-
-	//TODO: add template here
-	//u.ctrl.Addquemg(upx.Ctx, )
-
 	btns.Reset([]int16{2})
 	btns.AddUrlbutton("Thanks Him", fmt.Sprintf("tg://user?id=%v", upx.User.TgID))
 
@@ -781,20 +770,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 		Lang:         upx.User.Lang,
 	})
 	Messagesession.SendAlert(fmt.Sprintf(C.GetMsg(C.MsgGiftSent), C.Bwidth(usersend).GbtoByte().BToString(), targetuser.Name), nil)
-	
 	u.logger.Info(fmt.Sprintf("User [%s] Gifted %d GB to %s", upx.User.Name, usersend, targetuser.Name ))
-	
-	/*
-		old way of sending msg
-		u.botapicaller.SendContext(upx.Ctx, &botapi.Msgcommon{
-			Infocontext: &botapi.Infocontext{
-				ChatId:  targetuser.TgID,
-				User_id: targetuser.TgID,
-			},
-			Text: "Congratulation you have recived " + C.Bwidth(usersend).String() + " gift data from " + upx.User.Name,
-		})
-	*/
-
 	return nil
 }
 
@@ -906,10 +882,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	btns.AddClose(false)
 
 	fullUsage := Usersession.TotalUsage()
-
-	capble_quota := (Usersession.GetUser().CalculatedQuota - fullUsage)
-
-	if capble_quota <= 0 {
+	if (Usersession.GetUser().CalculatedQuota - fullUsage) <= 0 {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCannotCap), nil)
 		return nil
 	}
@@ -1174,15 +1147,26 @@ func (u *Usersrv) commandReffral(upx *update.Updatectx , Messagesession *botapi.
 
 func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.Msgsession) error {
 	// Create contact session here
-	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 2*time.Minute)
+	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 10*time.Minute)
 	Messagesession.SendAlert(`
-	⏳ You have 2 minutes of chat time!
+	⏳ You have max 10 minutes of chat time!
 	If an admin is online, they'll reply within this time. If not, don't worry—they'll get back to you as soon as possible.
 	💡 If you’d like to cancel this chat, simply send /cancel at any time.
-	
 	`, nil)
 
 	timeovermg := C.GetMsg(C.GetMsg(C.MsgContactTimeover))
+	alltime := new(atomic.Int32)
+	alltime.Add(2)
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			alltime.Add(-1)
+			if upx.Ctx.Err() != nil || alltime.Load() == 0 {
+				upx.Cancle()
+				break
+			}
+		}
+	}()
 	for {
 		if upx.Ctx.Err() != nil {
 			break
@@ -1191,8 +1175,9 @@ func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.
 		if err != nil {
 			break
 		}
-		if msg.Text == "/cancel" {
+		if msg.Text == "/cancel"{
 			timeovermg = C.GetMsg(C.MsgContactCancle)
+			alltime.Store(0)
 			break
 		}
 		//Messagesession.ForwardMgTo(u.ctrl.SudoAdmin, int64(msg.MessageID))
@@ -1205,9 +1190,9 @@ func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.
 		if msg.Text == "" {
 			Messagesession.CopyMessageTo(u.ctrl.SudoAdmin, int64(msg.MessageID))
 		}
+		alltime.Add(1)
 		
 	}
-
 	u.ctrl.Addquemg(&botapi.Msgcommon{
 		Infocontext: &botapi.Infocontext{
 			ChatId: upx.User.TgID,
@@ -1387,5 +1372,21 @@ func (u *Usersrv) cmdState(upx *update.Updatectx, Messagesession *botapi.Msgsess
 		Messagesession.SendExtranal("Operation completed successfully!", nil, "", true)
 	}
 	return err
+	
+}
+
+func (u *Usersrv) cmdFclose(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
+	if forcecloser, ok := u.ctrl.Checksession(upx.User.TgID); ok {
+		if closer, ok := forcecloser.(controller.ForceCloser); ok {
+			if err := closer.ForceClose(); err != nil {
+				Messagesession.SendError(err, "something went wrong while closing old session")
+				return nil
+			}
+			Messagesession.SendAlert("success", nil)
+		}
+		return nil
+	}
+	Messagesession.SendAlert("no sessions", nil)
+	return nil
 	
 }

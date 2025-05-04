@@ -150,6 +150,8 @@ var (
 	MsgTempMonthLimited = "MsgTempMonthLimited"
 	MsgTempNoLimit = "MsgTempNoLimit"
 	MsgTempLimitAlert = "MsgTempLimitAlert"
+
+	MsgGiftNoQuota = "MsgGiftNoQuota"
 )
 
 // User Conform
@@ -416,5 +418,6 @@ func overide() {
 	MsgTempLimitAlert = "MsgTempLimitAlert"
 	MsgCannotCap = "MsgCannotCap"
 	MsgAtleas1In = "MsgAtleas1In"
+	MsgGiftNoQuota = "MsgGiftNoQuota"
 }
 

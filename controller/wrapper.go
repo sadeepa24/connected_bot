@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -249,7 +250,7 @@ func (c *Controller) Init() error {
 
 	//if already db intilize verify all new and old  inbounds and make changes as needed
 	if !dbnotfound {
-		err = c.initallconfigs(dbMeta)
+		err = c.initallconfigs(dbMeta.TotalConfigCount, false)
 		if err != nil {
 			return errors.New("failed to init all configs " + err.Error())
 		}
@@ -356,6 +357,9 @@ func (c *Controller) Init() error {
 	if Bandwidth, err = C.BwidthString(c.metaconfig.BandwidthAvelable); err != nil {
 		return err
 	}
+	if Bandwidth == 0 {
+		return errors.New("bandwidth cannot be zero")
+	}
 	c.Metadata.GroupID = dbMeta.GroupID
 	c.Metadata.ChannelId = dbMeta.ChannelId
 
@@ -383,7 +387,7 @@ func (c *Controller) Init() error {
 
 
 //this function verify all config's inbound with new sbox config
-func (c *Controller) initallconfigs(meta *db.Metadata) error {
+func (c *Controller) initallconfigs(totalConfig int64, force bool) error {
 
 
 	outfromdb := []*db.Outbound{}
@@ -424,18 +428,18 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 		
 	}
 
-	if len(changedID) == 0 {
+	if len(changedID) == 0 && !force {
 		return nil
 	}
 
-	bufct := meta.TotalConfigCount / 10 
+	bufct := totalConfig / 10 
 	if bufct < 20 {
 		bufct = 30
 	}
 	if bufct > 100 {
 		bufct = 100
 	}
-	bufsender := NewBufSender(c.ctx, c,  int(bufct), time.Duration(meta.TotalConfigCount * 3) * time.Second)
+	bufsender := NewBufSender(c.ctx, c,  int(bufct), time.Duration(totalConfig * 3) * time.Second)
 	go bufsender.Start()
 	defer bufsender.Close()
 	
@@ -472,7 +476,9 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 			}
 			newinbounds = newinbounds[:0]
 		}
-		tx.Save(&save)
+		if len(save) > 0 {
+			tx.Save(&save)
+		}
 		save = save[:0]
 		return nil
 	})
@@ -481,6 +487,20 @@ func (c *Controller) initallconfigs(meta *db.Metadata) error {
 	return nil
 }
 
+func (c *Controller) RefreshAllConfig() error {
+	c.IncCriticalOp()
+	var totalconfs int64
+	c.Overview.Mu.RLock()
+	totalconfs = c.Overview.TotalConfCount
+	c.Overview.Mu.RUnlock()
+	err := c.initallconfigs(totalconfs, true)
+	c.DecCriticalOp()
+	if err != nil {
+		return err
+	}
+	c.signals <- RefreshSignal(1)
+	return nil
+}
 
 func (c *Controller) GetUser(user *tgbotapi.User) (*bottype.User, bool, error) {
 	if user == nil {
@@ -632,21 +652,22 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 
 	if usertxt, ok := to.(string); ok {
 		if err = c.db.Model(&db.User{}).Where("username = ?", usertxt).Preload("Configs").First(touser).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, C.ErrDbnotfound
-			}
-			return nil, C.ErrDbopration
+			return nil, C.CErrDbopration
 		}
 
 	} else if userid, ok := to.(int); ok {
 		if err = c.db.Model(&db.User{}).Where("tg_id = ?", userid).Preload("Configs").First(touser).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, C.ErrDbnotfound
-			}
-			return nil, C.ErrDbopration
+			return nil, C.CErrDbopration
 		}
 	} else {
 		return nil, errors.New("invalid reciver")
+	}
+
+	var giftcount int64 
+	c.db.Model(&db.Gift{}).Where("recive_valid = ? OR send_valid = ?", true, true).Where("reciver = ?", touser.TgID).Count(&giftcount)
+
+	if giftcount >= c.MaxGiftCount {
+		return nil, C.WrapError(errors.New("user gift limit exceed"), "gift limit exceed")
 	}
 
 	if err = c.db.Model(fromuser).Preload("Configs").First(fromuser).Error; err != nil {
@@ -654,7 +675,7 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 	}
 
 	if touser.IsCapped {
-		return touser, C.ErrUserCanootReciveUserCapped
+		return touser, C.WrapError(C.ErrUserCanootReciveUserCapped, C.ErrUserCanootReciveUserCapped.Error())
 	}
 	if len(touser.Configs) <= 0 {
 		return touser, C.ErrConfigNotFound
@@ -670,28 +691,28 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 
 	if tx.Error != nil {
 		tx.Rollback()
-		return nil, C.ErrDbopration
+		return nil, C.CErrDbopration
 	}
 
 	if err = tx.Save(fromuser).Error; err != nil {
 		tx.Rollback()
-		return nil, C.ErrDbopration
+		return nil, C.CErrDbopration
 	}
 	if err = tx.Save(touser).Error; err != nil {
 		tx.Rollback()
-		return nil, C.ErrDbopration
+		return nil, C.CErrDbopration
 	}
 	if fromuser.ConfigCount > 0 {
 		if err = tx.Save(&fromuser.Configs).Error; err != nil {
 			tx.Rollback()
-			return nil, C.ErrDbopration
+			return nil, C.CErrDbopration
 		}
 	}
 
 	if touser.ConfigCount > 0 {
 		if err = tx.Save(&touser.Configs).Error; err != nil {
 			tx.Rollback()
-			return nil, C.ErrDbopration
+			return nil, C.CErrDbopration
 		}
 	}
 
@@ -714,6 +735,45 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 
 	return touser, tx.Commit().Error
 
+}
+func (c *Controller) CancelGift(gift db.Gift, sender *db.User) error {
+	c.IncCriticalOp()
+	defer c.DecCriticalOp()
+	if !(gift.SendValid && gift.ReciveValid) {
+		return nil
+	}
+	var touser = &db.User{
+		TgID: gift.Reciver,
+	}
+	err := c.db.Model(&db.User{}).First(touser).Error
+	if err != nil {
+		return err
+	}
+	
+	presentGift := ((C.Bwidth(c.CommonQuota.Load()) / gift.ComQuota) * gift.Bandwidth)
+	touser.GiftQuota -= presentGift
+	sender.GiftQuota += presentGift
+	c.RecalculateConfigquotas(touser)
+	c.RecalculateConfigquotas(sender)
+	tx := c.db.Begin()
+	if err := tx.Save(touser).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Save(sender).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Delete(&gift).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit().Error
+	if err == nil {
+		c.DirectMg(fmt.Sprintf("gift bandwidth %s recived from %d was canceled", gift.Bandwidth.BToString(), gift.Sender), gift.Reciver, gift.Reciver)
+		c.DirectMg(fmt.Sprintf("gift bandwidth %s that you have sent to %d was canceled", gift.Bandwidth.BToString(), gift.Sender), gift.Sender, gift.Sender)
+	}
+	return err
 }
 
 // user struct should have been preloaded configs
@@ -753,7 +813,6 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 				ConfigID: user.Configs[i].Id,
 			})
 		}
-		c.db.Save(&user.Configs[i])
 	}
 
 	return nil

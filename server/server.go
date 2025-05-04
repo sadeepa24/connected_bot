@@ -88,7 +88,7 @@ func (w *Webhookserver) Start(botapi botapi.BotAPI, errchan chan error) error {
 		w.logger.Debug("webhook setting succsess")
 	}
 	errchan <- nil
-	w.logger.Info("webhook listener started on " + w.Addr)
+	w.logger.Info("webhook listener started on " + w.listner.Addr().String())
 	return w.Server.Serve(w.listner)
 
 }

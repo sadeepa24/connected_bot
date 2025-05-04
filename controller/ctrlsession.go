@@ -169,7 +169,7 @@ func (c *CtrlSession) activateconf(conf *db.Config) (sbConf.Sboxstatus, error) {
 }
 func (c *CtrlSession) ActivateConfig(confid int64) (sbConf.Sboxstatus, error) {
 	var status sbConf.Sboxstatus
-	if c.lowperm {
+	if c.updateperm() {
 		return status, C.CErrNoPerm
 	}
 	conf, ok := c.configmap[confid]
@@ -179,7 +179,7 @@ func (c *CtrlSession) ActivateConfig(confid int64) (sbConf.Sboxstatus, error) {
 	return c.activateconf(conf)
 }
 func (c *CtrlSession) ActivateAll() error {
-	if c.lowperm {
+	if c.updateperm() {
 		return C.CErrNoPerm
 	}
 	if c.user.IsRemoved || !c.user.Verified() || c.user.IsMonthLimited || c.user.Restricted || c.user.IsDistributedUser  ||c.user.Templimited{
@@ -226,7 +226,7 @@ func (c *CtrlSession) DeactivateAll() error {
 }
 func (c *CtrlSession) ReActivateConfig(confid int64) (sbConf.Sboxstatus, error) {
 	var status sbConf.Sboxstatus
-	if c.lowperm {
+	if c.updateperm() {
 		return status, C.CErrNoPerm
 	}
 	conf, ok := c.configmap[confid]
@@ -248,8 +248,9 @@ func (c *CtrlSession) ReActivateConfig(confid int64) (sbConf.Sboxstatus, error) 
 	}
 	return status, nil
 }
-
-
+func (c *CtrlSession) IsLowPerm() bool {
+	return c.lowperm
+}
 
 
 
@@ -427,6 +428,10 @@ func (c *CtrlSession) LeftQuotaFromOrigin() C.Bwidth {
 		dedicated += -(c.user.GiftQuota)
 	}
 
+	if c.TotalUsage() != c.GetFullUsage().Full() {
+		dedicated += (c.TotalUsage() - c.GetFullUsage().Full()) //hidden usage from deleted config
+	}
+
 	return C.Bwidth(c.ctrl.CommonQuota.Load()) - dedicated
 }
 func (c *CtrlSession) LeftUsage() C.Bwidth {
@@ -459,8 +464,9 @@ func (c *CtrlSession) Pause() error {
 	c.updateperm()
 	return c.DeactivateAll()
 }
-func (c *CtrlSession) updateperm()  {
+func (c *CtrlSession) updateperm()bool  {
 	c.lowperm = c.user.IsDistributedUser || c.user.IsRemoved || c.user.Restricted || c.user.Templimited || c.user.IsPaused
+	return c.lowperm
 }
 
 
@@ -567,12 +573,12 @@ func (c *CtrlSession) Chatupdate(chat string, val bool) {
 }
 
 
-func (c *CtrlSession) AllGifts() ([]db.Gift, error) {
-	if c.gift != nil {
+func (c *CtrlSession) AllGifts(force bool) ([]db.Gift, error) {
+	if c.gift != nil && !force {
 		return c.gift, nil
 	}
 	gifts := []db.Gift{} 
-	err := c.ctrl.db.Model(&db.Gift{}).Where("sender = ? OR reciver = ?", c.user.TgID, c.user.TgID).Find(&gifts).Error
+	err := c.ctrl.db.Model(&db.Gift{}).Where("send_valid = ? OR recive_valid = ?", true, true).Where("sender = ? OR reciver = ?", c.user.TgID, c.user.TgID).Find(&gifts).Error
 	c.gift = gifts
 	return c.gift, err
 }
@@ -592,6 +598,19 @@ func (c *CtrlSession) Banuser(chat string) {
 	}
 	c.user.IsRemoved = true
 	c.DeactivateAll()
+	c.CancelSentGift()
+}
+func (c *CtrlSession) CancelSentGift() {
+	if c.user.GiftQuota != 0 {
+		allgifts, err := c.AllGifts(true)
+		if err == nil {
+			for i := range allgifts {
+				if allgifts[i].Sender == c.user.TgID {
+					c.ctrl.CancelGift(allgifts[i], c.user)
+				}
+			}
+		}
+	}
 }
 //used by admin
 func (c *CtrlSession) Restrict() {
@@ -680,5 +699,9 @@ func (c *CtrlSession) Close() error {
 	return nil
 }
 func (c *CtrlSession) ForceClose() error {
-	return c.Close()
+	err := c.Close()
+	if c.cancle != nil {
+		c.cancle()
+	}
+	return err
 }

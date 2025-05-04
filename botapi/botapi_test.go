@@ -16,8 +16,8 @@ func TestBotapi(t *testing.T) {
 	_, err := newbot.SendContext(context.Background(), &botapi.Msgcommon{
 		Text: "Hello",
 		Infocontext: &botapi.Infocontext{
-			ChatId:  5413731343,
-			User_id: 5413731343,
+			ChatId:  9,
+			User_id: 9,
 		},
 	})
 
@@ -47,7 +47,7 @@ func TestTexttmp(t *testing.T) {
 
 func TestCallBackdata(t *testing.T) {
 	newdata := botapi.Callbackdata{
-		Data:   "hellodata",
+		Data:   "data",
 		Uniqid: rand.Int63(),
 	}
 

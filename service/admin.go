@@ -489,8 +489,9 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			btns.AddBtcommon("User Info")	
 			btns.AddBtcommon("User Settings")
 			btns.AddBtcommon("Builder")
-			btns.AddBtcommon("Configure")	
-			btns.AddClose(false)
+			btns.AddBtcommon("Configure")
+			btns.AddBtcommon("Gifts")	
+			btns.AddClose(true)
 
 			callback, err = callbackreciver("select", btns)
 			if err != nil {
@@ -506,6 +507,8 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				state = 5
 			case "User Info":
 				state = 6
+			case "Gifts":
+				state = 7
 			case C.BtnClose:
 				break main
 			}
@@ -530,11 +533,13 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			} else {
 				btns.Addbutton("Remove Distribute",  "Distribute","" )
 			}
-
+			
 			btns.AddBtcommon("Change Point Count")
 			if enduserupx.User.Verified() {
 				btns.AddBtcommon("Create Config")
 			}
+			btns.Passline()
+			btns.Addbutton("🔴🔴 Advanced Change 🔴🔴", "Advanced Change", "")
 			btns.AddCloseBack()
 			tusage := endusersession.TotalUsage()
 			Messagesession.Edit(userinfo{
@@ -660,8 +665,49 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				}
 				endusersession.GetUser().Points = int64(pt)
 				endusermsg.SendAlert("admin changed you'r point count to" + strconv.Itoa(pt), nil)
+			case "Advanced Change":
+				Messagesession.SendAlert("⚠️ Proceed with Caution! 🔴 Modifying these values can have serious consequences. Only make changes if you are absolutely certain of what you’re doing.  🔒 Some fields are protected and must never be altered. ", nil)
+				Messagesession.ResetState()
+				time.Sleep(1 * time.Second)
+				pre := botapi.PreBuuf{
+					Buffer: &bytes.Buffer{},
+				}
+				conec := builder.NewConnector(calls)
+				wlkr, err := walker.NewWalker(endusersession.GetUser())
+				if err != nil {
+					Messagesession.SendAlert("walker create failed: " + err.Error(), nil)
+					continue main
+				}
+				wlkr.SetValue = setvaluefunc(conec, nil)
+				wlkr.CanSetCheck = func(val reflect.Value, nextItemPath string, wlkr *walker.Walker) bool {
+					return false
+				}
+				err = builder.AnyFieldChange(wlkr, endusersession.GetUser(), conec, func(item any) any {
+					itm, ok := wlkr.CurrentPtrIface()
+					if ok {
+						pre.Reset()
+						enc := json.NewEncoder(&pre)
+						enc.SetIndent("", " ")
+						err = enc.Encode(itm)
+						if err != nil {
+							return "json Encode Err " + err.Error()
+						}
+						if pre.Len() == 0 {
+							return "marshall zero"
+						}
+						return &pre
+					} else {
+						return "current item cannot be marshal"
+					}
+				}, a.logger)
+				if err != nil {
+					Messagesession.SendAlert("field change got err: " + err.Error(), nil)
+					return err
+				}
+				endusersession.Save()
 			}
 		case 4:
+			Messagesession.ResetState()
 			if _, ok := a.xraywiz.builds.LoadOrStore(enduserupx.User.TgID, true); ok {
 				Messagesession.SendAlert("user have already opend a builder session please wait until he closes it", nil)
 				state = 0 
@@ -734,7 +780,6 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				}
 			}
 			state = 0
-
 		case 6:
 			userinfost := &getinfo{
 				state:  0,
@@ -756,7 +801,60 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				return err
 			}
 			state = 0
-		
+		case 7:
+			gifts, err := endusersession.AllGifts(true)
+			if err != nil || len(gifts) == 0  {
+				if err != nil {
+					Messagesession.SendAlert("fetch failed: " + err.Error(), nil)
+				} else {
+					Messagesession.SendAlert("no gifts", nil)
+				}
+				state = 1
+				continue main
+			}
+			for i := range gifts {
+				btns.AddBtcommon(strconv.Itoa(i))
+			}
+			btns.AddCloseBack()
+			callback, err = calls.Callbackreciver("select option", btns)
+			if err != nil {
+				return err
+			}
+			
+			switch callback.Data {
+			case C.BtnClose:
+				return nil
+			case C.BtnBack:
+				state = 0
+				continue main
+			default:
+				giftnum, err := strconv.Atoi(callback.Data)
+				if err != nil {
+					continue main
+				}
+				thgift := gifts[giftnum]
+				btns.Reset([]int16{1})
+				if thgift.Sender == endusersession.GetUser().TgID {
+					btns.AddBtcommon("cancel gift")
+				}
+				btns.AddBack(false)
+				callback, err = calls.Callbackreciver(fmt.Sprintf(" bandwidthh: %s",  thgift.Bandwidth.BToString()), btns)
+				if err != nil {
+					return err
+				}
+				if callback.Data != "cancel gift" {
+					continue main
+				}
+				if gifts[giftnum].Sender != endusersession.GetUser().TgID {
+					calls.Alertsender("cannot cancel recived gift")
+					continue main
+				}
+				err = a.ctrl.CancelGift(gifts[giftnum], endusersession.GetUser())
+				if err != nil {
+					calls.Alertsender("gift cancel failed: " + err.Error())
+					continue main
+				}
+			}
 		}
 	}
 
@@ -789,14 +887,15 @@ func (a *Adminsrv) activeUserStatus(upx *update.Updatectx, Messagesession *botap
 
 		switch callback.Data {
 		case "Online":
-			if online != nil || len(online) == len(activeusr) {
-				online = make(map[int]opts.UserStatus, len(activeusr))
+			online = make(map[int]opts.UserStatus, len(activeusr))
+			if onlineIDS == nil {
 				onlineIDS = make([]int, len(activeusr))
-				for id, user := range activeusr {
-					if len(user.Ip) > 0 {
-						online[id] = user
-						onlineIDS = append(onlineIDS, id)
-					}
+			}
+			onlineIDS = onlineIDS[:0]
+			for id, user := range activeusr {
+				if len(user.Ip) > 0 {
+					online[id] = user
+					onlineIDS = append(onlineIDS, id)
 				}
 			}
 		case "All":
@@ -807,25 +906,25 @@ func (a *Adminsrv) activeUserStatus(upx *update.Updatectx, Messagesession *botap
 		}
 
 		if len(online) == 0 {
-			calls.Alertsender("no any active conf can be found")
+			calls.Alertsender("no active conf can be found")
 			continue
 		}
 
 	
-		pagecount := len(online)/btnpereach
+		pagecount := len(onlineIDS)/btnpereach
 		currentPage := 1
 		configs:
 		for {
 			btns.Reset([]int16{2})
 			to := currentPage*btnpereach
-			if to > len(online) {
-				to = (currentPage-1)*btnpereach + len(online)%btnpereach
+			if to > len(onlineIDS) {
+				to = (currentPage-1)*btnpereach + len(onlineIDS)%btnpereach
 			}
 			for i := (currentPage-1)*btnpereach; i < to; i++ {
 				btns.AddBtcommon(strconv.Itoa(onlineIDS[i]))
 			}
 			
-			if currentPage < pagecount || (currentPage == pagecount &&  len(online)%btnpereach > 0) {
+			if currentPage < pagecount || (currentPage == pagecount &&  len(onlineIDS)%btnpereach > 0) {
 				btns.AddBtcommon(C.BtnNext)
 			}
 			btns.AddCloseBack()
@@ -886,6 +985,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 		btns.Addbutton("🔴 Restart", "Restart", "")
 		btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
 		btns.Addbutton("Reset Lang Codes", "langchg", "")
+		btns.Addbutton("Refresh Config", "refconf", "")
 		btns.AddClose(true)
 		
 		if callback, err = callbackreciver("select", btns); err != nil {
@@ -966,6 +1066,12 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 					Text: "lang code changed",
 				})
 				return nil
+		case "refconf":
+			Messagesession.DeleteAllMsg()
+			if err = a.ctrl.RefreshAllConfig(); err != nil {
+				Messagesession.SendAlert("config refresh err: " +  err.Error(), nil)
+			}
+			return err
 		case C.BtnClose:
 				Messagesession.DeleteAllMsg()
 				alertsender("manager closed")
@@ -1531,58 +1637,15 @@ func (a *Adminsrv) botconfig(Messagesession *botapi.Msgsession,  calls common.Tg
 	}
 	conec := builder.NewConnector(calls)
 	wlkr, _ := walker.NewWalker(&conf)
-	wlkr.SetValue = func(curval reflect.Value, path string, wlkr *walker.Walker, item any)  (reflect.Value, bool) {
-		switch curval.Kind() {
-		case reflect.String:
-			s, err := conec.ReciveVal("send new string value")
-			if err != nil {
-				break
-			}
-			return reflect.ValueOf(s), true
-		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
-			s, err := conec.ReciveVal("send new string value")
-			if err != nil {
-				break
-			}
-			d, err := strconv.Atoi(s)
-			if err != nil {
-				break
-			}
-			switch curval.Kind() {
-			case reflect.Int16:
-				return reflect.ValueOf(int16(d)), true
-			case reflect.Int32:
-				return reflect.ValueOf(int32(d)), true
-			case reflect.Int64:
-				return reflect.ValueOf(int64(d)), true
-			case reflect.Int:
-				return reflect.ValueOf(d), true
-			}
-		default:
-			if curval.Type().String() == "constbot.InlinePost" {
-				return reflect.ValueOf(C.InlinePost{
-					//TODO: fill here
-				}), true
-			}
+	wlkr.SetValue = setvaluefunc(conec, func(curval reflect.Value, path string, wlkr *walker.Walker, item any) (reflect.Value, bool) {
+		if curval.Type().String() == "constbot.InlinePost" {
+			return reflect.ValueOf(C.InlinePost{
+				//TODO: fill here
+			}), true
 		}
-
 		return reflect.Value{}, false
-	}
-	wlkr.CanSetCheck = func(val reflect.Value, nextItemPath string, wlkr *walker.Walker) bool {
-		switch val.Type().String() {
-		case "constbot.InlinePost":
-			return true
-		}
-		return false
-	}
-
-	//TODO: remove this after stablizing the walker (almost)
-	defer func() {
-		if r := recover(); r != nil {
-			a.logger.Error("panic recovered in botconfig", zap.Any("recover", r))
-			Messagesession.SendAlert("An unexpected error occurred. Please try again later. Or send the error to dev", nil)
-		}
-	}()
+	})
+	wlkr.CanSetCheck = cansetfunc(conec)
 
 	err = builder.AnyFieldChange(wlkr, &conf, conec, func(item any) any {
 		itm, ok := wlkr.CurrentPtrIface()
@@ -1598,7 +1661,7 @@ func (a *Adminsrv) botconfig(Messagesession *botapi.Msgsession,  calls common.Tg
 		} else {
 			return "current item cannot be marshal"
 		}
-	})
+	}, a.logger)
 
 	if err != nil {
 		Messagesession.SendAlert("field change got err: " + err.Error(), nil)
@@ -1631,4 +1694,79 @@ func (a *Adminsrv) botconfig(Messagesession *botapi.Msgsession,  calls common.Tg
 	}
 	file.Truncate(int64(n))
 	return nil
+}
+
+func setvaluefunc(conec builder.Connector, custom walker.SetValue) walker.SetValue {
+	return func(curval reflect.Value, path string, wlkr *walker.Walker, item any)  (reflect.Value, bool) {
+		switch curval.Kind() {
+		case reflect.String:
+			s, err := conec.ReciveVal("send new string value")
+			if err != nil {
+				break
+			}
+			return reflect.ValueOf(s), true
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint:
+			s, err := conec.ReciveVal("send new int value")
+			if err != nil {
+				break
+			}
+			d, err := strconv.Atoi(s)
+			if err != nil {
+				break
+			}
+			switch curval.Kind() {
+			case reflect.Int16:
+				return reflect.ValueOf(int16(d)), true
+			case reflect.Int32:
+				return reflect.ValueOf(int32(d)), true
+			case reflect.Int64:
+				return reflect.ValueOf(int64(d)), true
+			case reflect.Int:
+				return reflect.ValueOf(d), true
+			case reflect.Uint:
+				return reflect.ValueOf(uint(d)), true
+
+			}	
+		case reflect.Float32, reflect.Float64:
+			s, err := conec.ReciveVal("send new float value")
+			if err != nil {
+				break
+			}
+			d, err := strconv.ParseFloat(s, 64)
+			if err != nil {
+				break
+			}
+			switch curval.Kind() {
+			case reflect.Float64:
+				return reflect.ValueOf(d), true 
+			case reflect.Float32:
+				return reflect.ValueOf(float32(d)), true 
+			}
+		case reflect.Bool:
+			se, err := conec.Select([]string{"true", "false"}, "select true/false")
+			if err != nil {
+				break
+			}
+			var bval bool
+			if se == "true" {
+				bval = true
+			}
+			return reflect.ValueOf(bval), true
+		default:
+			if custom != nil {
+				return custom(curval, path, wlkr, item )
+			}
+		}
+		return reflect.Value{}, false
+	}
+}
+
+func cansetfunc(_ builder.Connector) walker.CansetCheck {
+	return func(val reflect.Value, nextItemPath string, wlkr *walker.Walker) bool {
+		switch val.Type().String() {
+		case "constbot.InlinePost":
+			return true
+		}
+		return false
+	}	
 }

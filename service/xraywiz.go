@@ -215,7 +215,7 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 			TUpload:       usage.Uploadtd.BToString(),
 			MDownload:     usage.Download.BToString(),
 			MUpload:       usage.Upload.BToString(),
-			MonthAll:      usage.Full().BToString(),
+			MonthAll:      (upx.User.MonthUsage + usage.Today()).BToString(),
 			UsageDuration: time.Since(u.ctrl.GetLastRefreshtime()).Round(1 * time.Second).String(),
 			Alltime:       (upx.User.AlltimeUsage + usage.Full()).BToString(),
 		}, btns, C.TmpStTotal)

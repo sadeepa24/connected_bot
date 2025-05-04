@@ -20,9 +20,6 @@ import (
 )
 
 // Watchman has accsess to everything
-
-
-
 type Watchman struct {
 	ctx    context.Context
 	db     *db.Database
@@ -254,7 +251,6 @@ type preprosessd struct {
 
 	captotal          C.Bwidth //total bandwidth capped
 	totaladdtional    C.Bwidth
-	savings           C.Bwidth
 	userdbyTemplimitedUser C.Bwidth
 	
 	UsedByLimitedUsers C.Bwidth
@@ -263,6 +259,22 @@ type preprosessd struct {
 	configCount int64
 
 
+}
+
+// Calculate the quota for each user based on various parameters
+// Parameters include: verified user count, capped user, month-limited user, gifted user, usage overridden user
+// Additional quota from users
+// Overused users can't use their whole quota due to usage rollback from last month (this is removed)
+// MainCommonUserQuota = ((w.ctrl.BandwidthAvelable) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
+
+//removed
+// overused user can't just use their whole quota (due adding usage rollback from lastmonth,  this month initial usage = lastmonth excess usage - last month his quota  ),  so it's like increase of bandwidth but finnaly it's same
+//MainCommonUserQuota = ((w.ctrl.BandwidthAvelable) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
+func (p *preprosessd) MainQuota(total C.Bwidth) C.Bwidth {
+	if p.verifiedusercount-p.unUsedUser > 0 {
+		return (total - (p.captotal + p.totaladdtional + p.userdbyTemplimitedUser)) / C.Bwidth(p.verifiedusercount-p.unUsedUser)
+	}
+	return total
 }
 
 // TODO: remove after testings
@@ -274,7 +286,6 @@ func (p preprosessd) String() (s string) {
 	totaladdtional %v
 	monthlimiteduser %v
 	distributeduser %v
-	savings %v
 	
 	`,
 		p.cappeduser,
@@ -283,7 +294,6 @@ func (p preprosessd) String() (s string) {
 		p.totaladdtional,
 		p.monthlimiteduser,
 		p.distributeduser,
-		p.savings,
 	)
 
 	return
@@ -356,26 +366,15 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		bufsender.Send("Predata prosseing error Please Make Manual Refresh := " + err.Error(), w.ctrl.SudoAdmin)
 		return errors.Join(errors.New("predata prosseing failed"), err)
 	}
-
-
 	w.ctrl.VerifiedUserCount.Swap(int32(predata.verifiedusercount))
-	MainCommonUserQuota := w.ctrl.BandwidthAvelable // Newcalculated main quota for each user
 
-	if predata.verifiedusercount-predata.unUsedUser > 0 && (predata.cappeduser != predata.verifiedusercount) {
-		// Calculate the quota for each user based on various parameters
-		// Parameters include: verified user count, capped user, month-limited user, gifted user, usage overridden user
-		// Additional quota from users
-		// Overused users can't use their whole quota due to usage rollback from last month
-		// MainCommonUserQuota = ((w.ctrl.BandwidthAvelable + predata.savings) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
-		// overused user can't just use their whole quota (due adding usage rollback from lastmonth,  this month initial usage = lastmonth excess usage - last month his quota  ),  so it's like increase of bandwidth but finnaly it's same
-		//MainCommonUserQuota = ((w.ctrl.BandwidthAvelable + predata.savings) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
-		MainCommonUserQuota = ((w.ctrl.BandwidthAvelable + predata.savings) - (predata.captotal + predata.totaladdtional + predata.userdbyTemplimitedUser)) / C.Bwidth(predata.verifiedusercount-predata.unUsedUser)
 
-	}
-
+	MainCommonUserQuota := predata.MainQuota(w.ctrl.BandwidthAvelable) // Newcalculated main quota for each user
 	// this value used to calculate the old ratio between config quota and old maincommonquota
 	// new config quota will calculate based on this ratio
 	oldCommonQuota := w.ctrl.CommonQuota.Swap(MainCommonUserQuota.Int64())
+	
+	
 	w.ctrl.Overview.Mu.Lock()
 	w.ctrl.Overview.QuotaForEach = MainCommonUserQuota
 	w.ctrl.Overview.Mu.Unlock()
@@ -384,31 +383,52 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		var glistUser []db.User
 		tosave := make([]db.Gift, 0, C.Dbbatchsize)
 		todel := make([]db.Gift, 0, C.Dbbatchsize)
-		err := w.db.Model(&db.User{}).Where("gift_quota != ?", 0).FindInBatches(&glistUser, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
+		tosaveuser :=  make([]db.User, 0, C.Dbbatchsize)
+		var chnged bool
+		err := w.db.Model(&db.User{}).Where("gift_quota != ? OR is_capped = ?", 0, true).FindInBatches(&glistUser, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
 			for i := range glistUser {
+				chnged = false
 				if glistUser[i].GiftQuota != 0 {
-					k := C.Bwidth(oldCommonQuota) / C.Bwidth(glistUser[i].GiftQuota)
-					glistUser[i].GiftQuota = MainCommonUserQuota / k
 					allgifts := []db.Gift{}
 					tx.Model(&db.Gift{}).Where("recive_valid = ? OR send_valid = ?", true, true).Where("sender = ? OR reciver = ?", glistUser[i].TgID, glistUser[i].TgID).Find(&allgifts)
-					for i := range allgifts {
-						if allgifts[i].Isgifttimeover() {
-							presentGift := ((MainCommonUserQuota / allgifts[i].ComQuota) * allgifts[i].Bandwidth)
+					for j := range allgifts {
+						if allgifts[j].Isgifttimeover() {
+							chnged = true
+							presentGift := ((C.Bwidth(oldCommonQuota) / allgifts[j].ComQuota) * allgifts[j].Bandwidth)
 							switch glistUser[i].TgID {
-							case allgifts[i].Sender:
+							case allgifts[j].Sender:
 								glistUser[i].GiftQuota = glistUser[i].GiftQuota + C.Bwidth(presentGift)
-								allgifts[i].SendValid = false
-							case allgifts[i].Reciver:
+								allgifts[j].SendValid = false
+							case allgifts[j].Reciver:
 								glistUser[i].GiftQuota = glistUser[i].GiftQuota - C.Bwidth(presentGift)
-								allgifts[i].ReciveValid = false
+								allgifts[j].ReciveValid = false
+								if glistUser[i].Verified() && (!glistUser[i].CanUse() || glistUser[i].ConfigCount == 0) {
+									predata.UsedByLimitedUsers += C.Bwidth(presentGift)
+								}
 							}
-							if !(allgifts[i].ReciveValid && allgifts[i].SendValid) {
-								todel = append(todel, allgifts[i])
+							if !(allgifts[j].ReciveValid && allgifts[j].SendValid) {
+								todel = append(todel, allgifts[j])
 							}
-							tosave = append(tosave, allgifts[i])
+							tosave = append(tosave, allgifts[j])
 						}
 					}
 					allgifts = allgifts[:0]
+				}
+				if glistUser[i].IsCapped && glistUser[i].CappedQuota > MainCommonUserQuota  {
+					if glistUser[i].Verified() {
+						predata.cappeduser--
+						predata.captotal -= glistUser[i].CappedQuota
+						if glistUser[i].CanUse() {
+							predata.unUsedUser--
+						}
+					}
+					bufsender.Send("you'r are no longer capped user, due our main quota is lower than you'r capped quota", glistUser[i].TgID)
+					glistUser[i].IsCapped = false
+					glistUser[i].CappedQuota = 0
+					chnged = true
+				}
+				if chnged {
+					tosaveuser  = append(tosaveuser, glistUser[i])
 				}
 			}
 			if len(tosave) > 0 {
@@ -417,8 +437,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			if len(todel) > 0 {
 				tx.Delete(&todel)
 			}
+			if len(tosaveuser) > 0 {
+				tx.Save(tosaveuser)
+			}
 			todel = todel[:0]
 			tosave = tosave[:0]
+			tosaveuser = tosaveuser[:0]
 			return nil
 
 		},).Error
@@ -428,11 +452,16 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		glistUser = nil
 		todel = nil
 		tosave = nil
+		tosaveuser = nil
 	}
-
-	var listUser []db.User
+	MainCommonUserQuota = predata.MainQuota(w.ctrl.BandwidthAvelable)
+	
+	var (
+		listUser []db.User
+	)
 	allconfigs := make([]*db.Config, 0, C.Dbbatchsize)
 	usagehistr := make([]db.UsageHistory, 0, C.Dbbatchsize)
+
 
 	err = w.db.Model(&db.User{}).
 	FindInBatches(&listUser, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
@@ -449,19 +478,18 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			tx.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&user.Configs)
 			// storing old quota for calculating
 			oldQuota := user.CalculatedQuota
+			
+			if user.GiftQuota != 0 {
+				user.GiftQuota  = (MainCommonUserQuota/C.Bwidth(oldCommonQuota)) *  user.GiftQuota
+			}
+			
 			user.CalculatedQuota = MainCommonUserQuota + user.GiftQuota
 			userVerifycity := user.IsInChannel && user.IsInGroup
 			user.ConfigCount = int16(len(user.Configs))
-			if user.IsCapped && user.CappedQuota > user.CalculatedQuota {
-				bufsender.Send("you'r are no longer capped user, due our main quota is lower than you'r capped quota", user.TgID)
-				user.IsCapped = false
-				user.CappedQuota = 0
-			} else if user.IsCapped {
+			if user.IsCapped {
 				user.CalculatedQuota = user.CappedQuota
 			}
 		
-			
-
 			var (
 				usedquota C.Bwidth
 				oldUsage = user.MonthUsage
@@ -544,7 +572,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				allconfigs = append(allconfigs, &user.Configs[i])
 			}
 			user.UsedQuota = usedquota
-			if user.Verified() && !user.IsPaused && !user.Templimited && !user.IsMonthLimited && !user.IsDistributedUser && docount && user.MonthUsage <= user.CalculatedQuota && user.ConfigCount > 0 {
+			if user.Verified() && user.CanUse()  && docount && user.MonthUsage <= user.CalculatedQuota && user.ConfigCount > 0 {
 				if oldUsage == user.MonthUsage   { //which means user did n't use the config for last refresh cycle
 					user.EmptyCycle++
 					if user.EmptyCycle >= user.WarnRatio && user.WarnRatio != 0 {
@@ -580,33 +608,9 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				if (user.IsMonthLimited || user.WarnRatio == 0 ) && !user.Restricted {
 					bufsender.Send("You'r Limitation is over", user.TgID)
 				}
-		
 				user.AddPoint(10)
-				user.SavedQuota = 0
-
-				var (
-					dontresetusage bool
-				)
-				if user.MonthUsage > user.CalculatedQuota+user.AdditionalQuota {
-					bufsender.Send(C.GetMsg(C.MsgwtchUsagereset), user.TgID)
-					useraccutalused := user.MonthUsage
-					user.AlltimeUsage += user.CalculatedQuota
-					user.MonthUsage = user.MonthUsage - user.CalculatedQuota
-					user.SavedQuota = user.MonthUsage // because of user can't use this, it's a saving for this month
-					for i := range user.Configs {
-						// recalculate excess usage for each configs
-						// ratio between useractualused and conf usage should be equal to ratio between new user.Monthusage(excess usage from last month) and new conf usage 
-						// using this we can calculate conf excess usage
-						// newconfusage = user.Monthusage(new) * (oldconfusage/useraccutalused)
-						if user.Configs[i].Quota == 0 {
-							continue
-						}
-						user.Configs[i].Usage = user.MonthUsage * (user.Configs[i].Usage / useraccutalused)
-					}
-					dontresetusage = true
-					user.IsMonthLimited = false
-
-				} else if user.MonthUsage < ((user.CalculatedQuota*3)/4) && !user.IsMonthLimited && !user.IsDistributedUser && !user.Restricted && !(user.WarnRatio != 0) { 
+				//user.SavedQuota = 0
+				if user.MonthUsage < ((user.CalculatedQuota*3)/4) && !user.IsMonthLimited && !user.IsDistributedUser && !user.Restricted && !(user.WarnRatio != 0) { 
 					//check whether user used 75% from his quota if not user will limited next 30 days
 					bufsender.Send(C.GetMsg(C.MsgQuotanotUsed), user.TgID)
 					user.IsMonthLimited = true
@@ -618,13 +622,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					user.AlltimeUsage += user.MonthUsage
 					user.MonthUsage = 0
 				}
-				if !dontresetusage {
-					for i := range user.Configs {
-						user.Configs[i].Usage = 0
-						user.Configs[i].Upload = 0
-						user.Configs[i].Download = 0
-					}
+				for i := range user.Configs {
+					user.Configs[i].Usage = 0
+					user.Configs[i].Upload = 0
+					user.Configs[i].Download = 0
 				}
+				
 				user.WarnRatio = w.ctrl.GetWarnRate()
 				user.IsDistributedUser = false
 			}
@@ -704,7 +707,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	}
 	// it's safe to send backup here
 	// because any other goroutine can't access this db while this function is running
-	w.sendDbBackup()
+	w.sendDbBackup(!docount || forceReset)
 	runtime.GC()
 	w.logger.Info("time elspsed db refresh " + time.Since(st).String())
 	return nil
@@ -739,9 +742,9 @@ func (w *Watchman) txsave(value interface{}, tx *gorm.DB, bufsender *controller.
 	return nil
 }
 
-func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *controller.MsgBufSender) (preprosessd, error) {
+func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *controller.MsgBufSender) (*preprosessd, error) {
 	var (
-		preData = preprosessd{}
+		preData = &preprosessd{}
 		activeConfCount int64
 		users []db.User
 	)
@@ -760,7 +763,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 					user.CappedQuota = 0
 					tosaveuser = append(tosaveuser, user)
 					bufsender.Send("you're captime is over, you're no longer capped if you want to set a cap again use /setcap", user.TgID)
-				} else {
+				} else if user.Verified() {
 					preData.cappeduser++
 					preData.unUsedUser++
 					preData.captotal += user.CappedQuota
@@ -783,13 +786,12 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 				preData.templimiteduser++
 			}
 			
-			if user.Verified() && (user.Restricted || user.IsDistributedUser || user.IsMonthLimited  || user.IsPaused || user.Templimited || user.ConfigCount == 0) {
+			if user.Verified() && (!user.CanUse() || user.ConfigCount == 0) {
 				if user.IsCapped {
 					preData.unUsedUser--
-					if user.GiftQuota > 0 && user.CappedQuota < C.Bwidth(w.ctrl.CommonQuota.Load()) {
-						preData.UsedByLimitedUsers -= user.GiftQuota  //when user does not use gift quota 
-					}
-				} else if user.GiftQuota > 0 {
+					preData.captotal -= user.CappedQuota
+				}
+				if user.GiftQuota > 0 {
 					preData.UsedByLimitedUsers -= user.GiftQuota // also adding because they can't use what the recive as gift
 				}
 				preData.unUsedUser++
@@ -799,7 +801,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 			}
 			preData.configCount += int64(user.ConfigCount)
 			preData.totaladdtional += user.AdditionalQuota
-			preData.savings += user.SavedQuota
+			//preData.savings += user.SavedQuota
 		}
 
 		if len(tosaveuser) > 0 {
@@ -858,9 +860,12 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 	return preData, nil
 }
 // DO not call outside refresh db
-func (w *Watchman) sendDbBackup() {
+func (w *Watchman) sendDbBackup(force bool) {
 	
-	return //TODO: remove this only for when testing
+	if w.ctrl.CheckCount.Load() % int32(w.ctrl.BackupCycle) != 0 && !force {
+		return
+	}
+	
 	dbraw, err := os.Open(w.db.DatabasePath())
 	if err != nil {
 		w.logger.Error("Db Backup Send Failed: errored when reading database for backup create", zap.Error(err))
@@ -884,9 +889,7 @@ func (w *Watchman) sendDbBackup() {
 		w.logger.Error("Db Backup Send Failed: request making failed" +  err.Error())
 		return
 	}
-	
-	apires, err := w.botapi.SendRawReq(req)
-	
+	apires, err := w.botapi.SendRawReq(req)	
 	if err != nil {
 		w.logger.Error("Db Backup Send Failed: request send failed when uploading backup database ", zap.Error(err))
 		return

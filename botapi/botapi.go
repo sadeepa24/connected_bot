@@ -480,6 +480,10 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 }
 
 func (m *Msgsession) ResetState() {
+	if m.lastsendmeadia {
+		m.DeleteLast()
+		m.MessageID = 0
+	}
 	m.lastmediatype = ""
 	m.lastsendmeadia = false
 	m.continuemedia = false

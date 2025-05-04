@@ -9,7 +9,6 @@ import (
 	"github.com/sadeepa24/connected_bot/botapi"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
-	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/tg/tgbotapi"
 )
 
@@ -203,11 +202,7 @@ func CreateConfig(opts common.OptionExcutors) error {
 
 	Messagesession.DeleteAllMsg()
 	Messagesession.SendAlert(C.GetMsg(C.MsgCrsuccsess), nil)
-	Messagesession.SendExtranal(struct {
-		db.Config
-	}{
-		*newconfig,
-	}, nil, C.TmpSendConf, true)
+	Messagesession.SendExtranal(*newconfig, nil, C.TmpSendConf, true)
 	opts.Alertsender(C.GetMsg(C.MsgCrConfigIn))
 	return nil
 }

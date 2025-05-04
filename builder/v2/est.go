@@ -15,6 +15,7 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	json "github.com/sagernet/sing/common/json"
+	"go.uber.org/zap"
 )
 
 type Connector interface {
@@ -528,7 +529,16 @@ func (b *Builder) createFullEndPoint() (option.Endpoint, error) {
 
 
 
-func AnyFieldChange(wlkr *walker.Walker, item any, conec Connector, itemexport func(item any) any) error {
+func AnyFieldChange(wlkr *walker.Walker, item any, conec Connector, itemexport func(item any) any, lgr *zap.Logger) error {
+	
+	//TODO: remove this after stablizing the walker (almost)
+	defer func() {
+		if r := recover(); r != nil {
+			lgr.Error("panic recovered in botconfig", zap.Any("recover", r))
+			conec.AlertSend("An unexpected error occurred. Please try again later. Or send the error to dev")
+		}
+	}()
+	
 	var items []string
 	inedit:
 	for {

@@ -80,6 +80,7 @@ func (p *Parser) Init() error {
 		C.CmdContact, 
 		C.CmdSource,
 		C.CmdState,
+		C.CmdFClose,
 	}
 
 	xray_service_cmd := []string{
