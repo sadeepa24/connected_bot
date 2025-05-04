@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -1238,7 +1240,40 @@ func (c *Controller) ResetLangCode() error {
 	return nil
 }
 
+func (c *Controller) SendFile(path string, filename string, msgcaption string, chat int64) error {
+	file, err := os.Open(path)
+	if err != nil {
+		c.logger.Error("File Send Failed: read err", zap.Error(err))
+		return err
+	}
+	defer file.Close()
+	return c.SendAsFile(file, filename, msgcaption, chat)
+}
 
+func (c *Controller) SendAsFile(buf io.Reader, filename string, msgcaption string, chat int64) error {
+	req, err :=  botapi.CreateMultiPartReq(c.ctx, "POST", c.botapi.CreateFullUrl("sendDocument"), map[string]string{
+		"chat_id": strconv.Itoa(int(chat)),
+		"caption": msgcaption,
+	}, map[string]botapi.Filepart{
+		"document": {
+			Name: filename,
+			Reader: buf,
+		},
+	})
+	if err != nil {
+		c.logger.Error("File Send Failed: request making failed" +  err.Error())
+		return err
+	}
+	apires, err := c.botapi.SendRawReq(req)	
+	if err != nil {
+		c.logger.Error("File Send Failed: request send failed when uploading file", zap.Error(err))
+		return err
+	}
+	if !apires.Ok {
+		c.logger.Error("File Send Failed: Bad Response From Telegram: " + apires.Description)
+	}
+	return nil
+}
 
 // sbox 
 func (c *Controller) startbox() error {

@@ -126,3 +126,6 @@ func (d *Database) GetUser(user *tgbotapi.User) (*User, error) {
 func (d *Database) DatabasePath() string {
 	return d.path
 }
+func (d *Database) UsageDatabasePath() string {
+	return d.historyPath
+}

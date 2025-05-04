@@ -809,6 +809,9 @@ func (m *Msgsession) Callbackanswere(quoaryid, text string, alert bool) error {
 		Show_alert:        alert,
 	})
 }
+func (b *Msgsession) UserID() int64 {
+	return b.userID
+}
 
 type Buttons struct {
 	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard"`

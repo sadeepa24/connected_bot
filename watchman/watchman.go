@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
-	"strconv"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -707,9 +705,9 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	}
 	// it's safe to send backup here
 	// because any other goroutine can't access this db while this function is running
+	w.logger.Info("time elspsed db refresh " + time.Since(st).String())
 	w.sendDbBackup(!docount || forceReset)
 	runtime.GC()
-	w.logger.Info("time elspsed db refresh " + time.Since(st).String())
 	return nil
 }
 
@@ -865,36 +863,12 @@ func (w *Watchman) sendDbBackup(force bool) {
 	if w.ctrl.CheckCount.Load() % int32(w.ctrl.BackupCycle) != 0 && !force {
 		return
 	}
-	
-	dbraw, err := os.Open(w.db.DatabasePath())
-	if err != nil {
-		w.logger.Error("Db Backup Send Failed: errored when reading database for backup create", zap.Error(err))
-		return
-	}
-	defer dbraw.Close()
-
-	req, err :=  botapi.CreateMultiPartReq(w.ctx, "POST", w.botapi.CreateFullUrl("sendDocument"), map[string]string{
-		"chat_id": strconv.Itoa(int(w.ctrl.SudoAdmin)),
-		"caption": `latest database after last refresh
+	w.ctrl.SendFile(w.db.DatabasePath(), "database.db", `latest database
+	Time: `+ time.Now().String() + `
+	`, w.ctrl.SudoAdmin)
+	if force {
+		go w.ctrl.SendFile(w.db.UsageDatabasePath(), "usage.db", `latest usage database
 		Time: `+ time.Now().String() + `
-		
-		`,
-	}, map[string]botapi.Filepart{
-		"document": {
-			Name: "database.db",
-			Reader: dbraw,
-		},
-	})
-	if err != nil {
-		w.logger.Error("Db Backup Send Failed: request making failed" +  err.Error())
-		return
-	}
-	apires, err := w.botapi.SendRawReq(req)	
-	if err != nil {
-		w.logger.Error("Db Backup Send Failed: request send failed when uploading backup database ", zap.Error(err))
-		return
-	}
-	if !apires.Ok {
-		w.logger.Error("Db Backup Send Failed: Bad Response From Telegram: " + apires.Description)
+	`, w.ctrl.SudoAdmin)
 	}
 }

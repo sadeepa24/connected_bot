@@ -104,6 +104,7 @@ var (
 	btnNTP = "NTP"
 	btnboilerplate = "Boiler Plates"
 	btnparse = "Parse Config"
+	btnasfile = "As File"
 
 	btnallin = "All Inbounds"
 	btnaddin = "Add Inbound"
@@ -248,6 +249,8 @@ func (c *confBuilder) home() error {
 	c.btns.AddButtonSlice([]string{btnins, btnouts, btnrouter, btndns, btnexperimental, btnends, btnNTP, btnlog, btnboilerplate})
 	c.btns.Passline()
 	c.btns.AddBtcommon(btnparse)
+	c.btns.Passline()
+	c.btns.AddBtcommon(btnasfile)
 	c.btns.AddCloseBack()
 
 	callback, err := c.Callbackreciver(c.Builder.Export(), c.btns)
@@ -269,6 +272,9 @@ func (c *confBuilder) home() error {
 		c.State = builderendpoint
 	case btnboilerplate:
 		c.State = builderPlates
+	case btnasfile:
+		f := c.Builder.ExportBuffer(&bytes.Buffer{})
+		c.wiz.ctrl.SendAsFile(f, "config.json", "", c.Messagesession.UserID())
 	case btnlog:
 		return c.Builder.LogFieldChange()
 	case btnNTP:

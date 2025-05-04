@@ -1630,6 +1630,18 @@ func (b *Builder) Export() io.Reader {
 	}
 	return b.exportany(b.opts)
 }
+func (b *Builder) ExportBuffer(buf Buf) io.Reader {
+	if buf == nil {
+		return nil
+	}
+	b.opts.Endpoints = C.MapToSlicePtr(b.endpoints)
+	b.opts.Inbounds = C.MapToSlicePtr(b.inbounds)
+	b.opts.Outbounds = C.MapToSlicePtr(b.outbounds)
+	if b.opts.Route != nil {
+		b.opts.Route.RuleSet = C.MapToSlicePtr(b.ruleset)
+	}
+	return b.exportbuf(b.opts, buf)
+}
 func (b *Builder) ExportInbound(tag string) (io.Reader, error){
 	in, ok := b.inbounds[tag]
 	if !ok {
@@ -1651,20 +1663,23 @@ func (b *Builder) ExportAllEnd() io.Reader{
 }
 func (b *Builder) exportany(item any) io.Reader  {
 	if b.buf == nil {
-		b.buf = &bytes.Buffer{}
+		b.buf = bytes.NewBuffer([]byte{})
 		if b.CallBack != nil {
 			b.buf = b.CallBack()
 		}
 	}
 	b.buf.Reset()
-	jd := json.NewEncoder(b.buf)
+	return b.exportbuf(item, b.buf)
+}
+func (b *Builder) exportbuf(item any, buf Buf) io.Reader {
+	jd := json.NewEncoder(buf)
 	jd.SetIndent("", " ")
 	err := jd.Encode(item)
 	if err != nil {
-		b.buf.Write([]byte("error encoding json " + err.Error()))
+		b.buf.Write([]byte("error encoding json: " + err.Error()))
 	}
 	jd = nil
-	return b.buf
+	return buf
 }
 func(b *Builder)  ExportExtranal(item any) io.Reader {
 	return b.exportany(item)
