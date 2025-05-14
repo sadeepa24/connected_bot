@@ -816,21 +816,7 @@ func (c *confBuilder) timeout() {
 	if c.disableTimeout {
 		return
 	}
-	ticker := time.NewTicker(30 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			if c.counter.Add(-1) <= 0 {
-				c.Messagesession.SendAlert("builder timeout", nil)
-				c.cancel()
-				ticker.Stop()
-				return
-			}
-		case <-c.ctx.Done():
-			ticker.Stop()
-			return
-		}
-	}
+	timeout(30 * time.Second, c.counter, c.ctx, c.cancel, c.Messagesession)
 }
 
 

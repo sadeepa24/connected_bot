@@ -1,7 +1,10 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"sync/atomic"
+	"time"
 
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
@@ -128,4 +131,24 @@ type commonout struct {
 	OutType	string
 	OutInfo	string
 	Latency int32
+}
+
+func timeout(timebreaks time.Duration, counter *atomic.Int32, ctx context.Context, cancel context.CancelFunc, MsgS *botapi.Msgsession) {
+	ticker := time.NewTicker(timebreaks)
+	for {
+		select {
+		case <-ticker.C:
+			if counter.Add(-1) <= 0 {
+				if MsgS != nil {
+					MsgS.SendAlert("timeout", nil)
+				}
+				cancel()
+				ticker.Stop()
+				return
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
+	}
 }

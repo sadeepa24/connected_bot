@@ -120,7 +120,7 @@ const (
 	TmpConfigInfo string = "getinfo_config"
 	TmplAllIn string = "getinfo_allin"
 	TmplConfIn string = "getinfo_confin"
-	//TmplExport string = "getinfo_in_export"
+	TmplExport string = "getinfo_in_export"
 )
 
 //state 

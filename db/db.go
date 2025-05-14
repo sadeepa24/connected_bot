@@ -69,6 +69,7 @@ func (d *Database) InitDb() error {
 	if err :=  d.usageHistor.AutoMigrate(
 		&UsageHistory{},
 		&GiftLog{},
+		&Overview{},
 	); err != nil {
 		return errors.New("usage history db init failed " + err.Error())
 	}
@@ -77,7 +78,6 @@ func (d *Database) InitDb() error {
 		&Config{},
 		&Inbound{},
 		&Outbound{},
-		&Adminchat{},
 		&Metadata{},
 		&Reffral{},
 		&Gift{},
@@ -111,6 +111,11 @@ func (d *Database) CreateUsageHistory(user *UsageHistory) error {
 }
 func (d *Database) CreateGiftLog(gift *GiftLog) error {
 	return d.usageHistor.Create(gift).Error
+}
+func (d *Database) CreateOverviewLog(overview *Overview) error {
+	overview.Mu.Lock()
+	defer overview.Mu.Unlock()
+	return d.usageHistor.Create(overview).Error
 }
 func (d *Database) CreateUsageHistories(users *[]UsageHistory) error {
 	return d.usageHistor.Create(users).Error

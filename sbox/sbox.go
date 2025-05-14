@@ -16,7 +16,7 @@ type Controller interface {
 	RemoveConfig(dbconf *db.Config) (conf.Sboxstatus, error)
 	GetStatusConfig(dbconf *db.Config) (conf.Sboxstatus, error)
 
-	GetAllUserStatus() map[int]opts.UserStatus
+	GetAllUserStatus() []opts.UserStatus
 	//GetAllInbound() ([]conf.Inboud, error)
 	CloseConns(dbconf *db.Config) error
 

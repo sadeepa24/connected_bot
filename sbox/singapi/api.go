@@ -258,7 +258,7 @@ func (b *BoxApi) createopts(dbconf *db.Config) (opts.User, error)  {
 }
 
 //optional
-func (b *BoxApi) GetAllUserStatus() map[int]opts.UserStatus {
+func (b *BoxApi) GetAllUserStatus() []opts.UserStatus {
 	return b.box.AllUserStatus()
 }
 

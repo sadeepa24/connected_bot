@@ -41,11 +41,9 @@ func MapPtrToSlicePtr[T comparable, Y any](in map[T]*Y) []*Y {
 
 func SliceToMap[T comparable, Y any](in []Y, getkey func(Y) T) map[T]Y {
 	sendmap := make(map[T]Y, len(in))
-
-	for _, val := range in {
-		sendmap[getkey(val)] = val
+	for i  := range in {
+		sendmap[getkey(in[i])] = in[i]
 	}
-
 	return sendmap
 
 }

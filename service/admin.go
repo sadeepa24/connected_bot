@@ -207,19 +207,11 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 
 
 func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
-	Messagesession.Edit("send brodcast message", nil, "")
-	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
-
-	if err != nil {
-		return err
-	}
-	Messagesession.Addreply(message.MessageID)
-	
 	btns := botapi.NewButtons([]int16{2})
-	
 	for _, btname := range a.ctrl.AvailableUserList() {
 		btns.AddBtcommon(btname)
 	}
+
 
 	btns.AddClose(true)
 	Messagesession.Edit("select target user type", btns, "")
@@ -234,11 +226,21 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 	var userlist = []int64{}
 	err = a.ctrl.GetUserList(callback.Data, &userlist) 
 	if err != nil {
-		Messagesession.SendAlert("fetching user list failed try again", nil)
+		Messagesession.EditText("fetching user list failed try again", nil)
+		return err
+	}
+	if len(userlist) == 0 {
+		Messagesession.EditText(" no user found", nil)
+		return nil
+	}
+	Messagesession.Edit("send brodcast message", nil, "")
+	message, err := a.defaultsrv.ExcpectMsgContext(upx.Ctx, upx.User.TgID, upx.User.TgID)
+	if err != nil {
 		return err
 	}
 	Messagesession.SendAlert("broadcasting message", nil,)
 	Messagesession.Edit("📣", nil, "")
+
 
 	var sendrfunc func(to int64, mgid int64) error
 	if message.IsForwaded() {
@@ -255,7 +257,8 @@ func (a *Adminsrv) broadcast(upx *update.Updatectx, Messagesession *botapi.Msgse
 			erroreduser++
 		}
 	}
-	Messagesession.Edit(fmt.Sprintf("Broadcast Done, Message Sent successfully to %d users from %d", len(userlist)-erroreduser, len(userlist) )  , nil, "")
+	Messagesession.DeleteAllMsg()
+	Messagesession.SendAlert(fmt.Sprintf("Broadcast Done, Message Sent successfully to %d users from %d", len(userlist)-erroreduser, len(userlist) )  , nil)
 
 	return nil
 }
@@ -705,6 +708,11 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 					return err
 				}
 				endusersession.Save()
+				endusersession.DeactivateAll()
+				err = endusersession.ActivateAll()
+				if err != nil {
+					Messagesession.SendAlert("config reactivate failed: "+ err.Error(), nil)
+				}
 			}
 		case 4:
 			Messagesession.ResetState()
@@ -864,7 +872,10 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 
 // after change of config, it should restart program
 func (a *Adminsrv) activeUserStatus(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
-	activeusr := a.ctrl.Boxapi.GetAllUserStatus()
+	alluserconfigs := a.ctrl.Boxapi.GetAllUserStatus()
+	activeusr := C.SliceToMap(alluserconfigs, func(u opts.UserStatus) int  {
+		return u.UserID
+	})
 	btns := botapi.NewButtons([]int16{2})
 	
 	var (

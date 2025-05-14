@@ -37,7 +37,7 @@ type Controller struct {
 	UpdateCounter *atomic.Int64
 	metaconfig *C.MetadataConf
 	*Metadata
-	Overview *Overview
+	Overview *db.Overview
 
 	Usermgrsession *sync.Map
 
@@ -57,7 +57,7 @@ type Controller struct {
 	mu sync.RWMutex //mutext only use to read context I tried to create completly with out sync.bottlenext but i had to add this for small opration and it's allright
 }
 
-func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *C.MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
+func New(ctx context.Context, cdb *db.Database, logger *zap.Logger, metaconf *C.MetadataConf, btapi botapi.BotAPI, sboxpath string) (*Controller, error) {
 	if metaconf.WatchMgbuf <= 0 {
 		metaconf.WatchMgbuf = 100
 	}
@@ -70,10 +70,10 @@ func New(ctx context.Context, db *db.Database, logger *zap.Logger, metaconf *C.M
 	basectx, basecanc := context.WithCancel(ctx)
 	cn := &Controller{
 		ctx:            ctx,
-		db:             db,
+		db:             cdb,
 		logger:         logger,
 		basectx:        basectx,
-		Overview: &Overview{
+		Overview: &db.Overview{
 			Mu: &sync.RWMutex{},
 		},
 		Boxapi: boxapi,
@@ -524,8 +524,24 @@ func (c *Controller) GetAllUserList(in *[]int64) error {
 	return nil
 }
 
+
+
+var availableuserList = []string{
+	C.UserLstAll,    
+	C.UserLstTempLimited,  
+	C.UserLstMonthLimited, 
+	C.UserLstActive,       
+	C.UserLstGroup,       
+	C.UserLstDistributed, 
+	C.UserLstVerified,    
+	C.UserLstUnVerified,   
+	C.UserLstRestricted,
+	C.UserLstOnline,
+}
+func (c *Controller) AvailableUserList() []string {
+	return availableuserList
+}
 func (c *Controller) GetUserList(listType string, in *[]int64) error  {
-	
 	switch listType {
 	case C.UserLstAll:
 		return c.GetAllUserList(in)
@@ -541,7 +557,6 @@ func (c *Controller) GetUserList(listType string, in *[]int64) error  {
 			Pluck("tg_id", in).Error; err != nil {
 			return C.ErrDbopration
 		}
-
 	case C.UserLstTempLimited:
 		if err := c.db.Model(&db.User{}).
 			Where("temp_limited = ?", true).
@@ -578,27 +593,23 @@ func (c *Controller) GetUserList(listType string, in *[]int64) error  {
 			Pluck("tg_id", in).Error; err != nil {
 			return C.ErrDbopration
 		}
+	case C.UserLstOnline:
+		activeusrConfigs := c.Boxapi.GetAllUserStatus()
+		added := map[int]bool{} 
+		ids := []int64{}
+		for userId := range activeusrConfigs {
+			if len(activeusrConfigs[userId].Ip) > 0 && !added[userId] {
+				ids = append(ids, int64(userId))
+				added[userId] = true
+			}
+		}
+		*in = ids
+		return nil
 	default:
 		return C.ErrUnknownUserListType
 	}
 	return nil
 }
-
-var availableuserList = []string{
-	C.UserLstAll,    
-	C.UserLstTempLimited,  
-	C.UserLstMonthLimited, 
-	C.UserLstActive,       
-	C.UserLstGroup,       
-	C.UserLstDistributed, 
-	C.UserLstVerified,    
-	C.UserLstUnVerified,   
-	C.UserLstRestricted,   
-}
-func (c *Controller) AvailableUserList() []string {
-	return availableuserList
-}
-
 
 func (c *Controller) GetUserById(userId int64) (*db.User, error) {
 	var user = &db.User{

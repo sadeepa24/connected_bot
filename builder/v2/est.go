@@ -86,18 +86,24 @@ type VmessLink struct {
 	SNI  string 	 `json:"sni"`
 	SCY  string 	 `json:"scy"`
 	Fp  string 		 `json:"fp"`
-	Alpn []string	`json:"alpn"`
+	Alpn string	`json:"alpn"`
+	alpnSlice []string `json:"-"`
 }
 
-func ParseVmessUrl(url string) (VmessLink, error) {
+func ParseVmessUrl(url string) (*VmessLink, error) {
 	jsonout := make([]byte, len(url))
 	decodedInput := url[8:]
 	n, err := base64.StdEncoding.Decode(jsonout, []byte(decodedInput))
-	var vmess VmessLink
+	if err != nil {
+		return nil, err
+	}
+	vmess :=  &VmessLink{}
+	err = json.Unmarshal(jsonout[:n], &vmess)
 	if err != nil {
 		return vmess, err
 	}
-	return vmess, json.Unmarshal(jsonout[:n], &vmess)
+	vmess.alpnSlice = strings.Split(vmess.Alpn, ",")
+	return vmess, nil
 }
 
 type Error struct {

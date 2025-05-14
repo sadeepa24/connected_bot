@@ -661,7 +661,6 @@ func (m *Msgsession) SendAlert(msg any, buttons *Buttons) (*tgbotapi.Message, er
 		}
 		sendmsg.Parse_mode = C.ParseHtml
 	}
-
 	if buttons != nil {
 		sendmsg.Reply_markup = buttons.Getkeyboard()
 	}

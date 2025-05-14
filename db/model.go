@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
@@ -322,14 +323,6 @@ type Outbound struct {
 	Info string
 }
 
-type Adminchat struct {
-	Id       int64 `gorm:"primaryKey"`
-	Name     string
-	Type     string
-	UserName string
-	//DeletedAt gorm.DeletedAt `gorm:"index"`
-
-}
 
 type Metadata struct {
 	Id                int32
@@ -368,4 +361,76 @@ type Event struct {
 	ID     int64 `gorm:"primaryKey"`
 	Name   string
 	UserId int64
+}
+
+
+type Overview struct {
+	Mu *sync.RWMutex `gorm:"-"`
+
+	BandwidthAvailable C.Bwidth
+	MonthTotal C.Bwidth
+	AllTime C.Bwidth
+
+	VerifiedUserCount int64
+	TotalUser int32
+	CUser int64 
+	CappedUser int64
+	DistributedUser int64
+	QuotaForEach C.Bwidth
+	Restricte int64
+	TempLimitedUser int64
+	TotalConfCount int64
+	ActiveConfCount int64
+	TotalUpdates int64
+	MonthLimitedUser int64
+
+	DaysToReset int32 `gorm:"-"`
+	LastRefresh time.Time
+
+	UpdateTime time.Time
+
+}
+
+
+func (o *Overview) String() string {
+	o.Mu.RLock()
+	defer o.Mu.RUnlock()
+	return fmt.Sprintf(
+		"Overview:\n"+
+			"Server Bandwidth: %s\n"+
+			"Month Total Usage: %s\n"+
+			"All Time Usage: %s\n"+
+			"Quota For Each: %s\n\n"+
+			"User Who Can Acctualy Use The Config: %d\n"+
+			"Verified User Count: %d\n"+
+			"Total User: %d\n"+
+			"Capped User: %d\n"+
+			"Distributed User: %d\n"+
+			"Restricted: %d\n"+
+			"MonthLimited: %d\n"+
+			"Temp Limited User: %d\n\n"+
+			"Total Conf Count: %d\n"+
+			"Active Conf Count: %d\n\n"+
+			"Last Refresh: %s\n" + 
+			"Days To Reset: %d\n\n"+
+			"Total Update Recived (until last refresh): %d\n\n",
+			
+		o.BandwidthAvailable.BToString(),
+		o.MonthTotal.BToString(),
+		o.AllTime.BToString(),
+		o.QuotaForEach.BToString(),
+		o.CUser,
+		o.VerifiedUserCount,
+		o.TotalUser,
+		o.CappedUser,
+		o.DistributedUser,
+		o.Restricte,
+		o.MonthLimitedUser,
+		o.TempLimitedUser,
+		o.TotalConfCount,
+		o.ActiveConfCount,
+		o.LastRefresh.Format(time.RFC3339),
+		o.DaysToReset,
+		o.TotalUpdates,
+	)
 }

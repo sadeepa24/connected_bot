@@ -596,7 +596,7 @@ func (g *getinfo) confinboundinfo() error {
 			g.Messagesession.SendError(err, "")
 		}
 		tm.ProtoUrl = g.lastselectConf.ExportUrlLink(g.lastselectInbn, &tm.ExportInfo)
-		g.Messagesession.SendExtranal(tm, nil, C.TmplConfIn, true)
+		g.Messagesession.SendExtranal(tm, nil, C.TmplExport, true)
 	}
 	return nil
 }

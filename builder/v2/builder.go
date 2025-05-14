@@ -1054,7 +1054,7 @@ func (b *Builder) AddOutbound(out any) error {
 					finaot.Options.(*option.VMessOutboundOptions).TLS  = &option.OutboundTLSOptions{
 						Enabled: true,
 						ServerName: vmess.SNI,
-						ALPN: vmess.Alpn,
+						ALPN: vmess.alpnSlice,
 					}
 					if vmess.Fp != "" {
 						finaot.Options.(*option.VMessOutboundOptions).TLS.UTLS = &option.OutboundUTLSOptions{
