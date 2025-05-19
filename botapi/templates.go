@@ -327,7 +327,7 @@ func TemplateInit(sender BotAPI, sudoadminID int64, logger *zap.Logger, template
 				req, err := http.NewRequestWithContext(ctx, http.MethodPost, sender.CreateFullUrl(endpoint), toreq)
 				if err != nil {
 					canc()
-					logger.Error(err.Error())
+					logger.Error("template media send request create failed", zap.Error(err))
 					continue tmplLoop
 				}
 				
@@ -336,7 +336,7 @@ func TemplateInit(sender BotAPI, sudoadminID int64, logger *zap.Logger, template
 				res, err := sender.SendRawReq(req)
 				canc()
 				if err != nil {
-					logger.Error(err.Error())
+					logger.Error("template media request failed", zap.Error(err))
 					continue tmplLoop
 				}
 				if err = json.Unmarshal(res.Result, &message); err != nil {
