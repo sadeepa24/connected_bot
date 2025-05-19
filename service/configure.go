@@ -135,6 +135,7 @@ func (c *configState) action() error {
 		TotalQuota:  c.lastconfig.Quota.BToString(),
 		ConfName: c.lastconfig.Name,
 		Active: c.lastconfig.Active,
+		Loginlimit: c.lastconfig.LoginLimit,
 		//FIXME: add other fields later
 	}, c.btns, C.TmpConfiConfigure); err != nil {
 		return err
