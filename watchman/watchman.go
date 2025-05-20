@@ -861,7 +861,9 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 }
 // DO not call outside refresh db
 func (w *Watchman) sendDbBackup(force bool) {
-	
+	if w.ctrl.ForceDisableBackup {
+		return
+	}
 	if w.ctrl.CheckCount.Load() % int32(w.ctrl.BackupCycle) != 0 && !force {
 		return
 	}

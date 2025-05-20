@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -453,6 +454,9 @@ func (c *Controller) initallconfigs(totalConfig int64, force bool) error {
 	c.db.Model(&db.Config{}).FindInBatches(&listConfig, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
 		var newinbounds []int16
 		for i := range listConfig {
+			if listConfig[i].Password == "" {
+				listConfig[i].Password = strconv.Itoa(int(listConfig[i].UserID)) + strconv.Itoa(int(rand.Int63()))
+			}
 			if len(listConfig[i].InboundIds) == 0 {
 				listConfig[i].InboundIds = append(listConfig[i].InboundIds, c.defaultinbound.Id)
 				bufsender.Send("you'r config " + listConfig[i].Name +"'s inbound has been changed due to zero inbound ", listConfig[i].UserID )

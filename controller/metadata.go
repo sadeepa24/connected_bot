@@ -71,7 +71,7 @@ type Metadata struct {
 	Langs []string
 
 	boxpath string
-
+	ForceDisableBackup bool
 
 
 }
@@ -92,6 +92,7 @@ func (m *Metadata) Init(metaconf C.MetadataConf, logger *zap.Logger) error {
 	m.ConfigFolder = metaconf.ConfigFolder
 
 	m.storePath = metaconf.StorePath
+	m.ForceDisableBackup = metaconf.ForceDisableBackup
 
 	m.MaxGiftCount = metaconf.MaxGiftCount
 	m.MaxBuildConf = metaconf.MaxBuildConf

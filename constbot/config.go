@@ -69,7 +69,7 @@ type MetadataConf struct {
 	DefaultLang string	`json:"default_lang,omitempty"`
 
 	CommonWarnRatio int16  `json:"warn_rate,omitempty"`
-
+	ForceDisableBackup bool  `json:"force_disable_backup,omitempty"`
 	
 }
 

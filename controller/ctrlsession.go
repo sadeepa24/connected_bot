@@ -130,7 +130,6 @@ func (c *CtrlSession) AddNewConfig(inboundid []int16, outboundid int16, Quota C.
 	return dbconf, nil
 }
 func (c *CtrlSession) DeleteConfig(confid int64) error {
-	
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
@@ -146,14 +145,15 @@ func (c *CtrlSession) DeleteConfig(confid int64) error {
 	}
 	configQuota := conf.Quota
 	delete(c.configmap, confid)
-	for i, config := range c.user.Configs {
-		if config.Id == confid {
-			c.user.Configs = append(c.user.Configs[:i], c.user.Configs[i+1:]...)
+	for i := range c.user.Configs {
+		if c.user.Configs[i].Id == confid {
+			c.user.Configs[i] = c.user.Configs[len(c.user.Configs)-1]
+			c.user.Configs = c.user.Configs[:len(c.user.Configs)-1]
 			break
 		}
 	}
 	c.user.ConfigCount--
-	c.user.DeletedConfCount = c.user.DeletedConfCount + 1
+	c.user.DeletedConfCount++
 	c.user.UsedQuota = c.user.UsedQuota - configQuota
 	return nil
 }
