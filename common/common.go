@@ -201,7 +201,7 @@ func ReciveName(calls Tgcalls) (string, error) {
 			calls.Alertsender("send valid string")
 			continue
 		}
-		if len(replymeassage.Text) > 15 {
+		if len(replymeassage.Text) > 30 {
 			calls.Alertsender("string should below 15 character")
 			continue
 		}
