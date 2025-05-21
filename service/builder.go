@@ -186,6 +186,7 @@ func (c *confBuilder) zero() error {
 			c.Alertsender("you can't create config more than " + strconv.Itoa(c.wiz.ctrl.MaxBuildConf))
 			return nil
 		}
+		c.Messagesession.Edit("send name for new config", nil, "")
 		name, err := common.ReciveName(c.Tgcalls)
 		if err != nil {
 			return err
