@@ -14,8 +14,11 @@ grp_welcome:
 
     disabled: false
 
-    ##පහල තියෙන field 5 ම තනි message එකක් යවද්දි නෙමේ messaging session එකක් වගේ ඉද්දි ඕන වෙන්නෙ
+    ##optional
+    btnconf:
+      btns: [["btn1[https://t.me]"]]
 
+    ##පහල තියෙන field 4 ම තනි message එකක් යවද්දි නෙමේ messaging session එකක් වගේ ඉද්දි ඕන වෙන්නෙ
     continue_media: false
     supercontinue: false
     media_skip: false
@@ -90,3 +93,8 @@ Message session එකක් කියන්නෙ Message කිහිපයක
 **`contin_skip_text`**
 
 මේක `continue_media` හෝ `supercontinue` true දීලා තියෙන template එකක දීලා තිබ්බොත් එතනින් එහාට buttons නැතුව එන normal text messages වලට media add කරන්නෙ නැ.
+
+**`btnconf`**
+
+මේ field එක හැම template එකටම අදාල නැහැ. විශේශ කිහිපයකට විතරයි. මේ field එක Use කරලා custom url Buttons add කරන්න පුලුවන්.
+මේ field එක support එක කරන template
