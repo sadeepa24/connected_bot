@@ -30,7 +30,7 @@ type Watchmanconfig struct {
 type MetadataConf struct {
 	//ForceAdd          bool   `json:"forceAdd,omitempty"`
 	ChannelID         int64  `json:"channel_id,omitempty"`
-	GroupID           int64  `json:"groupd_id,omitempty"`
+	GroupID           int64  `json:"group_id,omitempty"`
 	BandwidthAvelable string `json:"bandwidth,omitempty"`
 	LoginLimit        int16  `json:"login_limit,omitempty"`
 	MaxGiftCount 	  int64  `json:"max_gift,omitempty"`
