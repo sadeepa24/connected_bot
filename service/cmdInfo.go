@@ -419,6 +419,7 @@ func (g *getinfo) configinfo() error {
 			Username: g.dbuser.Username,
 			TgId:     g.dbuser.TgID,
 		},
+		CrDate: g.lastselectConf.CreatedAt.Format("2006-01-02 15:04:05"),
 		Active: g.lastselectConf.Active,
 
 		TotalQuota:     g.lastselectConf.Quota.BToString(),

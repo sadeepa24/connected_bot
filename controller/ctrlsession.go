@@ -105,6 +105,7 @@ func (c *CtrlSession) AddNewConfig(inboundid []int16, outboundid int16, Quota C.
 		Usage:      0,
 		Quota:      Quota,
 		LoginLimit: int16(login),
+		CreatedAt: time.Now(),
 	}
 	c.typeCheckConfig(dbconf)
 	if c.ctrl.db.Create(dbconf).Error != nil {

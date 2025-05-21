@@ -127,7 +127,7 @@ type Config struct {
 	Quota    C.Bwidth // changes every day when according to groups user
 
 	LoginLimit int16
-	
+	CreatedAt time.Time
 	//DeletedAt 		gorm.DeletedAt `gorm:"index"`
 
 }

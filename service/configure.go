@@ -132,6 +132,7 @@ func (c *configState) action() error {
 
 	if _, err = c.Messagesession.Edit(configinfo{
 		ConfigName: c.lastconfig.Name,
+		CrDate: c.lastconfig.CreatedAt.Format("2006-01-02 15:04:05"),
 		TotalQuota:  c.lastconfig.Quota.BToString(),
 		ConfName: c.lastconfig.Name,
 		Active: c.lastconfig.Active,

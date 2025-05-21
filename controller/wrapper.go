@@ -457,6 +457,9 @@ func (c *Controller) initallconfigs(totalConfig int64, force bool) error {
 			if listConfig[i].Password == "" {
 				listConfig[i].Password = strconv.Itoa(int(listConfig[i].UserID)) + strconv.Itoa(int(rand.Int63()))
 			}
+			if listConfig[i].CreatedAt.IsZero() {
+				listConfig[i].CreatedAt = time.Now()
+			}
 			if len(listConfig[i].InboundIds) == 0 {
 				listConfig[i].InboundIds = append(listConfig[i].InboundIds, c.defaultinbound.Id)
 				bufsender.Send("you'r config " + listConfig[i].Name +"'s inbound has been changed due to zero inbound ", listConfig[i].UserID )

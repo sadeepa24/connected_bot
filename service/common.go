@@ -57,6 +57,7 @@ type configinfo struct {
 	UsedPresenTage   float64
 
 	ResetDays int32
+	CrDate string
 
 	// PublicIp string
 	// PublicDomain string
