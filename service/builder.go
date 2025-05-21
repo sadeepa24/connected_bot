@@ -744,7 +744,9 @@ func (c *confBuilder) run() {
 	defer func ()  {
 		c.wiz.builds.Delete(c.userId)
 		c.Messagesession.DeleteAllMsg()
-		c.Builder.Close()
+		if c.Builder != nil {
+			c.Builder.Close()
+		}
 		if c.cancel != nil {
 			c.cancel()	
 		}

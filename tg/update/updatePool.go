@@ -3,7 +3,6 @@ package update
 import (
 	"sync"
 
-	C "github.com/sadeepa24/connected_bot/constbot"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 )
 
@@ -32,7 +31,7 @@ func (u *UpdatePool) Newupdate(origin *tgbotapi.Update) *Updatectx {
 	upx.Update = origin
 	//upx.iscallback = false
 	upx.Ctx = nil
-	upx.Command = C.CmdNull
+	upx.Command = ""
 	upx.Serviceset = false
 	return upx
 }

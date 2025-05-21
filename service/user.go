@@ -140,6 +140,7 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		}
 		return err
 	}
+	
 
 	defer Usersession.Close()
 
@@ -156,7 +157,6 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 		upx.User.LeaveTime = time.Now()
 	case C.Statusleft:
 		Usersession.Chatupdate(updatedchat, false)
-		Usersession.GetUser().IsRemoved = true
 		Usersession.CancelSentGift()
 		Usersession.DeactivateAll()
 
@@ -372,9 +372,6 @@ func (u *Usersrv) ChatmemberUpdate(upx *update.Updatectx) error {
 
 		}
 		Usersession.Chatupdate(updatedchat, true)
-		if NewUser.Isverified() {
-			Usersession.GetUser().IsRemoved = false
-		}
 		if err = Usersession.ActivateAll(); err != nil {
 			return errors.Join(errors.New("chat member parsing config activate failed user " + upx.User.Name), err)
 		}

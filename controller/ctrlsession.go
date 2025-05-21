@@ -464,7 +464,7 @@ func (c *CtrlSession) Pause() error {
 	c.updateperm()
 	return c.DeactivateAll()
 }
-func (c *CtrlSession) updateperm()bool  {
+func (c *CtrlSession) updateperm() bool  {
 	c.lowperm = c.user.IsDistributedUser || c.user.IsRemoved || c.user.Restricted || c.user.Templimited || c.user.IsPaused
 	return c.lowperm
 }
@@ -570,6 +570,8 @@ func (c *CtrlSession) Chatupdate(chat string, val bool) {
 	case C.Channel:
 		c.user.IsInChannel = val
 	}
+	c.user.IsRemoved = !(c.user.IsInChannel && c.user.IsInGroup)
+	c.updateperm()
 }
 
 

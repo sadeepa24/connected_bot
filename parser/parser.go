@@ -316,7 +316,9 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 		if upx.User == nil {
 			return false, C.ErrUserObNil
 		}
-		
+		if upx.Update.ChatMember != nil || upx.Update.MyChatMember != nil {
+			return true, nil
+		}
 		if !upx.Update.FromChat().IsPrivate() {
 			return false, nil
 		}
