@@ -39,6 +39,8 @@ var (
 	MsgQuotawarn string = "⚠️ Your quota must be within the specified range."
 	MsgQuotawarnlow string = "⚠️ Your quota must be greater than you'r current usage"
 	MsgQuotawarnzero string = "⚠️ Value should be greater than zero"
+
+	MsgAtleas1In string = "⚠️ You must select at least one inbound configuration."
 )
 
 var (
@@ -63,6 +65,8 @@ var (
 	// Others
 	ButtonSelectEmjoi   string = " ✅"
 	MsgUserMonthLimited string = "🚫 You can't use this service until your punishment period is over."
+
+	
 )
 
 var (
@@ -146,6 +150,8 @@ var (
 	MsgTempMonthLimited = "MsgTempMonthLimited"
 	MsgTempNoLimit = "MsgTempNoLimit"
 	MsgTempLimitAlert = "MsgTempLimitAlert"
+
+	MsgGiftNoQuota = "MsgGiftNoQuota"
 )
 
 // User Conform
@@ -411,5 +417,7 @@ func overide() {
 	MsgTempNoLimit = "MsgTempNoLimit"
 	MsgTempLimitAlert = "MsgTempLimitAlert"
 	MsgCannotCap = "MsgCannotCap"
+	MsgAtleas1In = "MsgAtleas1In"
+	MsgGiftNoQuota = "MsgGiftNoQuota"
 }
 

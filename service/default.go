@@ -121,15 +121,3 @@ func (d *Defaultsrv) FromserviceExec(upx *update.Updatectx) error {
 	upx.Cancle()
 	return nil
 }
-
-func (d *Defaultsrv) Droper(upx *update.Updatectx) error {
-	upx.Cancle()
-	if upx.User == nil {
-		return nil
-	}
-	upx.User.User = nil
-	upx.User = nil
-	upx.Update = nil
-
-	return nil
-}

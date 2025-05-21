@@ -28,3 +28,4 @@ cmd/bot
 cmd/help_paragraph.txt
 site/
 dist/
+.vscode

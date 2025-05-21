@@ -7,6 +7,7 @@ const (
 	BtnConform  string = "conform"
 	BtnCancle   string = "cancle"
 	BtnContinue string = "continue"
+	BtnDone     string = "Done"
 )
 
 // Configure
@@ -25,11 +26,18 @@ const (
 const (
 	BtnUserInfo  string = "UserInfo"
 	BtnConfigs   string = "Configs"
+	BtnGifts	string = "Gifts"
 	BtnFullInfo  string = "full info"
 	BtnFullUsage string = "Get Full Usage Alltime"
 
 	BtnCheckOutbounds string = "Outbounds"
 	BtnCheckInbounds string = "Inbounds"
+
+	BtnExportIn string = "Export Inbounds"
+	BtnExportConf string = "Export Config"
+	BtnoutLatancy string = "Check Latency"
+
+	BtnLangChange string = "Change Lang"
 )
 
 // Urls
@@ -53,6 +61,9 @@ const (
 	BtnTutorial string = "Tutorial"
 
 	BtnCloseConn string = "Close Conns"
+	BtnCInbounds string = "Config Inbounds"
+
+	BtnRefresh string = "Refresh"
 
 	
 )
@@ -68,4 +79,8 @@ const (
 const (
 	BtnInfo string = "info"
 	BtnBuy  string = "buy points"
+)
+
+const (
+	BtnSave string = "save"
 )

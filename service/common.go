@@ -1,11 +1,14 @@
 package service
 
 import (
+	"context"
 	"errors"
-	"net/netip"
+	"sync/atomic"
+	"time"
 
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
+	"github.com/sadeepa24/connected_bot/sbox/conf"
 )
 
 func closeback(callbackdata string, deletemsg, backfunc func() error) (bool, error) {
@@ -38,10 +41,12 @@ type configinfo struct {
 	//*botapi.CommonUsage
 
 	TotalQuota string
-
+	Active bool
+	ConfName string
 	ConfigName string
-	ConfigType string
 	ConfigUUID string
+	ConfigPassword string
+
 
 	ConfigUpload     string
 	ConfigDownload   string
@@ -52,30 +57,30 @@ type configinfo struct {
 	UsedPresenTage   float64
 
 	ResetDays int32
+	CrDate string
 
-	PublicIp string
-	PublicDomain string
+	// PublicIp string
+	// PublicDomain string
 
-	InName         string
-	InType         string
-	InPort         int
-	InAddr         string
-	InInfo         string
-	TranstPortType string
-	TransPortPath string
+	// InName         string
+	// InType         string
+	// InPort         int
+	// InAddr         string
+	// InInfo         string
+	// TranstPortType string
+	// TransPortPath string
 	Loginlimit int16
-	TlsEnabled     bool
-	SupportInfo    []string
+	// TlsEnabled     bool
+	// SupportInfo    []string
 
-	OutName string
-	OutType string
-	OutInfo string
-	Latency int32
+	//conf.Outbound
+
+	commonout
 
 	UsageDuration string
 
 	Online int
-	IpMap  map[netip.Addr]int64
+	IpMap  map[string]int16
 }
 
 type userinfo struct {
@@ -96,6 +101,8 @@ type userinfo struct {
 	UsagePercentage float64
 	NonUseCycle int16
 	CapDays int32
+	Points  int64
+	Paused 	bool
 
 	CappedQuota string
 
@@ -107,4 +114,42 @@ type userinfo struct {
 	IsTemplimited bool
 	
 	JoinedPlace uint
+}
+
+type exportConfig struct {
+	exportin
+	conf.Inboud
+}
+
+
+type exportin struct {
+	ProtoUrl string
+	conf.ExportInfo
+}
+
+type commonout struct {
+	OutName string
+	OutType	string
+	OutInfo	string
+	Latency int32
+}
+
+func timeout(timebreaks time.Duration, counter *atomic.Int32, ctx context.Context, cancel context.CancelFunc, MsgS *botapi.Msgsession) {
+	ticker := time.NewTicker(timebreaks)
+	for {
+		select {
+		case <-ticker.C:
+			if counter.Add(-1) <= 0 {
+				if MsgS != nil {
+					MsgS.SendAlert("timeout", nil)
+				}
+				cancel()
+				ticker.Stop()
+				return
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		}
+	}
 }

@@ -2,15 +2,18 @@ package common
 
 import (
 	//
+
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
+	"syscall"
 
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
-	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +30,7 @@ type Tgcalls struct {
 type OptionExcutors struct {
 	//Common
 	Tgcalls
-	Upx             *update.Updatectx
+	//Upx             *update.Updatectx
 	Btns            *botapi.Buttons
 	Usersession     *controller.CtrlSession
 	MessageSession  *botapi.Msgsession
@@ -41,34 +44,14 @@ type Initer interface {
 	Init() 
 }
 
-func ReciveString(call Tgcalls) (string, error) {
-	var(
-		replymeassage *tgbotapi.Message
-		err error
-		confName string
-	) 
+// func TrojanKey(password string) [56]byte {
+// 	var key [56]byte
+// 	hash := sha256.New224()
+// 	common.Must1(hash.Write([]byte(password)))
+// 	hex.Encode(key[:], hash.Sum(nil))
+// 	return key
+// }
 
-	for {
-
-		if replymeassage, err = call.Sendreciver(nil); err != nil {
-			return "", err
-		}
-		if replymeassage.IsCommand() {
-			call.Alertsender("Send Valid String Not Commands")
-			continue
-		}
-		confName = replymeassage.Text
-		if replymeassage.Text == "" {
-			confName = "noname"
-		}
-
-		break
-
-	}
-
-	return confName, nil
-	
-}
 
 func ReciveInt(call Tgcalls, max, min int) (int, error) {
 	var (
@@ -81,7 +64,7 @@ func ReciveInt(call Tgcalls, max, min int) (int, error) {
 		
 		if retry > 5 {
 			call.Alertsender(C.GetMsg(C.Msgretryfail))
-			return 0, errors.New("retry attemps failed")
+			return 0, C.CErrRetryFailed
 		}
 		if replymeassage, err = call.Sendreciver(nil); err != nil {
 			return 0, err
@@ -128,7 +111,7 @@ func ReciveBandwidth(call Tgcalls, max, min C.Bwidth) (C.Bwidth, error) {
 		retry++
 		if retry > 5 {
 			call.Alertsender("yep you have been succses fully prove that you are real idiot")
-			return 0, errors.New("user is an idiot")
+			return 0, C.CErrRetryFailed
 		}
 		if replymg, err = call.Sendreciver(nil); err != nil {
 			return 0, err
@@ -156,4 +139,84 @@ func ReciveBandwidth(call Tgcalls, max, min C.Bwidth) (C.Bwidth, error) {
 
 	return bwith.BytetoGB(), nil
 
+}
+
+
+func ReciveExpInfo(calls Tgcalls) (sbConf.ExportInfo, error) {
+	var expInfo sbConf.ExportInfo  
+	calls.Alertsender("send a host (ws/ httphost) name to export")
+	msg, err := ReciveName(calls)
+	if err != nil {
+		return expInfo, err
+	}
+	expInfo.Host = msg
+
+	calls.Alertsender("send a host sni to export")
+	msg, err = ReciveName(calls)
+	if err != nil {
+		return expInfo, err
+	}
+	expInfo.Sni = msg
+
+	calls.Alertsender("send a server addr (like cdn) (if you want skip send dot automaticcaly inbound ip or domain will be added(.) )")
+	msg, err = ReciveName(calls)
+	if err != nil {
+		return expInfo, err
+	}
+	if msg != "." {
+		expInfo.Server = msg
+	}
+	return expInfo, nil
+
+}
+
+// called should send message before call this to recive string ex - "send you'r config name"
+//can be used for to recive small string filter all commands and long strings
+func ReciveName(calls Tgcalls) (string, error) {
+	var(
+		replymeassage *tgbotapi.Message
+		err error
+		confName string
+	) 
+	var retry int
+	
+	for {
+
+		retry++
+		if retry > 5 {
+			calls.Alertsender(C.GetMsg(C.Msgretryfail))
+			return "", C.CErrRetryFailed
+		}
+		if replymeassage, err = calls.Sendreciver(nil); err != nil {
+			return "", err
+		}
+		if replymeassage.IsCommand() {
+			if replymeassage.Command() == "cancel" {
+				return "", errors.New("user cancel")
+			}
+			calls.Alertsender("Send Valid String Not Commands")
+			continue
+		}
+		if replymeassage.Text == "" {
+			calls.Alertsender("send valid string")
+			continue
+		}
+		if len(replymeassage.Text) > 30 {
+			calls.Alertsender("string should below 15 character")
+			continue
+		}
+		confName = replymeassage.Text
+		break
+
+	}
+	return confName, nil
+}
+
+func SendSIGHUP() error{
+	pid := os.Getpid()
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return errors.New("Error finding process: " + err.Error())
+	}
+	return process.Signal(syscall.SIGHUP)
 }

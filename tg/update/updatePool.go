@@ -1,10 +1,8 @@
 package update
 
 import (
-	"context"
 	"sync"
 
-	C "github.com/sadeepa24/connected_bot/constbot"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 )
 
@@ -24,7 +22,7 @@ func NewupdatePool() *UpdatePool {
 }
 
 
-func (u *UpdatePool) Newupdate(ctx context.Context, origin *tgbotapi.Update) *Updatectx {
+func (u *UpdatePool) Newupdate(origin *tgbotapi.Update) *Updatectx {
 	
 	if origin.Message != nil {}
 
@@ -32,8 +30,8 @@ func (u *UpdatePool) Newupdate(ctx context.Context, origin *tgbotapi.Update) *Up
 
 	upx.Update = origin
 	//upx.iscallback = false
-	upx.Ctx = ctx
-	upx.Command = C.CmdNull
+	upx.Ctx = nil
+	upx.Command = ""
 	upx.Serviceset = false
 	return upx
 }

@@ -9,6 +9,7 @@ import (
 
 	//
 	"github.com/sadeepa24/connected_bot/botapi"
+	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/parser"
@@ -22,12 +23,12 @@ var ctx = context.Background()
 
 var zLogger, _ = zap.NewDevelopment()
 
-var usethisdb = db.New(ctx, nil, "connect.db")
+var usethisdb, _ = db.New(ctx, nil, "connect.db", "usage.db")
 
 func TestParser(t *testing.T) {
 
 	usethisdb.InitDb()
-	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "./sbox.json")
+	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &C.MetadataConf{}, nil, "./sbox.json")
 
 	var callbacksrv = service.NewCallback(ctx, zLogger, nil, nil)
 	var adminsrv *service.Adminsrv

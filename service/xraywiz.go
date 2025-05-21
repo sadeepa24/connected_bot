@@ -3,14 +3,13 @@ package service
 import (
 	"context"
 	"errors"
-	"net/netip"
 	"strconv"
 	"sync"
 	"time"
 
 	//
 	"github.com/sadeepa24/connected_bot/botapi"
-	"github.com/sadeepa24/connected_bot/builder/v1"
+	"github.com/sadeepa24/connected_bot/builder/v2"
 	"github.com/sadeepa24/connected_bot/common"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
@@ -31,7 +30,8 @@ type Xraywiz struct {
 
 	MessageStore *botapi.MessageStore
 
-	confstore *builder.ConfigStore
+	bulderstore *builder.Store
+	//confstore *builder.ConfigStore
 
 	builds *sync.Map // current building session
 }
@@ -82,7 +82,7 @@ func (x *Xraywiz) Name() string {
 
 func (x *Xraywiz) Init() error {
 	var err error
-	if x.confstore, err = builder.NewConfStore(x.ctrl.StorePath()); err != nil {
+	if x.bulderstore, err = builder.Newstore(x.ctrl.StorePath()); err != nil {
 		return err
 	}
 	return nil
@@ -138,7 +138,6 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx, Messagesession *botapi.
 	}
 	defer Usersession.Close()
 	opts := common.OptionExcutors{
-		Upx:            upx,
 		Ctrl:           u.ctrl,
 		Usersession:    Usersession,
 		MessageSession: Messagesession,
@@ -167,46 +166,10 @@ func (u *Xraywiz) commandCreateV2(upx *update.Updatectx, Messagesession *botapi.
 			},
 		},
 		Logger: u.logger,
-		
-	
-
 	}
 
 	opts.Btns.Reset([]int16{2})
-	cretors := allcreators()
-	for _, creator := range cretors {
-		opts.Btns.AddBtcommon(creator.Name())
-	}
-
-	callback, err := opts.Callbackreciver(botapi.UpMessage{
-		Template: struct {
-			*botapi.CommonUser
-			CreaterCount int
-		}{
-			CommonUser: &botapi.CommonUser{
-				Name:     upx.User.Name,
-				Username: upx.FromChat().UserName,
-				TgId:     upx.User.TgID,
-			},
-			CreaterCount: len(cretors),
-		},
-		TemplateName: C.TmplCrSelect,
-	}, opts.Btns)
-	if err != nil {
-		return err
-	}
-
-	switch callback.Data {
-	case C.BtnClose:
-		return nil
-	}
-	for _, creator := range allcreators() {
-		if creator.Name() == callback.Data {
-			return creator.Excute(opts)
-		}
-	}
-
-	return nil
+	return CreateConfig(opts)
 }
 
 func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.Msgsession) error {
@@ -220,7 +183,7 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 			Messagesession.SendAlert(C.GetMsg(C.MsgSessionFail), nil)
 		}
 
-		return u.defaultsrv.Droper(upx)
+		return err
 
 	}
 	defer Usersession.Close()
@@ -230,6 +193,7 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 		return nil
 	}
 
+	//FIXME: change usage
 	usage := Usersession.GetFullUsage()
 
 	if len(Usersession.GetUser().Configs) > 0 {
@@ -238,7 +202,7 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 			btns.Addbutton(config.Name, strconv.Itoa(int(config.Id)), "")
 		}
 		btns.AddClose(true)
-		Messagesession.SendNew(struct {
+		Messagesession.Edit(struct {
 			TDownload     string
 			TUpload       string
 			MDownload     string
@@ -251,7 +215,7 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 			TUpload:       usage.Uploadtd.BToString(),
 			MDownload:     usage.Download.BToString(),
 			MUpload:       usage.Upload.BToString(),
-			MonthAll:      usage.Full().BToString(),
+			MonthAll:      (upx.User.MonthUsage + usage.Today()).BToString(),
 			UsageDuration: time.Since(u.ctrl.GetLastRefreshtime()).Round(1 * time.Second).String(),
 			Alltime:       (upx.User.AlltimeUsage + usage.Full()).BToString(),
 		}, btns, C.TmpStTotal)
@@ -288,9 +252,9 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 				MDownload     string
 				MUpload       string
 				Online        int
-				Ip            []netip.Addr
-				ConnCount     []int64
-				IpMap         map[netip.Addr]int64
+				Ip            []string
+				ConnCount     []int16
+				IpMap         map[string]int16
 				UsageDuration string
 			}{
 				TDownload:     usage.Downloadtd.BToString(),
@@ -306,5 +270,5 @@ func (u *Xraywiz) commandStatus(upx *update.Updatectx,  Messagesession *botapi.M
 		}
 
 	}
-	return u.defaultsrv.Droper(upx)
+	return err
 }

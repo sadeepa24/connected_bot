@@ -2,12 +2,51 @@ package constbot
 
 import "errors"
 
+
+type Error interface {
+	error
+	Exit() bool
+	UserMsg() string
+}
+
+
+
+type customErr struct {
+	error
+	exit bool
+	msg string
+
+}
+func (c customErr) UserMsg() string { return c.msg }
+func (c customErr) Exit() bool { return c.exit }
+func WrapError(err error, usermsg string) error {
+	return customErr{
+		error: err,
+		msg: usermsg,
+	}
+}
+
+
+var (
+	CErrConfigNotFound =  WrapError(ErrConfigNotFound, "Can't Find Config Please Try Again")
+	CErrQuotaExceed  = WrapError(ErrQuotaExceed, "Cannot Activate Config: Config's Quota Already Exceed")
+	CErrContextDead = WrapError(ErrContextDead, "Context DeadLine: Maybe Session Timeout")
+	CErrRetryFailed = WrapError(ErrRetryFailed, "Don't Be idiot :(")
+	CErrNoPerm = WrapError(ErrNoPerm, "Operation not permitted. Please check your account status.")
+	CErrNoPoints = WrapError(errors.New("no points"), "Cannot Pause Service User Does not have enogf points")
+	CErrDbopration = WrapError(ErrDbopration, "Operation on db failed, may be try again later")
+)
+
+
+
+var ErrNoPerm = errors.New("operation not permitted due to user's current state")
 var ErrContextDead = errors.New("context cancled")
 var ErrConfigNotFound = errors.New("config Notfound")
 var ErrInboundNotFound = errors.New("inbound Notfound")
 var ErrOutboundNotFound = errors.New("outbound Notfound")
 var ErrResultMalformed = errors.New("status result malformed")
 var ErrNotMsgType = errors.New("type is not valid messagetype")
+var ErrRetryFailed = errors.New("retry attemps failed")
 
 
 var ErrTypeMissmatch = errors.New("iobound type not supported or invalid type")
@@ -36,10 +75,12 @@ var ErrServiceNotFound = errors.New("service not found")
 // Usersession
 var ErrOnDeactivation = errors.New("deactivation failed")
 var ErrQuotaExceed = errors.New("config quota exceed")
-var ErrOnDb = errors.New("db tx failed")
 var ErrSessionExcit = errors.New("already session excist")
 var ErrSessioForceClose = errors.New("old session force closing errored ")
 var Erruuidcreatefailed = errors.New("uuid create failed")
+
+
+var ErrConfigNoQota = errors.New("config doesn't have any quota")
 
 // Metadata
 var ErrNotsupported = errors.New("type not supporte yet")
@@ -88,4 +129,5 @@ var ErrWebhookSetFailed = errors.New("setting web hook failed")
 var ErrNilRequest = errors.New("request is nil pointer")
 var ErrUnknownUserListType = errors.New("user list type error")
 var ErrUserObNil = errors.New("user struct cannot be nil")
-var ErrNoService = errors.New("No service")
+var ErrNoService = errors.New("no service")
+var ErrNoAnyInbound = errors.New("no inbound")

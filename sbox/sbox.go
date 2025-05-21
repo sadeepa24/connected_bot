@@ -1,40 +1,28 @@
 package sbox
 
-// Xray Sing-box both should implement this
-type Sboxcontroller interface {
+import (
+	"github.com/sadeepa24/connected_bot/db"
+	"github.com/sadeepa24/connected_bot/sbox/conf"
+	"github.com/sagernet/sing-box/connectedbot/opts"
+)
+
+
+type Controller interface {
 	Start() error
 	Close() error
 
-	//Check If already user is in if not add the user
-	//Should Calculate How much quota should added to underlaying sbox
-	// Always update Usage to 0 when this called
-	AddUser(*Userconfig) (Sboxstatus, error)
-	AddUserReset(*Userconfig) (Sboxstatus, error)
-	RemoveUser(*Userconfig) (Sboxstatus, error)
-	RemoveAllRuleForuser(user string)
-	//Do not going to update database using this func usage it will automaticaly doing by watchman
-	//Userstatus
-	GetstatusUser(*Userconfig) (Sboxstatus, error)
+	AddConfig(dbconf *db.Config) (conf.Sboxstatus, error)
+	AddConfigReset(dbconf *db.Config) (conf.Sboxstatus, error)
+	RemoveConfig(dbconf *db.Config) (conf.Sboxstatus, error)
+	GetStatusConfig(dbconf *db.Config) (conf.Sboxstatus, error)
 
-	// AddInboud()
-
-	GetAllInbound() ([]Inboud, error)
-	AddInbound() error
-	RemoveInboud() error
-	InboundStatus(string) error
-
-	GetAllOutbound() ([]Outbound, error)
-	AddOutbound() error
-	RemoveOutboud() error
-	OutboundStatus(string) error
-
-	ShareLinkEncode(*Userconfig, string) (string, error)
-
-	SetLogChan(chan any)
-	GetLogChan() chan any
+	GetAllUserStatus() []opts.UserStatus
+	//GetAllInbound() ([]conf.Inboud, error)
+	CloseConns(dbconf *db.Config) error
 
 	UrlTest(outtag string) (int16, error)
 	RefreshUrlTest()
 
-	CloseConns(suser *Userconfig) error
+	ResetInbounds(dbconf *db.Config) error
+	ChangeOutbound(dbconf *db.Config) error
 }

@@ -11,10 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid/v5"
 	connected "github.com/sadeepa24/connected_bot"
-	"github.com/sadeepa24/connected_bot/controller"
-	"github.com/sadeepa24/connected_bot/watchman"
+	C "github.com/sadeepa24/connected_bot/constbot"
 	"go.uber.org/zap"
 )
 
@@ -23,13 +22,13 @@ var ctx = context.Background()
 var zLogger, _ = zap.NewDevelopment()
 
 func TestConnectedBot(t *testing.T) {
-	newoption := connected.Botoptions{
-		Watchman:   &watchman.Watchmanconfig{},
+	newoption := C.Botoptions{
+		Watchman:   &C.Watchmanconfig{},
 		Dbpath:     "./newtest.db",
 		Ctx:        ctx,
 		Bottoken:   "",
 		Botmainurl: "https://api.telegram.org/bot",
-		Metadata: &controller.MetadataConf{
+		Metadata: &C.MetadataConf{
 			GroupID:           -1002325676823,
 			ChannelID:         -1002400437670,
 			Maxconfigcount:    10,
@@ -338,10 +337,10 @@ func TestQuotacalc(t *testing.T) {
 
 func TestTiming(t *testing.T) {
 	uuidMap := make(map[uuid.UUID]string)
-	testuuid := uuid.New()
+	testuuid,_ := uuid.NewV4()
 	syncmap := sync.Map{}
 	for i := 0; i < 100000; i++ {
-		storeid := uuid.New()
+		storeid, _ := uuid.NewV4()
 		uuidMap[storeid] = "waefdaewf"
 		syncmap.Store(storeid, i)
 	}

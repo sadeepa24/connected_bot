@@ -27,13 +27,13 @@ type BotAPI interface {
 	GetchatmemberCtx(ctx context.Context, Userid int64, Chatid int64) (*tgbotapi.ChatMember, bool, error)
 	//Createkeyboard(keyboard *InlineKeyboardMarkup) ([]byte,error)
 	Send(msg *Msgcommon) (*tgbotapi.Message, error)
-	SendError(error, int64)
 	DeleteMsg(ctx context.Context, msgid int64, chatid int64) error
 	GetMgStore() *MessageStore
 	SetWebhook(webhookurl, secret, ip_addr string, allowd_ob []string) error
 	CreateFullUrl(endpoint string) string
 	GetFile(file_Id string) (io.ReadCloser, error)
 }
+
 
 type Botapi struct {
 	ctx    context.Context
@@ -59,7 +59,7 @@ func NewBot(ctx context.Context, token, mainurl string, mgstore *MessageStore) *
 	}
 }
 func (b *Botapi) GetFile(filed_id string) (io.ReadCloser, error) {
-	res, err := b.Makerequest(b.ctx, "POST", "getFile", CreateReder(struct{
+	res, err := b.Makerequest(b.ctx, "POST", "getFile", CreateReder(&struct{
 		File_id string `json:"file_id,omitempty"`
 	}{
 		File_id: filed_id,
@@ -120,35 +120,34 @@ func (b *Botapi) Makerequest(reqctx context.Context, method, endpoint string, bo
 		reqctx = b.ctx
 	}
 	req, err := http.NewRequestWithContext(reqctx, method, b.mainurl+b.token+"/"+endpoint, body)
+	if err != nil {
+		return nil, Error{error: err, code: ErrReqCreate}
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.ContentLength = int64(body.Len())
-	if err != nil {
-		return nil, err
-	}
 	return b.SendRawReq(req)
 
 }
 
 func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 	if req == nil {
-		return nil, C.ErrNilRequest
+		return nil, Error{error: C.ErrNilRequest}
 	}
 	res, err := b.Client.Do(req)
 	if err != nil {
-		return nil, C.ErrClientRequestFail
+		return nil, Error{error: err, code: ErrReqFail}
 	}
-	if res.StatusCode == 400 {
-		return nil, C.ErrTgParsing
-	}
+	// if res.StatusCode == 400 {
+	// 	return nil, Error{error: errors.New("bad response from telegram status: " + res.Status), code: ErrBadReq}
+	// }
 	apires := &tgbotapi.APIResponse{}
-	//var update tgbotapi.Update
     decoder := json.NewDecoder(res.Body)
     if err := decoder.Decode(&apires); err != nil {
-		return nil, C.ErrJsonopra
+		return nil, Error{error: err, code: ErrJsonOp}
     }
 	if !apires.Ok {
-		return nil, errors.Join(C.ErrApierror, fmt.Errorf("tgrrcode %d Discription %s", apires.ErrorCode, apires.Description))
+		return nil, Error{error: fmt.Errorf("tgerrcode %d Discription %s", apires.ErrorCode, apires.Description), code: ErrInvalidRes}
 	}
 	return apires, nil
 }
@@ -161,22 +160,18 @@ func (b *Botapi) AnswereInlineQuary(ctx context.Context) error {
 	return nil
 }
 
-
-
-
 func (b *Botapi) SendContext(ctx context.Context, msg *Msgcommon) (*tgbotapi.Message, error) {
 	endpoint := "sendMessage"
 	if msg.Message_id != 0 {
 		endpoint = "editMessageText"
-
 	}
 	if msg.Meadiacommon != nil {
 		switch {
 		case msg.Message_id != 0:
 			endpoint = "editMessageCaption"
-		case msg.Meadiacommon.Photo != nil:
+		case msg.Meadiacommon.Photo != "":
 			endpoint = "sendPhoto"
-		case msg.Meadiacommon.Video != nil:
+		case msg.Meadiacommon.Video != "":
 			endpoint = "sendVideo"
 		}
 
@@ -186,18 +181,15 @@ func (b *Botapi) SendContext(ctx context.Context, msg *Msgcommon) (*tgbotapi.Mes
 	}
 
 	apires, err := b.Makerequest(ctx, http.MethodPost, endpoint, &BotReader{RealOb: msg})
-
 	if err != nil {
 		return nil, err
 	}
 	message := &tgbotapi.Message{}
 	if err = json.Unmarshal(apires.Result, message); err != nil {
-		return nil, C.ErrJsonopra
+		return nil, Error{error: err, code: ErrJsonOp}
 	}
 	return message, nil
 }
-
-
 
 func (b *Botapi) AnswereCallbackCtx(ctx context.Context, Callbackanswere *Callbackanswere) error {
 	_, err := b.Makerequest(ctx, http.MethodPost, "answerCallbackQuery", &BotReader{RealOb: Callbackanswere})
@@ -223,25 +215,15 @@ func (b *Botapi) GetchatmemberCtx(ctx context.Context, Userid int64, Chatid int6
 	chamember := &tgbotapi.ChatMember{}
 	err = json.Unmarshal(apires.Result, chamember)
 	if err != nil {
-		err = C.ErrJsonopra
+		err = Error{error: err, code: ErrJsonOp}
 	}
 
-	return chamember, chamember.Status == "member" || chamember.Status == "administrator" || chamember.Status == "creator", err
+	return chamember, chamember.Status == "member" || chamember.Status == "administrator" || chamember.Status == "creator", nil
 }
 
 func (b *Botapi) Send(msg *Msgcommon) (*tgbotapi.Message, error) {
 	return b.SendContext(context.Background(), msg)
 
-}
-
-func (b *Botapi) SendError(err error, UserID int64) {
-	b.Send(&Msgcommon{
-		Text: err.Error() + "      Please Send This Error To Admin It's Very Important Thin to Give Bug free Service",
-		Infocontext: &Infocontext{
-			User_id: UserID,
-			ChatId:  UserID,
-		},
-	})
 }
 
 func (b *Botapi) DeleteMsg(ctx context.Context, msgid int64, chatid int64) error {
@@ -265,7 +247,7 @@ type Msgsession struct {
 	sendfirst      bool
 	sentmsg        []int64
 	Lasscallbackid int64
-	Prime          int64 //Deorecated
+	// Prime          int64 //Deorecated
 
 	msgstore           *MessageStore
 	lang               string
@@ -297,7 +279,7 @@ func NewMsgsession(upxctx context.Context, api BotAPI, userid int64, chatid int6
 		},
 		sendfirst:      true,
 		sentmsg:        []int64{},
-		Prime:          0,
+		//Prime:          0,
 		replyque:       []int{},
 		msgstore:       api.GetMgStore(),
 		lang:           lang,
@@ -306,25 +288,19 @@ func NewMsgsession(upxctx context.Context, api BotAPI, userid int64, chatid int6
 
 }
 
-func (m *Msgsession) SetPrimeLast() {
-	if len(m.sentmsg) > 0 {
-		m.Prime = int64(m.MessageID)
-		for i, mg := range m.sentmsg {
-			if mg == m.Prime {
-				m.sentmsg = append(m.sentmsg[:i], m.sentmsg[i+1:]...)
-				break
-			}
-		}
-	}
-}
+var (
+	ErrNilMsg = errors.New("no msg")
+)
 
 type Htmlstring string
-
+const MaxChunck = 4096 //maxmim size of each msg text
+// type HtmlByte []byte
 // Many types supported by this method msg parameter can be Upmessage, struct with template name, or string
 func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Message, error) {
 	if msg == nil {
-		return nil, errors.New("no msg")
+		return nil, ErrNilMsg
 	}
+	
 	var (
 		sendmsg = &Msgcommon{
 			Infocontext: &Infocontext{
@@ -335,7 +311,6 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 	if m.continuemedia {
 		sendmsg.Endpoint = C.ApiMethodCaptionEdit
 	}
-
 	if (m.alertsent || m.replyrecived) && m.MessageID != 0 {
 		m.DeleteLast()
 		m.alertsent = false
@@ -346,6 +321,30 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 	case string:
 		sendmsg.Text = realmg
 		if len(sendmsg.Text) > 4096 {
+			sendmsg.Text = m.partialsend(sendmsg.Text)
+		}
+		m.preparesentmg(sendmsg, buttons != nil, false)
+	case *PreBuuf:
+		sendmsg.reader = realmg
+		sendmsg.Parse_mode = C.ParseHtml
+		if realmg.Len() > MaxChunck {
+			btn := NewButtons([]int16{1})
+			btn.AddClose(false)
+			for i := 1; i < realmg.counter; i++ {
+				m.SendAlert(&LimitedReader{R: realmg, N: MaxChunck}, btn)
+			}
+		}
+		m.preparesentmg(sendmsg, buttons != nil, false)
+		defer realmg.Reset()
+	case []byte:
+		if len(realmg) > 4 {
+			if string(realmg[0:4]) == "html"{
+				sendmsg.Parse_mode = C.ParseHtml
+				realmg = realmg[4:]
+			}
+		}
+		sendmsg.Text = string(realmg)
+		if len(sendmsg.Text) >= 4096 {
 			sendmsg.Text = m.partialsend(sendmsg.Text)
 		}
 		m.preparesentmg(sendmsg, buttons != nil, false)
@@ -360,9 +359,7 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 		if upmg, ok := msg.(UpMessage); ok {
 			msg = upmg.Template
 			name = upmg.TemplateName
-
 		}
-		
 		var (
 			message *Message
 			err error
@@ -370,13 +367,19 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 		)
 		if message, ok = msg.(*Message); !ok {
 			if message, err = m.msgstore.GetMessage(name, m.lang, msg); err != nil {
-				if errors.Is(err, C.ErrMsgDisabled) {
-					return nil, err
+				if berr, ok := err.(Error); ok {
+					switch berr.code {
+					case ErrTmplRender:
+						m.SendExtranal("Template Render Failed Contact Admin And Send Him The Err", nil, "", true)
+						m.SendError(err, "")
+					}
 				}
-				return nil, C.ErrTmplRender
+				return nil, err
 			}
 		}
-		
+		if message.Keyboard != nil && buttons != nil {
+			buttons.OverideKeyboard(message.Keyboard)
+		}
 		if message.Includemed {
 			if m.lastsendmeadia && !(m.alertsent || m.replyrecived) {
 				sendmsg.Meadiacommon = &Meadiacommon{
@@ -402,9 +405,6 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 			if message.SuperContinue { // cannot equal directly because if m.supercontinue == true then we cannot swap it to false again
 				m.supercontinue = true
 			}
-
-			
-
 			if m.MessageID != 0 && !m.lastsendmeadia {
 				m.DeleteLast()
 				m.MessageID = 0
@@ -428,35 +428,10 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 			sendmsg.Infocontext = &m.infoctx
 			sendmsg.Text = message.String()
 			sendmsg.Parse_mode = message.ParseMode
-
-			// if m.continuemedia && !message.SkipText && (!m.continue_skip_text || buttons != nil) {
-			// 	sendmsg.Meadiacommon = &Meadiacommon{
-			// 		Caption: sendmsg.Text,
-			// 	}
-
-			// 	fmt.Println("trigger 2")
-			// 	sendmsg.Text = ""
-			// 	sendmsg.Infocontext = &Infocontext{
-			// 		ChatId: m.ChatID,
-			// 	}
-
-			// 	if (m.alertsent || m.replyrecived) || m.MessageID == 0  {
-			// 		fmt.Println("trigger 3")
-			// 		sendmsg.SetMedType(m.lastmediatype, m.lastmedia)
-			// 	}
-			// } else if m.continue_skip_text {
-			// 	m.DeleteLast()
-			// 	sendmsg.Endpoint = C.ApiMethodEdimgmed
-			// 	if (m.alertsent || m.replyrecived) || m.MessageID == 0 || !m.lastsendmeadia {
-			// 		sendmsg.Endpoint = C.ApiMethodSendMG
-			// 	}
-			// }
-
 			m.preparesentmg(sendmsg, buttons != nil, message.MeadiaSkip)
 
 		}
 	}
-
 	// delete last sent msg with media when current message does not have media
 	// also deete when already alert sent or reply recived
 	// by doing so current msg will be the latest msg in chat
@@ -473,27 +448,26 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 	if m.MessageID != 0 {
 		sendmsg.Message_id = int64(m.MessageID)
 	}
-	if m.Prime != 0 {
-		sendmsg.Message_id = m.Prime
-	}
-
 	replymsg, err := m.api.SendContext(m.mainctx, sendmsg)
-
 	if err != nil {
-		switch {
-		case errors.Is(err, C.ErrClientRequestFail), errors.Is(err, C.ErrApierror), errors.Is(err, C.ErrRead):
-			if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
+		if berr, ok := err.(Error); ok {
+			switch berr.code {
+			case ErrReqFail:
+				if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
+					return nil, err
+				}
+			case ErrBadReq:
+				if sendmsg.Parse_mode == C.ParseHtml {
+					sendmsg.Parse_mode = ""
+					if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry changing parse mode
+						return nil, err
+					}
+				}
+			default:
 				return nil, err
 			}
-		case errors.Is(err, C.ErrJsonopra): //TODO: handle later
-			return nil, err
-		default:
-			return nil, err
 		}
-
 	}
-	//m.cached = sendmsg
-
 	if m.MessageID == 0 {
 		m.sentmsg = append(m.sentmsg, int64(replymsg.MessageID))
 	}
@@ -503,6 +477,22 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 	}
 	m.sendfirst = false
 	return replymsg, err
+}
+
+func (m *Msgsession) ResetState() {
+	if m.lastsendmeadia {
+		m.DeleteLast()
+		m.MessageID = 0
+	}
+	m.lastmediatype = ""
+	m.lastsendmeadia = false
+	m.continuemedia = false
+	m.supercontinue = false
+	m.continue_skip_text = false
+}
+
+func (m *Msgsession) ChangeLang(newcode string) {
+	m.lang = newcode
 }
 
 func (m *Msgsession) preparesentmg(sendmsg *Msgcommon, btnavbl, doskip bool, ) {
@@ -560,6 +550,7 @@ func (m *Msgsession) EditText(msg string, buttons *Buttons) (*tgbotapi.Message, 
 	return m.Edit(msg, buttons, "")
 }
 
+//FIXME:
 func (m *Msgsession) SendExtranal(msg any, buttons *Buttons, name string, nodel bool) (*tgbotapi.Message, error) {
 
 	sendmsg := &Msgcommon{
@@ -574,26 +565,40 @@ func (m *Msgsession) SendExtranal(msg any, buttons *Buttons, name string, nodel 
 	case string:
 		sendmsg.Text = realmg
 		sendmsg.Endpoint = C.ApiMethodSendMG
+	case Htmlstring:
+		sendmsg.Text = string(realmg)
+		sendmsg.Parse_mode = C.ParseHtml
+	case *PreBuuf:
+		sendmsg.reader = realmg
+		sendmsg.Parse_mode = C.ParseHtml
+		if realmg.Len() > MaxChunck {
+			btn := NewButtons([]int16{1})
+			btn.AddClose(false)
+			for i := 1; i < realmg.counter; i++ {
+				m.SendExtranal(io.LimitReader(realmg, MaxChunck), btn, "", nodel)
+			}
+		}
+		defer realmg.Reset()
 	default:
-		rendermg, err := m.msgstore.GetMessage(name, m.lang, realmg)
+		rendermg, err := m.msgstore.GetMessage(name, m.lang, msg); 
 		if err != nil {
-			sendmsg.Text = "error from template please note admin"
-			break
+			if berr, ok := err.(Error); ok {
+				switch berr.code {
+				case ErrTmplRender:
+					m.SendExtranal("Template Render Failed Contact Admin And Send Him The Err", nil, "", true)
+					m.SendError(err, "")
+				}
+			}
+			return nil, err
+		}
+		if rendermg.Keyboard != nil && buttons != nil {
+			buttons.OverideKeyboard(rendermg.Keyboard)
 		}
 		if rendermg.Includemed {
-
 			sendmsg.Meadiacommon = &Meadiacommon{}
-			switch rendermg.MedType {
-			case C.MedPhoto:
-				sendmsg.Meadiacommon.Photo = rendermg.MediaId
-				sendmsg.Endpoint = C.ApiMethodSendPhoto
-			case C.MedVideo:
-				sendmsg.Meadiacommon.Video = rendermg.MediaId
-				sendmsg.Endpoint = C.ApiMethodSendVid
-			}
+			sendmsg.SetMedType(rendermg.MedType, rendermg.MediaId)
 			sendmsg.Parse_mode = rendermg.ParseMode
 			sendmsg.Caption = rendermg.String()
-
 		} else {
 			sendmsg.Text = rendermg.String()
 			sendmsg.Parse_mode = rendermg.ParseMode
@@ -606,25 +611,30 @@ func (m *Msgsession) SendExtranal(msg any, buttons *Buttons, name string, nodel 
 	}
 
 	replymg, err := m.api.SendContext(m.mainctx, sendmsg)
+	
 	if err != nil {
-		if errors.Is(err, C.ErrTgParsing) {
-			sendmsg.Parse_mode = ""
-			if sendmsg.Meadiacommon != nil && sendmsg.Meadiacommon.Media != nil {
-				sendmsg.Meadiacommon.Media.ParseMode = ""
+		if berr, ok := err.(Error); ok {
+			switch berr.code {
+			case ErrReqFail:
+				if replymg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
+					return nil, err
+				}
+			case ErrBadReq:
+				if sendmsg.Parse_mode == C.ParseHtml {
+					sendmsg.Parse_mode = ""
+					if replymg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry changing parse mode
+						return nil, err
+					}
+				}
+			default:
+				return nil, err
 			}
-			replymg, err = m.api.SendContext(m.mainctx, sendmsg)
-
-		}
-		if err != nil {
-			return nil, err
 		}
 	}
-
 	if !nodel {
 		m.sentmsg = append([]int64{int64(replymg.MessageID)}, m.sentmsg...)
 	}
 	m.alertsent = true
-
 	return replymg, err
 }
 
@@ -640,7 +650,10 @@ func (m *Msgsession) SendAlert(msg any, buttons *Buttons) (*tgbotapi.Message, er
 	switch mg := msg.(type) {
 	case string:
 		sendmsg.Text = mg
-
+	//FIXME:
+	case io.Reader:
+		sendmsg.Parse_mode = C.ParseHtml
+		sendmsg.reader = mg
 	case Htmlstring:
 		sendmsg.Text = string(mg)
 		if len(sendmsg.Text) > 4096 {
@@ -648,31 +661,46 @@ func (m *Msgsession) SendAlert(msg any, buttons *Buttons) (*tgbotapi.Message, er
 		}
 		sendmsg.Parse_mode = C.ParseHtml
 	}
-
 	if buttons != nil {
 		sendmsg.Reply_markup = buttons.Getkeyboard()
 	}
 	replymsg, err := m.api.SendContext(m.mainctx, sendmsg)
 	if err != nil {
-		switch {
-		case errors.Is(err, C.ErrClientRequestFail), errors.Is(err, C.ErrApierror), errors.Is(err, C.ErrRead):
-			if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
+		if berr, ok := err.(Error); ok {
+			switch berr.code {
+			case ErrReqFail:
+				if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
+					return nil, err
+				}
+			case ErrBadReq:
+				if sendmsg.Parse_mode == C.ParseHtml {
+					sendmsg.Parse_mode = ""
+					if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry changing parse mode
+						return nil, err
+					}
+				}
+			default:
 				return nil, err
 			}
-			
-		case errors.Is(err, C.ErrJsonopra):
-			return nil, err
-		default:
-			return nil, err
 		}
-	
-
 	}
-
 	m.sentmsg = append([]int64{int64(replymsg.MessageID)}, m.sentmsg...)
 	m.alertsent = true
 	return replymsg, err
 
+}
+
+func (m *Msgsession) SendError(err error, dmsg string) {
+	if er, ok := err.(C.Error); ok {
+		if er.UserMsg() != "" {
+			m.SendAlert(er.UserMsg(), nil)
+		}
+		return
+	}
+	if dmsg != "" {
+		m.SendAlert(dmsg, nil)
+	}
+	
 }
 
 func (m *Msgsession) ForwardMgTo(to int64, mgid, fromchat int64) error {
@@ -732,27 +760,13 @@ func (m *Msgsession) EditNewcontext(ctx context.Context, msg any, buttons *Butto
 	return m.Edit(msg, buttons, name)
 }
 
-// Send New message and set it as last message
-func (m *Msgsession) SendNew(msg any, buttons *Buttons, name string) (*tgbotapi.Message, error) {
-	currentId := m.MessageID
-	m.MessageID = 0
-	m.sendfirst = true
-	replymsg, err := m.Edit(msg, buttons, name)
-	if err != nil {
-		m.MessageID = currentId
-		m.sendfirst = false
-	}
-	return replymsg, err
-
-}
-
 func (m *Msgsession) DeleteLast() {
 
 	if len(m.sentmsg) > 0 {
 
 		err := m.api.DeleteMsg(m.mainctx, int64(m.MessageID), m.ChatID)
 		if err != nil {
-			//
+			//TODO: handle error
 		}
 		m.sentmsg = m.sentmsg[:len(m.sentmsg)-1]
 		if len(m.sentmsg) > 0 {
@@ -775,16 +789,12 @@ func (m *Msgsession) DeleteAllMsg() error {
 			terr = errors.Join(terr, err)
 		}
 	}
-	if m.Prime != 0 {
-		if err := m.api.DeleteMsg(m.mainctx, m.Prime, m.ChatID); err != nil {
-			terr = errors.Join(terr, err)
-		}
-	}
 	for _, rep := range m.replyque {
 		if err := m.api.DeleteMsg(m.mainctx, int64(rep), m.ChatID); err != nil {
 			terr = errors.Join(terr, err)
 		}
 	}
+	m.MessageID = 0
 	return terr
 }
 func (m *Msgsession) SetNewcontext(ctx context.Context) {
@@ -798,83 +808,8 @@ func (m *Msgsession) Callbackanswere(quoaryid, text string, alert bool) error {
 		Show_alert:        alert,
 	})
 }
-
-// Deprecated
-func (m *Msgsession) SendTmpl(name string, obj any, btns *Buttons) (*tgbotapi.Message, error) {
-
-	if obj == nil {
-		return nil, errors.New("no obj")
-	}
-
-	message, err := m.msgstore.GetMessage(name, m.lang, obj)
-	if err != nil {
-		return nil, C.ErrTmplRender
-	}
-
-	if message.Includemed {
-		var commonmg = &Msgcommon{
-			Infocontext: &Infocontext{
-				ChatId: m.ChatID,
-			},
-			Meadiacommon: &Meadiacommon{
-				Caption: message.String(),
-			},
-			Parse_mode: message.ParseMode,
-		}
-
-		switch message.MedType {
-		case C.MedPhoto:
-
-			inmed := &InputMedia{
-				Type:      C.MedPhoto,
-				Media:     message.MediaId,
-				Caption:   message.String(),
-				ParseMode: message.ParseMode,
-			}
-
-			commonmg.Meadiacommon.Photo = inmed.Marshal()
-		case C.MedVideo:
-
-			inmed := &InputMedia{
-				Type:      C.MedVideo,
-				Media:     message.MediaId,
-				Caption:   message.String(),
-				ParseMode: message.ParseMode,
-			}
-
-			commonmg.Meadiacommon.Video = inmed.Marshal()
-		}
-
-		if m.MessageID != 0 {
-			commonmg.Endpoint = "editMessageCaption"
-		}
-
-		if btns != nil {
-			commonmg.Reply_markup = Keyboard{
-				Inline_keyboard: btns.InlineKeyboard,
-			}
-		}
-
-		replymg, err := m.api.SendContext(m.mainctx, commonmg)
-
-		if err != nil {
-			if errors.Is(err, C.ErrContextDead) {
-				return nil, err
-			} else if errors.Is(err, C.ErrClientRequestFail) {
-				return m.api.SendContext(m.mainctx, commonmg)
-			}
-		}
-
-		m.sentmsg = append([]int64{int64(replymg.MessageID)}, m.sentmsg...)
-
-		return replymg, nil
-
-	} else {
-
-		//return m.Edit(message.String(), btns)
-		return nil, nil
-	}
-
+func (b *Msgsession) UserID() int64 {
+	return b.userID
 }
 
 type Buttons struct {
@@ -883,6 +818,7 @@ type Buttons struct {
 	lastval        int16
 	uniqid         int64
 	nextnew        bool
+	overide bool
 }
 
 // Create button Schema
@@ -915,13 +851,33 @@ func (b *Buttons) Reset(btmatrix []int16) {
 	b.InlineKeyboard = make([][]InlineKeyboardButton, len(btmatrix))
 	b.uniqid = int64(rand.Int31n(4556))
 	b.nextnew = true
+	b.overide = false
 
 	if len(btmatrix) > 0 {
 		b.lastval = btmatrix[len(btmatrix)-1]
 	}
-
 }
 
+// same as Reset but overide field won't change
+func (b *Buttons) ResetNoOveride(btmatrix []int16) {
+	b.btmatrix = btmatrix
+	b.InlineKeyboard = make([][]InlineKeyboardButton, len(btmatrix))
+	b.uniqid = int64(rand.Int31n(4556))
+	b.nextnew = true
+	if len(btmatrix) > 0 {
+		b.lastval = btmatrix[len(btmatrix)-1]
+	}
+}
+
+
+func (b *Buttons) OverideKeyboard(keyboard *Keyboard) {
+	if keyboard != nil && b.overide {
+		b.InlineKeyboard = keyboard.Inline_keyboard
+	}
+} 
+func (b *Buttons) SetOveride() {
+	b.overide = true
+}
 func (b *Buttons) Addbutton(btnname, data, url string) {
 	for i, matic := range b.btmatrix {
 		if matic > 0 {
@@ -950,7 +906,6 @@ func (b *Buttons) Addbutton(btnname, data, url string) {
 	b.Addbutton(btnname, data, url)
 
 }
-
 func (b *Buttons) PassButtons(count int16) {
 	for i, matic := range b.btmatrix {
 		if matic > 0 {
@@ -961,7 +916,6 @@ func (b *Buttons) PassButtons(count int16) {
 		}
 	}
 }
-
 func (b *Buttons) Passline() {
 	if b.nextnew {
 		return
@@ -973,7 +927,6 @@ func (b *Buttons) Passline() {
 		}
 	}
 }
-
 // Should Called After adding allbuttons
 func (b *Buttons) AddCloseBack() {
 
@@ -984,7 +937,6 @@ func (b *Buttons) AddCloseBack() {
 	b.Addbutton(C.BtnBack, C.BtnBack, "")
 	b.Addbutton(C.BtnClose, C.BtnClose, "")
 }
-
 // should call after adding all neccery buttons
 func (b *Buttons) AddClose(newline bool) {
 	if newline && !b.nextnew {
@@ -992,72 +944,71 @@ func (b *Buttons) AddClose(newline bool) {
 	}
 	b.Addbutton(C.BtnClose, C.BtnClose, "")
 }
-
 func (b *Buttons) AddBack(newline bool) {
 	if newline && !b.nextnew {
 		b.Passline()
 	}
 	b.Addbutton(C.BtnBack, C.BtnBack, "")
 }
-
 func (b *Buttons) AddUrlbutton(name, url string) {
 	b.Addbutton(name, name, url)
 }
-
 func (b *Buttons) Addcancle() {
 	b.Addbutton(C.BtnCancle, C.BtnCancle, "")
 }
-
 func (b *Buttons) AddBtcommon(btn string) {
 	b.Addbutton(btn, btn, "")
 }
-
 func (b *Buttons) Getkeyboard() Keyboard {
 	return Keyboard{
 		Inline_keyboard: b.InlineKeyboard,
 	}
 }
-
-// func (b *Buttons) GetKeyBoardTgbotapi() tgbotapi.ReplyKeyboardMarkup {
-	
-
-
-
-// 	tgmap := make([][]tgbotapi.KeyboardButton, len(b.InlineKeyboard))
-
-// 	for i, keymap := range b.InlineKeyboard {
-// 		tgmap[i] = make([]tgbotapi.KeyboardButton, len(keymap))
-		
-// 		for j, key := range keymap {
-// 			tgmap[j][i] = tgbotapi.KeyboardButton{
-// 				Text: key.Text,
-				
-// 			} 
-// 		}
-// 	}
-	
-	
-// 	return tgbotapi.ReplyKeyboardMarkup{
-// 		Keyboard: [][]tgbotapi.KeyboardButton(b.InlineKeyboard),
-// 	}
-// }
-
-func (b *Buttons) Marshell() (json.RawMessage, error) {
-	rkeyboard, err := Createkeyboard(&InlineKeyboardMarkup{
-		InlineKeyboard: b.InlineKeyboard,
-	})
-	if err != nil {
-		return nil, err
+func (b *Buttons) GetkeyboardCopy() Keyboard {
+	cp := make([][]InlineKeyboardButton, len(b.InlineKeyboard))
+	copy(cp, b.InlineKeyboard)
+	return Keyboard{
+		Inline_keyboard: cp,
 	}
-	return json.RawMessage(rkeyboard), nil
+}
+func (b *Buttons) AddButtonSlice(names []string) {
+	for i := range names {
+		b.AddBtcommon(names[i])
+	}
 }
 
-// func (b *Buttons) AddSpecial(btnname, data,url string) {
-// 	b.InlineKeyboard = append(b.InlineKeyboard, []InlineKeyboardButton{
+func fromBtnConfig(btnconfig *BtnConfig) (Keyboard, error) {
+	if btnconfig == nil{
+		return Keyboard{}, errors.New("btn config is nil")
+	}
+	var InlineKeyboard [][]InlineKeyboardButton
+	for row, btnrow := range btnconfig.Btns {
+		InlineKeyboard = append(InlineKeyboard, []InlineKeyboardButton{})
+		for _, btn := range btnrow {
+			btnar := []byte(btn)
+			urlStart := bytes.IndexByte(btnar, '[')
+			var url []byte
+			
+			if urlStart == 0 || urlStart == -1 {
+				return Keyboard{}, errors.New("btn layout problem in row "  + strconv.Itoa(row) )
+			}
+			if urlStart != -1 && len(btnar) - (urlStart+1) > 0{
+				url = btnar[urlStart+1:len(btnar)-1]
+			}
+			
+			InlineKeyboard[row] = append(InlineKeyboard[row], InlineKeyboardButton{
+				Text:         string(btnar[:urlStart]),
+				URL:         string(url),
+			})
+		}
+	}
+	return Keyboard{
+		Inline_keyboard: InlineKeyboard,
+	}, nil
+}
 
-// 	})
-// 	b.Addbutton(C.BtnCancle, C.BtnCancle, "")
-// }
+
+
 
 type Callbackdata struct {
 	Uniqid int64  `json:"uid"`
@@ -1090,10 +1041,11 @@ func (c *Callbackdata) StringV2() string {
 
 }
 
+var ErrClbackDataLength = errors.New("wrong length")
 func (c *Callbackdata) FillV2(data string) error {
 	out := strings.Split(data, "eyjy")
 	if len(out) != 2 {
-		return errors.New("wrong length")
+		return ErrClbackDataLength
 	}
 	c.Data = out[1]
 	intt, err := strconv.Atoi(out[0])
@@ -1104,11 +1056,45 @@ func (c *Callbackdata) FillV2(data string) error {
 	return nil
 }
 
-func Createkeyboard(keyboard *InlineKeyboardMarkup) ([]byte, error) {
+//more faster than typical json marshlling
+//FIXME: get []byte slice as argument and write directly to it
+func Createkeyboard(keyboard [][]InlineKeyboardButton) ([]byte, error) {
 	if keyboard == nil {
-		return []byte{}, fmt.Errorf("nil keyboard enterd")
+		return []byte{}, errors.New("nil keyboard enterd")
 	}
-	return json.Marshal(keyboard)
+	buf := []byte{'['}
+	for row, boardrow := range keyboard {
+		buf = append(buf, '[')
+		for btnplace, btn := range boardrow {
+			buf = append(buf, '{')
+			if btn.CallbackData != "" {
+				buf = append(buf, []byte(`"callback_data":"`+ btn.CallbackData + `",` )...)
+			}
+			if btn.URL != "" {
+				buf = append(buf, []byte(`"url":"`+ btn.URL + `",` )...)
+			}
+			if btn.Text != "" {
+				buf = append(buf, []byte(`"text":"`+ btn.Text + `",` )...)
+			}
+			
+			buf[len(buf)-1] = '}'
+
+			if btnplace == len(boardrow)-1 {
+				break
+			}
+			buf = append(buf, ',')
+
+		}
+		buf = append(buf, ']')
+		if row == len(keyboard)-1 {
+			break
+		}
+		buf = append(buf, ',')
+	}
+
+	buf = append(buf, ']')
+	return buf, nil
+	//return json.Marshal(keyboard)
 }
 
 
@@ -1117,7 +1103,7 @@ type Filepart struct {
 	Name string
 }
 
-
+//FIXME: change returen error types
 func CreateMultiPartReq(ctx context.Context, method, url string,   fields map[string]string,  fileparts map[string]Filepart, ) (*http.Request, error) {
 	var (
 		body bytes.Buffer
@@ -1135,11 +1121,7 @@ func CreateMultiPartReq(ctx context.Context, method, url string,   fields map[st
 		if err != nil {
 			return nil, err
 		}
-		pt, err := io.ReadAll(fpart.Reader)
-		if err != nil {
-			return nil, err
-		}
-		_, err = iopart.Write(pt)
+		_, err = io.Copy(iopart, fpart.Reader)
 		if err != nil {
 			return nil, err
 		}
@@ -1158,7 +1140,101 @@ func CreateMultiPartReq(ctx context.Context, method, url string,   fields map[st
 		return nil, err
 	}
 	req.Header.Set("Content-Type", ContentType)
-
 	return req, err
 
+}
+
+
+
+type PreBuuf struct {
+	*bytes.Buffer
+	init bool
+	rinit bool
+	counter int
+	
+}
+
+func (buf *PreBuuf) Reset() {
+	buf.Buffer.Reset()
+	buf.counter = 0
+	buf.init = false
+	buf.rinit = false
+}
+
+func  (buf *PreBuuf) Len() int {
+	if buf.rinit {
+		return buf.Buffer.Len()
+	}
+	return buf.Buffer.Len() + prelen
+}
+
+const prelen = len(`\u003c/code\u003e\u003c/pre\u003e`)
+
+func (buf *PreBuuf) Read(p []byte) (int, error) {
+	if !buf.rinit {
+		buf.Buffer.WriteString(`\u003c/code\u003e\u003c/pre\u003e`)
+		buf.rinit = true
+	}
+	return buf.Buffer.Read(p)
+}
+
+func (buf *PreBuuf) escpwrite(p []byte) (n int, err error) {
+	for i := 0; i < len(p); i++ {
+		if buf.Buffer.Len() + prelen == MaxChunck * buf.counter {
+			buf.counter++
+			buf.WriteString(`\u003c/code\u003e\u003c/pre\u003e\u003cpre\u003e\u003ccode\u003e`)
+		}
+		switch p[i] {
+		case '\\':
+			buf.WriteString(`\\`)
+		case '"':
+			buf.WriteString(`\"`)
+		case '\n':
+			buf.WriteString(`\n`)
+		case '\r':
+			buf.WriteString(`\r`)
+		case '\t':
+			buf.WriteString(`\t`)
+		case '<':
+			buf.WriteString(`\u003c`)
+		case '>':
+			buf.WriteString(`\u003e`)
+		case '&':
+			buf.WriteString(`\u0026`)
+		default:
+			buf.WriteByte(p[i])
+		}
+	}
+	return len(p), nil
+}
+
+func (buf *PreBuuf) Write(p []byte) (n int, err error) {
+	if !buf.init {
+		buf.counter = 1
+		buf.init = true 
+		buf.Buffer.Write([]byte(`\u003cpre\u003e\u003ccode\u003e`))
+	}
+	return buf.escpwrite(p)
+}
+
+
+type LimitedReader struct {
+	R io.Reader 
+	N int64
+}
+
+func (l *LimitedReader) Len() int {
+	return int(l.N)
+}
+
+func (l *LimitedReader) Read(p []byte) (n int, err error) {
+	if l.N <= 0 {
+		return 0, io.EOF
+	}
+	if int64(len(p)) > l.N {
+		p = p[0:l.N]
+	}
+	n, err = l.R.Read(p)
+	l.N -= int64(n)
+	return
 }

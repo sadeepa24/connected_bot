@@ -2,10 +2,15 @@
 {
   "rules": [
     {
+      "action": "sniff",
+      "timeout": "400ms"
+    },
+    {
       "type": "botrule",
       "outbound": "direct-no",
       "action": "route"
-    }
+    },
+    { "action": "reject", "protocol": "bittorrent" }
   ],
 
   "final": "direct",

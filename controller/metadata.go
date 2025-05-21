@@ -2,61 +2,15 @@ package controller
 
 import (
 	"errors"
-	"fmt"
-	"sync"
+	"strings"
 	"sync/atomic"
-	"time"
 
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/sbox"
-	"github.com/sadeepa24/connected_bot/tg/update/bottype"
+	"github.com/sadeepa24/connected_bot/sbox/conf"
 	"github.com/sagernet/sing-box/option"
+	"go.uber.org/zap"
 )
-
-type MetadataConf struct {
-	//ForceAdd          bool   `json:"forceAdd,omitempty"`
-	ChannelID         int64  `json:"channel_id,omitempty"`
-	GroupID           int64  `json:"groupd_id,omitempty"`
-	BandwidthAvelable string `json:"bandwidth,omitempty"`
-	LoginLimit        int16  `json:"login_limit,omitempty"`
-	//Userquota         int32  `json:"userquota,omitempty"`
-	//Verifiedcount     int32  `json:"verifiedcount,omitempty"`
-	Maxconfigcount    int16  `json:"max_config_count,omitempty"`
-	//CheckCount        int32  `json:"checkcount,omitempty"`  // database checked count for exting period
-	RefreshRate       int32  `json:"refresh_rate,omitempty"` //rate of db refresh in hours
-
-	GroupLink  string `json:"group_link,omitempty"`
-	Channelink string `json:"channel_link,omitempty"`
-	Botlink    string `json:"bot_link,omitempty"`
-
-	GroupName   string `json:"group_name,omitempty"`
-	ChannelName string `json:"channel_name,omitempty"`
-	BotName     string `json:"bot_name,omitempty"`
-
-	//SudoAdminId int64 `json:"adminId,omitempty"`
-	//AllAdmin  []int64 `json:"alladmin,omitempty"`
-	SudoAdmin int64   `json:"admin,omitempty"`
-
-	WatchMgbuf int	  `json:"group_maxmg,omitempty"`
-
-	DefaultDomain   string `json:"default_domain,omitempty"`
-	DefaultPublicIp string `json:"default_publicip,omitempty"`
-
-	StorePath    string `json:"store_path,omitempty"`
-	ConfigFolder string `json:"config_folder,omitempty"`
-
-	HelperInfo bottype.HelpCommandInfo `json:"help_cmd,omitempty"`
-
-	InlinePost []string `json:"inline_posts,omitempty"`
-	Langs []string  `json:"allowed_langs,omitempty"`
-
-	CommonWarnRatio int16  `json:"warn_rate,omitempty"`
-}
-
-func (mn *Metadata) GetWarnRate() int16 {
-	return mn.CommonWarnRate/int16(mn.RefreshRate)
-}
 
 type Metadata struct {
 	ChannelId int64
@@ -76,16 +30,16 @@ type Metadata struct {
 	LoginLimit        int32
 	BandwidthAvelable C.Bwidth
 
-	Inbounds  []sbox.Inboud
-	Outbounds []sbox.Outbound
+	Inbounds  []conf.Inboud
+	Outbounds []conf.Outbound
 
-	inboundasMap  map[int]sbox.Inboud
-	outboundasMap map[int]sbox.Outbound
+	inboundasMap  map[int16]conf.Inboud
+	outboundasMap map[int16]conf.Outbound
 
 	rawoptions option.Options
 
-	defaultinbound  sbox.Inboud
-	defaultoutbound sbox.Outbound
+	defaultinbound  conf.Inboud
+	defaultoutbound conf.Outbound
 
 	CheckCount  *atomic.Int32
 	ResetCount  int32 //static value that db should reset when checkcount eqal to this
@@ -101,30 +55,29 @@ type Metadata struct {
 
 	DefaultDomain string
 	DefaultPubip  string
-
-	MaxRecurtion int
+	MaxGiftCount int64
+	MaxBuildConf int
+	BackupCycle int
 
 	SudoAdmin    int64
 	ConfigFolder string
 
-	HelperInfo bottype.HelpCommandInfo
+	HelperInfo C.HelpCommandInfo
 
-	inlineposts []string
+	inlineposts []C.InlinePost
 
 	CommonWarnRate int16 
 
-	//mu *sync.RWMutex
+	Langs []string
+
+	boxpath string
+	ForceDisableBackup bool
+
 
 }
 
-// func (m *Metadata) Lock() {
-// 	m.mu.Lock()
-// }
-// func (m *Metadata) Unlock() {
-// 	m.mu.Unlock()
-// }
 
-func (m *Metadata) Init(metaconf MetadataConf) error {
+func (m *Metadata) Init(metaconf C.MetadataConf, logger *zap.Logger) error {
 
 	if metaconf.StorePath == "" {
 		return errors.New("configs store path not found")
@@ -133,20 +86,35 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 		return errors.New("config folder path not found")
 	}
 	m.inlineposts = metaconf.InlinePost
+	if !strings.HasSuffix(metaconf.ConfigFolder, "/") {
+		metaconf.ConfigFolder = metaconf.ConfigFolder + "/"
+	}
 	m.ConfigFolder = metaconf.ConfigFolder
 
 	m.storePath = metaconf.StorePath
+	m.ForceDisableBackup = metaconf.ForceDisableBackup
 
+	m.MaxGiftCount = metaconf.MaxGiftCount
+	m.MaxBuildConf = metaconf.MaxBuildConf
 	m.CommonQuota = new(atomic.Int64)
 	m.VerifiedUserCount = new(atomic.Int32)
 	m.Dbusercount = new(atomic.Int32)
 	m.Maxconfigcount = metaconf.Maxconfigcount
 	m.CheckCount = new(atomic.Int32)
+	m.BackupCycle = metaconf.BackupRate
+	if m.BackupCycle == 0 {
+		m.BackupCycle = 1
+	}
 
 	m.HelperInfo = metaconf.HelperInfo
+	if metaconf.DefaultLang == "" {
+		return errors.New("default lang should be select")
+	}
 
-	m.MaxRecurtion = 20 //TODO: change this
-
+	if len(metaconf.Langs) == 0 {
+		metaconf.Langs = append(metaconf.Langs, metaconf.DefaultLang)
+	}
+	m.Langs = metaconf.Langs
 
 	if metaconf.SudoAdmin == 0 {
 		return errors.New("sudo admin not found")
@@ -160,8 +128,14 @@ func (m *Metadata) Init(metaconf MetadataConf) error {
 	m.SudoAdmin = metaconf.SudoAdmin
 	return nil
 }
+func (mn *Metadata) GetWarnRate() int16 {
+	return mn.CommonWarnRate/int16(mn.RefreshRate)
+}
+func (m *Metadata) SboxConfPath() string {
+	return m.boxpath
+}
 
-func (m *Metadata) DefaultInboud() (sbox.Inboud, db.Inbound) {
+func (m *Metadata) DefaultInboud() (conf.Inboud, db.Inbound) {
 	return m.defaultinbound, db.Inbound{
 		ID:   int16(m.defaultinbound.Id),
 		Tag:  m.defaultinbound.Tag,
@@ -171,7 +145,7 @@ func (m *Metadata) DefaultInboud() (sbox.Inboud, db.Inbound) {
 	}
 }
 
-func (m *Metadata) Defaultoutboud() (sbox.Outbound, db.Outbound) {
+func (m *Metadata) Defaultoutboud() (conf.Outbound, db.Outbound) {
 	return m.defaultoutbound, db.Outbound{
 		ID:   int16(m.defaultoutbound.Id),
 		Tag:  m.defaultoutbound.Tag,
@@ -181,7 +155,7 @@ func (m *Metadata) Defaultoutboud() (sbox.Outbound, db.Outbound) {
 	}
 }
 
-func (m *Metadata) Getinbounds() []sbox.Inboud {
+func (m *Metadata) Getinbounds() []conf.Inboud {
 	return m.Inbounds
 }
 
@@ -192,22 +166,39 @@ func (m *Metadata) ConfFolder() string {
 	return m.ConfigFolder
 }
 
-func (m *Metadata) Getoutbounds() []sbox.Outbound {
+func (m *Metadata) Getoutbounds() []conf.Outbound {
 	return m.Outbounds
 }
 
-func (m *Metadata) Getinbound(id int) (sbox.Inboud, bool) {
-
+func (m *Metadata) Getinbound(id int16) (conf.Inboud, bool) {
 	in, ok := m.inboundasMap[id]
 	return in, ok
 }
-func (m *Metadata) Getoutbound(id int) (sbox.Outbound, bool) {
+func (m *Metadata) GetAllinbound() map[int16]conf.Inboud {
+	return m.inboundasMap
+}
+
+
+func (m *Metadata) GetinboundList(ids []int16) (map[int16]conf.Inboud) {
+	inlist := make(map[int16]conf.Inboud, len(ids))
+	for _, id := range ids {
+		ins, ok := m.Getinbound(id)
+		if !ok {
+			continue
+		}
+		inlist[id] = ins
+	}
+	return inlist
+}
+
+
+func (m *Metadata) Getoutbound(id int16) (conf.Outbound, bool) {
 
 	in, ok := m.outboundasMap[id]
 	return in, ok
 }
 
-func (m *Metadata) GetdbInbound(id int) (db.Inbound, error) {
+func (m *Metadata) GetdbInbound(id int16) (db.Inbound, error) {
 	inbound, ok := m.inboundasMap[id]
 	if !ok {
 		return db.Inbound{}, C.ErrInboundNotFound
@@ -221,7 +212,7 @@ func (m *Metadata) GetdbInbound(id int) (db.Inbound, error) {
 	}, nil
 }
 
-func (m *Metadata) GetdbOutbound(id int) (db.Outbound, error) {
+func (m *Metadata) GetdbOutbound(id int16) (db.Outbound, error) {
 	outbound, ok := m.outboundasMap[id]
 	if !ok {
 		return db.Outbound{}, C.ErrOutboundNotFound
@@ -235,82 +226,25 @@ func (m *Metadata) GetdbOutbound(id int) (db.Outbound, error) {
 	}, nil
 }
 
-func (m *Metadata) GetInlinePost() []string {
+func (m *Metadata) GetInlinePost() []C.InlinePost {	
 	return m.inlineposts
 }
 
-
-type Overview struct {
-	Mu *sync.RWMutex
-
-	BandwidthAvailable C.Bwidth
-	//DownLoad C.Bwidth
-	//Upload C.Bwidth
-	MonthTotal C.Bwidth
-	AllTime C.Bwidth
-
-
-	
-
-
-	VerifiedUserCount int64
-	TotalUser int32
-	CUser int64 
-	CappedUser int64
-	DistributedUser int64
-	QuotaForEach C.Bwidth
-	Restricte int64
-	TempLimitedUser int64
-	TotalConfCount int64
-	ActiveConfCount int64
-	TotalUpdates int64
-	MonthLimitedUser int64
+// func (m *Metadata) UpdateInlinePost(newposts []C.InlinePost) {	
+// 	m.postmu.Lock()
+// 	defer m.postmu.Unlock()
+// 	m.inlineposts = newposts
+// }
 
 
 
-
-
-	LastRefresh time.Time
-
+type DbError struct {
+	error
+	exit bool
+	msg string
 }
 
+func (c DbError) UserMsg() string { return c.msg }
+func (c DbError) Exit() bool { return c.exit }
 
-func (o *Overview) String() string {
-	o.Mu.RLock()
-	defer o.Mu.RUnlock()
-	return fmt.Sprintf(
-		"Overview:\n"+
-			"Server Bandwidth: %s\n"+
-			"Month Total Usage: %s\n"+
-			"All Time Usage: %s\n"+
-			"Quota For Each: %s\n\n"+
-			"User Who Can Acctualy Use The Config: %d\n"+
-			"Verified User Count: %d\n"+
-			"Total User: %d\n"+
-			"Capped User: %d\n"+
-			"Distributed User: %d\n"+
-			"Restricted: %d\n"+
-			"MonthLimited: %d\n"+
-			"Temp Limited User: %d\n\n"+
-			"Total Conf Count: %d\n"+
-			"Active Conf Count: %d\n\n"+
-			"Total Update Recived (until last refresh): %d\n"+
-			"Last Refresh: %s\n",
-		o.BandwidthAvailable.BToString(),
-		o.MonthTotal.BToString(),
-		o.AllTime.BToString(),
-		o.QuotaForEach.BToString(),
-		o.CUser,
-		o.VerifiedUserCount,
-		o.TotalUser,
-		o.CappedUser,
-		o.DistributedUser,
-		o.Restricte,
-		o.MonthLimitedUser,
-		o.TempLimitedUser,
-		o.TotalConfCount,
-		o.ActiveConfCount,
-		o.TotalUpdates,
-		o.LastRefresh.Format(time.RFC3339),
-	)
-}
+var _ C.Error = (*DbError)(nil)

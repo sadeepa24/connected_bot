@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/sadeepa24/connected_bot/botapi"
+	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/parser"
@@ -30,8 +31,11 @@ type ConnectedBot struct {
 	msgstore *botapi.MessageStore
 }
 
-func New(options Botoptions) (*ConnectedBot, error) {
-	newdb := db.New(options.Ctx, options.Logger, options.Dbpath)
+func New(options C.Botoptions) (*ConnectedBot, error) {
+	newdb, err := db.New(options.Ctx, options.Logger, options.Dbpath, options.UsageDbpath)
+	if err != nil {
+		return nil, err
+	}
 	var (
 		//sbox sbox.Sboxcontroller
 		newbotapi botapi.BotAPI
@@ -41,12 +45,6 @@ func New(options Botoptions) (*ConnectedBot, error) {
 		return nil, err
 	}
 	newbotapi = botapi.NewBot(options.Ctx, options.Bottoken, options.Botmainurl, msgstore)
-	//sbox = singapi.New(options.Sboxconf)  // TODO: should add argument ctx, options,
-
-	//testings
-	//sbox = fortest.Newtestsbox()
-	//newbotapi = fortest.NewTESTBOTAPI()
-
 	ctrl, err := controller.New(options.Ctx, newdb, options.Logger, options.Metadata, newbotapi, options.SboxConfPath)
 	if err != nil {
 		return nil, err

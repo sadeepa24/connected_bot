@@ -9,14 +9,15 @@ import (
 
 	"github.com/sadeepa24/connected_bot/botapi"
 )
+var testToken = "token here"
 
 func TestBotapi(t *testing.T) {
-	newbot := botapi.NewBot(context.Background(), "7450429117:AAG-GSYKGsylucObfp8FmsCxNnus8L7EtHo", "https://api.telegram.org/bot", nil)
+	newbot := botapi.NewBot(context.Background(), testToken, "https://api.telegram.org/bot", nil)
 	_, err := newbot.SendContext(context.Background(), &botapi.Msgcommon{
 		Text: "Hello",
 		Infocontext: &botapi.Infocontext{
-			ChatId:  5413731343,
-			User_id: 5413731343,
+			ChatId:  9,
+			User_id: 9,
 		},
 	})
 
@@ -46,7 +47,7 @@ func TestTexttmp(t *testing.T) {
 
 func TestCallBackdata(t *testing.T) {
 	newdata := botapi.Callbackdata{
-		Data:   "hellodata",
+		Data:   "data",
 		Uniqid: rand.Int63(),
 	}
 

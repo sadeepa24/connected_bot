@@ -2,7 +2,6 @@ package watchman_test
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io"
 	"math/rand"
@@ -12,8 +11,7 @@ import (
 	"testing"
 
 	//
-	"github.com/gofrs/uuid"
-	connected "github.com/sadeepa24/connected_bot"
+	"github.com/gofrs/uuid/v5"
 	"github.com/sadeepa24/connected_bot/botapi"
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
@@ -102,21 +100,21 @@ type preconfdata struct {
 	db            *db.Database
 	botapi        botapi.BotAPI
 	msgstore      *botapi.MessageStore
-	watchmaconfig *watchman.Watchmanconfig
+	watchmaconfig *C.Watchmanconfig
 }
 
 func preconfigure(ctx context.Context) (data preconfdata) {
 	data = preconfdata{}
 
 	//options := testingfirst()
-	options := connected.Botoptions{}
+	options := C.Botoptions{}
 	options.Ctx = ctx
 
-	options.Metadata = &controller.MetadataConf{
+	options.Metadata = &C.MetadataConf{
 		WatchMgbuf: 100,
 	}
 
-	data.db = db.New(options.Ctx, options.Logger, options.Dbpath)
+	data.db, _ = db.New(options.Ctx, options.Logger, options.Dbpath, options.UsageDbpath)
 	data.msgstore, _ = botapi.NewMessageStore("./store.json")
 	data.botapi = botapi.NewBot(options.Ctx, options.Bottoken, options.Botmainurl, data.msgstore)
 	data.botapi = &TestBotapiWatchman{
@@ -148,10 +146,7 @@ func insertdummyuser(dB *db.Database, count int, initquota C.Bwidth, startfrom i
 			CheckID: uint(i),
 			TgID:    int64(i),
 			Name:    "testName" + strconv.Itoa(i),
-			Username: sql.NullString{
-				Valid:  true,
-				String: "testUserName" + strconv.Itoa(i),
-			},
+			Username: "sw",
 			Lang:              "en",
 			IsInGroup:         true,
 			IsInChannel:       true,
@@ -174,10 +169,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "verified unused",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         true,
 		IsInChannel:       true,
@@ -200,9 +192,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 			Name:       "unused verified",
 			UUID:       uid1.String(),
 			UserID:     userID,
-			Type:       "vless",
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
 			Download:   0,
@@ -215,10 +205,8 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 			UUID:       uid2.String(),
 			UserID:     userID,
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
-			Type:       "vless",
 			Download:   0,
 			Upload:     0,
 			LoginLimit: 2,
@@ -236,10 +224,7 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "usaged user",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         true,
 		IsInChannel:       true,
@@ -271,9 +256,7 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 			Name:       "usaged user",
 			UUID:       uid1.String(),
 			UserID:     userID,
-			Type:       "vless",
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      usage1,
 			Download:   dwn1,
@@ -286,10 +269,8 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 			UUID:       uid2.String(),
 			UserID:     userID,
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      usage2,
-			Type:       "vless",
 			Download:   dwn2,
 			Upload:     usage2 - dwn2,
 			LoginLimit: 2,
@@ -303,10 +284,7 @@ func insertMonthlimited(dB *db.Database, checkId int64, ctrl *controller.Control
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "testName randome",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         false,
 		IsInChannel:       false,
@@ -324,10 +302,7 @@ func insertUnverified(dB *db.Database, checkId int64, ctrl *controller.Controlle
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "testName randome",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:              "en",
 		IsInGroup:         true,
 		IsInChannel:       false,
@@ -349,10 +324,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 		CheckID: uint(checkId),
 		TgID:    userID,
 		Name:    "gift couple",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "Random user",
-		},
+		Username: "Random user",
 		Lang:          "en",
 		IsInGroup:     true,
 		IsInChannel:   true,
@@ -374,10 +346,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 		CheckID: uint(checkId)+1,
 		TgID:    checkId+1,
 		Name:    "gift couple",
-		Username: sql.NullString{
-			Valid:  true,
-			String: "gift couple",
-		},
+		Username: "Random user",
 		Lang:          "en",
 		IsInGroup:     true,
 		IsInChannel:   true,
@@ -402,9 +371,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 			Name:       "gift couple",
 			UUID:       uid1.String(),
 			UserID:     userID + 500,
-			Type:       "vless",
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
 			Download:   0,
@@ -417,10 +384,8 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 			UUID:       uid2.String(),
 			UserID:     userID + 500,
 			Active:     true,
-			InboundID:  1,
 			OutboundID: 1,
 			Usage:      0,
-			Type:       "vless",
 			Download:   0,
 			Upload:     0,
 			LoginLimit: 2,
@@ -735,10 +700,9 @@ func (r *Randomizer) ConfigUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: 5,
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
+
 		OutboundID: 1,
 
 	})
@@ -759,10 +723,8 @@ func (r *Randomizer) ConfigUnUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: int16(rand.Int31n(5)),
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
 		OutboundID: 1,
 	})
 	user.ConfigCount++
@@ -782,10 +744,8 @@ func (r *Randomizer) ConfigFullUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: int16(rand.Int31n(5)),
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
 		OutboundID: 1,
 	})
 	user.ConfigCount++
@@ -809,10 +769,8 @@ func (r *Randomizer) ConfigOverUsed(user *db.User, active bool) C.Bwidth {
 		LoginLimit: int16(rand.Int31n(5)),
 		UserID: user.TgID,
 		UUID: uid.String(),
-		Type: "vless",
 		Name: user.Name,
 		Active: active,
-		InboundID: 1,
 		OutboundID: 1,
 	})
 	user.ConfigCount++

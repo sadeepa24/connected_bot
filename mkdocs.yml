@@ -49,39 +49,48 @@ nav:
           - Inbounds: configuration/sing-box/inbounds.md
           - Outbounds: configuration/sing-box/outbounds.md
           - Routings: configuration/sing-box/routing.md
-  - Other Configs:
+  - Other Configuration:
       - other_config/index.md
       - Message-Templates:
           - other_config/templates/index.md
           - Varibles: other_config/templates/varibles.md
+          - CommonBlocks: other_config/templates/common.md
       - Store:
           - other_config/store/index.md
-          - outbounds: other_config/store/outbounds.md
-          - routerule: other_config/store/routerule.md
-          - dnsrules: other_config/store/dnsrules.md
-          - dns_server: other_config/store/dns_servers.md
-          - ruleset: other_config/store/ruleset.md
+          # - outbounds: other_config/store/outbounds.md
+          # - routerule: other_config/store/routerule.md
+          # - dnsrules: other_config/store/dnsrules.md
+          # - dns_server: other_config/store/dns_servers.md
+          # - ruleset: other_config/store/ruleset.md
 
       - Usermsg:
           - other_config/usermsg/index.md
   - Example Configs:
       - example/index.md
       - usermsdg: ./other_config/usermsg/index.md
-      - v1.0.0:
-          - bot config: example/v1.0.0/config.md
-          - sing-box config: example/v1.0.0/sing-box.md
-          - message template: example/v1.0.0/template.md
-          - store: example/v1.0.0/store.md
-      - v1.2.0:
-          - bot config: example/v1.2.0/config.md
-          - sing-box config: example/v1.2.0/sing-box.md
-          - message template: example/v1.2.0/template.md
-          - store: example/v1.2.0/store.md
+      - v1.3.0:
+          - bot config: example/v1.3.0/config.md
+          - sing-box config: example/v1.3.0/sing-box.md
+          - message template: example/v1.3.0/template.md
+          - store: example/v1.3.0/store.md
       - v1.2.1:
           - bot config: example/v1.2.1/config.md
           - sing-box config: example/v1.2.1/sing-box.md
           - message template: example/v1.2.1/template.md
           - store: example/v1.2.1/store.md
+      - v1.2.0:
+          - bot config: example/v1.2.0/config.md
+          - sing-box config: example/v1.2.0/sing-box.md
+          - message template: example/v1.2.0/template.md
+          - store: example/v1.2.0/store.md
+      - v1.0.0:
+          - bot config: example/v1.0.0/config.md
+          - sing-box config: example/v1.0.0/sing-box.md
+          - message template: example/v1.0.0/template.md
+          - store: example/v1.0.0/store.md
+
+  - Other:
+      - other/index.md
 
   # - Commands:
   #     - cmd/index.md
@@ -93,10 +102,17 @@ repo_url: https://github.com/sadeepa24/connected_bot
 repo_name: sadeepa24/connected_bot
 markdown_extensions:
   - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.mark
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
 
 plugins:
   - search
+  - mermaid2
   - i18n:
       default_language: si
       docs_structure: folder

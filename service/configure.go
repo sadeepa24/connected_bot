@@ -11,6 +11,7 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
+	sbConf "github.com/sadeepa24/connected_bot/sbox/conf"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"go.uber.org/zap"
@@ -20,7 +21,6 @@ type configState struct {
 	ctx            context.Context
 	State          int
 	Messagesession *botapi.Msgsession
-	//upx            *update.Updatectx
 	userId int64  //tgid
 	dbuser *db.User
 	btns           *botapi.Buttons
@@ -65,7 +65,6 @@ func (c *configState) run() error {
 	return nil
 }
 
-
 func (c *configState) home() error {
 
 	var (
@@ -88,7 +87,7 @@ func (c *configState) home() error {
 			CommonUser: &botapi.CommonUser{
 				Name:     c.dbuser.Name,
 				TgId:     c.userId,
-				Username: c.dbuser.Username.String,
+				Username: c.dbuser.Username,
 			},
 			ConfCount: c.Usersession.GetUser().ConfigCount,
 		},
@@ -108,9 +107,7 @@ func (c *configState) home() error {
 		return nil
 	}
 	if c.lastconfig, err = c.Usersession.GetConfig(int64(confID)); err != nil {
-		if errors.Is(err, C.ErrConfigNotFound) {
-			c.Alertsender(C.GetMsg(C.MsgConfUnfoun))
-		}
+		c.Alertsender(C.GetMsg(C.MsgConfUnfoun))
 		return nil
 	}
 	c.State = stconfaction
@@ -133,7 +130,15 @@ func (c *configState) action() error {
 
 	c.btns.AddCloseBack()
 
-	if _, err = c.Messagesession.Edit(struct{ ConfName string }{ConfName: c.lastconfig.Name}, c.btns, C.TmpConfiConfigure); err != nil {
+	if _, err = c.Messagesession.Edit(configinfo{
+		ConfigName: c.lastconfig.Name,
+		CrDate: c.lastconfig.CreatedAt.Format("2006-01-02 15:04:05"),
+		TotalQuota:  c.lastconfig.Quota.BToString(),
+		ConfName: c.lastconfig.Name,
+		Active: c.lastconfig.Active,
+		Loginlimit: c.lastconfig.LoginLimit,
+		//FIXME: add other fields later
+	}, c.btns, C.TmpConfiConfigure); err != nil {
 		return err
 	}
 	if callback, err = c.wiz.callback.GetcallbackContext(c.ctx, c.btns.ID()); err != nil {
@@ -152,23 +157,21 @@ func (c *configState) action() error {
 		c.State = stconfchangeout
 
 	case C.BtnChangeName:
-
 		if _, err = c.Messagesession.EditText(C.GetMsg(C.MsgNewName), nil); err != nil {
 			return nil
 		}
-		
-		name, err := common.ReciveString(c.Tgcalls)
+		name, err := common.ReciveName(c.Tgcalls)
 		if err != nil {
-			return err
+			c.Messagesession.SendError(err, "")
+			return nil
 		}
-
 		ok, err = c.conform(struct {
 			*botapi.CommonUser
 			NewName string
 		}{
 			CommonUser: &botapi.CommonUser{
 				Name:     c.dbuser.Name,
-				Username: c.dbuser.Username.String,
+				Username: c.dbuser.Username,
 				TgId:     c.userId,
 			},
 			NewName: name,
@@ -179,9 +182,11 @@ func (c *configState) action() error {
 		}
 		if ok {
 			c.lastconfig.Name = name
-			err = c.Usersession.Save()
+			err = c.Usersession.SaveConfig(c.lastconfig.Id)
 			if err != nil {
 				c.Alertsender(C.GetMsg(C.MsgNameChangeFailed))
+				c.Messagesession.SendError(err, "")
+				return nil
 			}
 			c.Alertsender(C.GetMsg(C.MsgNamechangeSuc))
 		}
@@ -197,11 +202,11 @@ func (c *configState) action() error {
 			err = c.Usersession.DeleteConfig(c.lastconfig.Id)
 			if err != nil {
 				c.Alertsender(C.GetMsg(C.MsgdelFail))
-				if errors.Is(err, C.ErrOnDeactivation) || errors.Is(err, C.ErrOnDb) {
+				c.Messagesession.SendError(err, "")
+				if  errors.Is(err, C.ErrDbopration) {
 					c.Usersession.ActivateConfig(c.lastconfig.Id)
-					return err
 				}
-
+				return nil
 			} else {
 				c.Messagesession.SendAlert(C.GetMsg(C.MsgdelSuccses), nil)
 				c.Usersession.Save()
@@ -229,31 +234,27 @@ func (c *configState) action() error {
 		c.Usersession.DeactivateConfig(c.lastconfig.Id)
 		c.Usersession.ActivateConfig(c.lastconfig.Id)
 
-		if err = c.Usersession.SaveConfigs(); err != nil {
+		if err = c.Usersession.SaveConfig(c.lastconfig.Id); err != nil {
 			if errors.Is(err, C.ErrContextDead) {
 				return err
 			}
-			c.Alertsender(C.GetMsg(C.Msgwrong))
+			c.Messagesession.SendError(err, C.GetMsg(C.Msgwrong))
 			return nil
 		}
-
 		c.Alertsender(C.GetMsg(C.MsgCoQuota))
 		return nil
 	
 	case C.BtnChangeLogin:
-		c.Alertsender("send new login limit count (0 < x <= 5)") 
+		c.Messagesession.Edit("send new login limit count 0 < x <= " + strconv.Itoa(int(c.wiz.ctrl.LoginLimit)), nil, "") 
 		limit, err := common.ReciveInt(c.Tgcalls, int(c.wiz.ctrl.LoginLimit), 0)
 		if err != nil {
+			c.Messagesession.SendError(err, "")
 			return nil
 		}
-		if limit <= 0 || limit > 5 {
-			c.Alertsender("login should be between 0 and 5")
-			return nil
-		}
-
-		_, err = c.Usersession.ChangeLoginLimit(c.lastconfig.Id, int32(limit))
+		_, err = c.Usersession.ChangeLoginLimit(c.lastconfig.Id, int16(limit))
 		if err != nil {
-			c.Alertsender("failed")
+			c.Alertsender("login limit change failed")
+			c.Messagesession.SendError(err, "")
 		}
 
 	}
@@ -264,11 +265,13 @@ func (c *configState) action() error {
 func (c *configState) changeIn() error {
 	var err error
 	var callback *tgbotapi.CallbackQuery
-	var ok bool
-
+	inIdasMap := make(map[int16]int16, len(c.lastconfig.InboundIds)) //FIXME: removing always allocations
+	for _, s := range c.lastconfig.InboundIds {
+		inIdasMap[s] = s
+	}
 	c.btns.Reset([]int16{2})
 	for _, in := range c.wiz.ctrl.Getinbounds() {
-		if c.lastconfig.InboundID == int16(in.Id) {
+		if _, ok := inIdasMap[int16(in.Id)]; ok {
 			c.btns.Addbutton(in.Type+"_"+in.Tag+" "+C.GetMsg(C.ButtonSelectEmjoi), strconv.Itoa(int(in.Id)), "")
 			continue
 		}
@@ -287,61 +290,54 @@ func (c *configState) changeIn() error {
 	case C.BtnBack:
 		c.State = stconfaction
 	default:
-		var inid int
-		if inid, err = strconv.Atoi(callback.Data); err != nil {
+		var inid int16
+		var ss int
+		if ss, err = strconv.Atoi(callback.Data); err != nil {
 			return c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.Msgwrong), true)
 		}
-		if inid == int(c.lastconfig.InboundID) {
-			c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.MsgInAlredSelected), true)
-			return nil
-		}
+		inid = int16(ss)
+
 		sboxin, loader := c.wiz.ctrl.Getinbound(inid)
 		if !loader {
 			return c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.Msgwrong), true)
 		}
-		ok, err = c.conform(struct {
-			InName         string
-			InType         string
-			InPort         int
-			InAddr         string
-			InInfo         string
-			Domain         string
-			PublicIp       string
-			TranstPortType string
-			TlsEnabled     bool
-			Support        []string
+		
+		_, actionRemove :=  inIdasMap[int16(inid)]
+
+		if actionRemove && len(inIdasMap) == 1 {
+			c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.MsgAtleas1In), true)
+			return nil
+		}
+
+		var ok bool
+		ok, err = c.conform(struct{
+			sbConf.Inboud
+			ActionRemove bool
 		}{
-			InName:         sboxin.Name,
-			InType:         sboxin.Type,
-			InPort:         sboxin.Port(),
-			InAddr:         sboxin.Laddr(),
-			PublicIp:       sboxin.PublicIp,
-			Domain:         sboxin.Domain,
-			InInfo:         sboxin.Custom_info,
-			TranstPortType: sboxin.TransortType(),
-			TlsEnabled:     sboxin.TlsIsEnabled(),
-			Support:        sboxin.Support,
+			Inboud: sboxin,
+			ActionRemove: actionRemove,
 		}, C.TmpInchange)
 
-		if ok {
-			err = c.Usersession.ChangeInbound(c.lastconfig.Id, int64(inid))
-			if err != nil {
-				switch {
-				case errors.Is(err, C.ErrInboundNotFound):
-					c.Messagesession.DeleteAllMsg()
-					c.Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-					return nil
-				}
-			}
-			c.Usersession.Save()
-			c.Messagesession.SendAlert(C.GetMsg(C.MsgInchangesucses), nil)
+		if err != nil {
 			c.State = stconfaction
 			return nil
 		}
-		if err != nil {
-			c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.Msgwrong), true)
+		
+		if !ok {
+			return nil
 		}
-
+		if actionRemove {
+			err = c.Usersession.RemoveInboudConf(c.lastconfig.Id, inid)	
+		} else {
+			err = c.Usersession.AddInboundConf(c.lastconfig.Id, inid)
+		}
+		if err != nil {
+			c.Messagesession.SendError(err, C.GetMsg(C.Msgwrong))
+			return nil
+			
+		}
+		c.Usersession.SaveConfig(c.lastconfig.Id)
+		c.Messagesession.SendAlert(C.GetMsg(C.MsgInchangesucses), nil)
 	}
 	return nil
 }
@@ -372,11 +368,14 @@ func (c *configState) changeOut() error {
 	case C.BtnBack:
 		c.State = stconfaction
 	default:
-		var outid int
-		if outid, err = strconv.Atoi(callback.Data); err != nil {
+		var outid int16
+		var ss int
+		if ss, err = strconv.Atoi(callback.Data); err != nil {
 			return c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.Msgwrong), true)
 		}
-		if outid == int(c.lastconfig.OutboundID) {
+		outid = int16(ss)
+
+		if outid == c.lastconfig.OutboundID {
 			c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.MsgInAlredSelected), true)
 			return nil
 		}
@@ -397,20 +396,23 @@ func (c *configState) changeOut() error {
 			Latency: sboxout.Latency.Load(),
 		}, C.TmpOutchange)
 		if ok {
-			err = c.Usersession.ChangeOutbound(c.lastconfig.Id, int64(outid))
+			err = c.Usersession.ChangeOutbound(c.lastconfig.Id, outid)
 			if err != nil {
 				if !errors.Is(err, C.ErrContextDead) {
-					c.Messagesession.DeleteAllMsg()
 					c.Messagesession.SendAlert("outbound change failed", nil)
-					c.Messagesession.SendAlert(C.GetMsg(C.Msgwrong), nil)
-
+					c.Messagesession.SendError(err, "")
+					c.wiz.logger.Error("Outbound Change Failed User " + c.dbuser.Name, zap.Error(err))
 					return nil
-
 				}
 				return err
 
 			}
-			c.Usersession.Save()
+			err = c.Usersession.SaveConfigs()
+			if err != nil {
+				c.Alertsender("outbound change failed")
+				c.Messagesession.SendError(err, "")
+				return nil
+			}
 			c.Messagesession.SendAlert(C.GetMsg(C.MsOutchangesucses), nil)
 			return nil
 		}

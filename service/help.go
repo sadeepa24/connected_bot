@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	//
@@ -10,7 +11,6 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
-	"github.com/sadeepa24/connected_bot/tg/update/bottype"
 )
 
 const (
@@ -21,17 +21,21 @@ const (
 )
 
 type HelpState struct {
+	ctx            context.Context
+	cancel context.CancelFunc
+	
+	counter *atomic.Int32
+
 	State          int
 	Messagesession *botapi.Msgsession
 	btns           *botapi.Buttons
 	wiz            *Usersrv
 	upx            *update.Updatectx
-	ctx            context.Context
 	Page           int
 	MaxPages       int
 	PageName       string
 
-	helperinfo bottype.HelpCommandInfo
+	helperinfo *C.HelpCommandInfo
 }
 
 func (h *HelpState) home() error {
@@ -64,6 +68,7 @@ func (h *HelpState) home() error {
 	if callback, err = h.wiz.callback.GetcallbackContext(h.ctx, h.btns.ID()); err != nil {
 		return err
 	}
+	h.counter.Add(1)
 	switch callback.Data {
 	case C.BtnClose:
 		h.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.MsgHeloClosed), false)
@@ -123,6 +128,7 @@ func (h *HelpState) about() error {
 	if callback, err = h.wiz.callback.GetcallbackContext(h.ctx, h.btns.ID()); err != nil {
 		return err
 	}
+	h.counter.Add(1)
 	switch callback.Data {
 	case C.BtnClose:
 		h.Messagesession.RemoveBtns()
@@ -141,7 +147,7 @@ func (h *HelpState) gotopage() error {
 	}
 	h.btns.AddClose(false)
 
-	h.Messagesession.Edit(struct {
+	_, err := h.Messagesession.Edit(struct {
 		*botapi.CommonUser
 	}{
 		&botapi.CommonUser{
@@ -150,15 +156,18 @@ func (h *HelpState) gotopage() error {
 			TgId:     h.upx.User.TgID,
 		},
 	}, h.btns, h.PageName+strconv.Itoa(h.Page))
+	if err != nil {
+		return err
+	}
 
 	var (
 		callback *tgbotapi.CallbackQuery
-		err      error
 	)
 
 	if callback, err = h.wiz.callback.GetcallbackContext(h.ctx, h.btns.ID()); err != nil {
 		return err
 	}
+	h.counter.Add(1)
 
 	switch callback.Data {
 	case C.BtnBack:
@@ -179,39 +188,47 @@ func (h *HelpState) gotopage() error {
 	return nil
 }
 
-func (u *Usersrv) commandHelpV2(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
-	upx.Ctx, upx.Cancle = context.WithTimeout(u.ctx, 5*time.Minute)
-	defer upx.Cancle()
-	Messagesession.SetNewcontext(upx.Ctx)
-	btns := botapi.NewButtons([]int16{1})
+func (h *HelpState) timeout() {
+	timeout(30 * time.Second, h.counter, h.ctx, h.cancel, h.Messagesession)
+}
 
+func (u *Usersrv) commandHelpV2(upx *update.Updatectx, Messagesession *botapi.Msgsession) error {
+	btns := botapi.NewButtons([]int16{1})
+	ctx, cancelfunc := context.WithTimeout(u.ctrl.GetBaseContext(), 7 * time.Minute)
 	state := HelpState{
+		ctx: ctx,
+		cancel: cancelfunc,
 		Messagesession: Messagesession,
 		btns:           btns,
 		wiz:            u,
-		ctx:            upx.Ctx,
 		upx:            upx,
 		helperinfo:     u.ctrl.GetHelepCmdInfo(),
+		counter: new(atomic.Int32),
 	}
-	var err error
-
-	help:
-	for {
-		switch state.State {
-		case sthomehelp:
-			err = state.home()
-		case stgototpage:
-			err = state.gotopage()
-		case sthelpabout:
-			err = state.about()
-		case sthelpclosed:
-			return nil
-		default:
-			break help
+	state.counter.Add(2)
+	Messagesession.SetNewcontext(ctx)
+	go state.timeout()
+	go func ()  {
+		var err error
+		defer state.cancel()
+		help:
+		for {
+			switch state.State {
+			case sthomehelp:
+				err = state.home()
+			case stgototpage:
+				err = state.gotopage()
+			case sthelpabout:
+				err = state.about()
+			case sthelpclosed:
+				return
+			default:
+				break help
+			}
+			if err != nil || ctx.Err() != nil {
+				return
+			}
 		}
-		if err != nil || upx.Ctx.Err() != nil {
-			return nil
-		}
-	}
+	}()
 	return nil
 }

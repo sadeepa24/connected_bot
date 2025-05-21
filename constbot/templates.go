@@ -11,14 +11,20 @@ const (
 
 )
 
+
+//Common 
+
+const (
+	TmplInInfo string = "inbound_info"
+)
+
+
 // CommandCreate
 const (
-	TmpCrAlreadyHave string = "create_conf_limit"
 	TmpCrAvblQuota   string = "create_available_quota"
-	TmpCrSendUID     string = "create_result"
-	TmpCrInInfo      string = "create_in_info"
+	TmpSendConf     string = "create_result"
 	TmpCrOutInfo     string = "create_out_info"
-	TmplCrSelect     string = "create_select"
+	// TmplCrSelect     string = "create_select"
 )
 
 // CommandStatus
@@ -111,6 +117,13 @@ const (
 	TmplGetinfoHome string = "getinfo_home"
 	TmpUserInfo string = "getinfo_user"
 	TmplOutInfo string = "getinfo_out"
-	TmplInInfo string = "getinfo_in"
-	TmpConfigInfo string = "getinfo_usage"
+	TmpConfigInfo string = "getinfo_config"
+	TmplAllIn string = "getinfo_allin"
+	TmplConfIn string = "getinfo_confin"
+	TmplExport string = "getinfo_in_export"
+)
+
+//state 
+const (
+	TmpStateInfo            string = "state_info"
 )

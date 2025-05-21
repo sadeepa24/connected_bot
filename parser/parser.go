@@ -58,11 +58,8 @@ func New(
 		logger:     logger,
 		srvs:       services,
 		botapi:     botapi,
-		GetBaseCtx: ctrl.GetBaseContext, //TODO: change later
+		GetBaseCtx: ctrl.GetBaseContext,
 		uctxPool: update.NewupdatePool(),
-
-		//xrayservice: make(map[string]bool, 10),
-		//usrservice:  make(map[string]bool, 10),
 	}
 	return parser
 }
@@ -82,6 +79,8 @@ func (p *Parser) Init() error {
 		C.CmdPoints, 
 		C.CmdContact, 
 		C.CmdSource,
+		C.CmdState,
+		C.CmdFClose,
 	}
 
 	xray_service_cmd := []string{
@@ -127,11 +126,11 @@ func (p *Parser) registerservice(services []service.Service) error {
 	return nil
 }
 
+//FIXME: this function can be optimized further removing unneccary addservice calls
 func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
-
 	upx, err := p.Readrequest(tgbotapimsg)
 	if err != nil {
-		return errors.Join(errors.New("tg request read error from parser"), err)
+		return errors.Join(errors.New("tg update read error from parser"), err)
 	}
 	p.ctrl.UpdateCounter.Add(1)
 	if p.ctrl.CheckLock() {
@@ -141,7 +140,6 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 			upx.Ctx, upx.Cancle = context.WithTimeout(p.GetBaseCtx(), 2 * time.Second) //replace old context because chatmember update must be proceed
 		}
 	}
-
 	defer func ()  {
 		if upx != nil{
 			p.uctxPool.Put(upx)
@@ -158,12 +156,13 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	if upx.Update.InlineQuery != nil {
 		return p.InlineService.Exec(upx)
 	}
+
 	if upx.Update.Message != nil {
 		if p.Defaulsrv.Ismsgrequired(upx.FromUser().ID, upx.FromChat().ID) {
 			return p.Defaulsrv.Exec(upx)
 		}
 	}
-	if upx.FromChat().ID == p.ctrl.SudoAdmin {
+	if upx.FromUser().ID == p.ctrl.SudoAdmin {
 		if upx.Update.Message.Command() == C.CmdSwitch {
 			p.AdminSrc.SwapMode()
 			var mode string 
@@ -200,6 +199,13 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	if upx.Update.MyChatMember != nil || upx.Update.ChatMember != nil {
 		upx.Setservice(C.Userservicename)
 	}
+	user := upx.FromUser()
+	dbuser := upx.User.Getdbuser()
+	if user != nil {
+		dbuser.IsTgPremium = user.IsPremium
+		dbuser.Name = user.FirstName + " " + user.LastName
+		dbuser.Username = user.UserName
+	}
 	if upx.Serviceset {
 		return p.addtoservice(upx)
 	}
@@ -208,14 +214,11 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 }
 
 func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, error) {
-	//upx := update.Newupdate(p.GetBaseCtx(), tgbotapimsg)
-
-	upx := p.uctxPool.Newupdate(p.GetBaseCtx(), tgbotapimsg)
-
+	upx := p.uctxPool.Newupdate(tgbotapimsg)
 	if upx.Update.InlineQuery != nil {
+		upx.Ctx, upx.Cancle = context.WithTimeout(p.GetBaseCtx(), C.UpdateTimeout)
 		return upx, nil
 	}
-
 	switch {
 	case upx.FromChat() == nil:
 		return nil, errors.New("recived update is not from a chat")
@@ -227,12 +230,13 @@ func (p *Parser) Readrequest(tgbotapimsg *tgbotapi.Update) (*update.Updatectx, e
 		if upx.FromChat().ID != p.ctrl.ChannelId && upx.FromChat().ID != p.ctrl.GroupID {
 			return nil, errors.New("user from elsewhere group")
 		}
-
+		if upx.Update.ChatMember == nil && upx.Update.MyChatMember == nil {
+			return nil, errors.New("update from group")
+		}
 	}
 	p.logger.Info("user updated recived " + tgbotapimsg.Info())
 	//replacing context
 	upx.Ctx, upx.Cancle = context.WithTimeout(p.GetBaseCtx(), C.UpdateTimeout)
-
 	return upx, nil
 }
 
@@ -241,7 +245,6 @@ func (u *Parser) addtoservice(upx *update.Updatectx) error {
 		return service.Exec(upx)
 	}
 	return C.ErrServiceNotFound
-
 }
 
 func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
@@ -280,8 +283,6 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 		upx.Setservice(C.Userservicename)
 
 	}
-
-
 	if upx.Dbuser().RecheckVerificity {
 		var (
 			err1 error
@@ -305,15 +306,20 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 	}
 
 	switch upx.Command {
-	case C.CmdStart, C.CmdHelp, C.CmdNull, C.CmdContact, C.CmdRecheck, C.CmdSource, C.CmdFree:
+	case C.CmdSource:
 		break
+	case C.CmdStart, C.CmdHelp, C.CmdNull, C.CmdContact, C.CmdRecheck, C.CmdFree:
+		if !upx.FromChat().IsPrivate() {
+			return false, nil
+		}
 	default:
 		if upx.User == nil {
 			return false, C.ErrUserObNil
 		}
-		
+		if upx.Update.ChatMember != nil || upx.Update.MyChatMember != nil {
+			return true, nil
+		}
 		if !upx.Update.FromChat().IsPrivate() {
-			//return C.ErrUserIsNotinPrivate
 			return false, nil
 		}
 		if !upx.User.Isverified() {
@@ -375,7 +381,6 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 			})
 			return false, nil
 		}
-	
 
 	}
 
@@ -388,14 +393,4 @@ func (p *Parser) commandparser(msg *tgbotapi.Message) (string, string, error) {
 		return msg.Command(), serviceName, nil
 	}
 	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
-
-
-	// switch msg.Command() {
-	// case C.CmdStart, C.CmdFree,  C.CmdHelp, C.CmdGift, C.CmdRecheck, C.CmdCap, C.CmdDistribute, C.CmdRefer, C.CmdEvents, C.CmdSugess, C.CmdPoints, C.CmdContact, C.CmdSource:
-	// 	return msg.Command(), C.Userservicename, nil
-	// case C.CmdCreate, C.CmdStatus, C.CmdConfigure, C.CmdInfo, C.CmdBuild:
-	// 	return msg.Command(), C.Xraywizservicename, nil
-	// default:
-	// 	return msg.Command(), C.Defaultservicename, C.ErrCommandNotfound
-	// }
 }

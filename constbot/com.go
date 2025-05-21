@@ -9,6 +9,9 @@ func MapToSlice[T comparable, Y any](in map[T]Y) []Y {
 }
 func MapToSliceKey[T comparable, Y any](in map[T]Y) []T {
 	ot := []T{}
+	if in == nil {
+		return nil
+	}
 	for val := range in {
 		ot = append(ot, val)
 	}
@@ -17,6 +20,9 @@ func MapToSliceKey[T comparable, Y any](in map[T]Y) []T {
 
 func MapToSlicePtr[T comparable, Y any](in map[T]*Y) []Y {
 	ot := []Y{}
+	if in == nil {
+		return ot
+	}
 	for _, val := range in {
 		ot = append(ot, *val)
 	}
@@ -24,6 +30,9 @@ func MapToSlicePtr[T comparable, Y any](in map[T]*Y) []Y {
 }
 func MapPtrToSlicePtr[T comparable, Y any](in map[T]*Y) []*Y {
 	ot := []*Y{}
+	if in == nil {
+		return ot
+	}
 	for _, val := range in {
 		ot = append(ot, val)
 	}
@@ -32,11 +41,9 @@ func MapPtrToSlicePtr[T comparable, Y any](in map[T]*Y) []*Y {
 
 func SliceToMap[T comparable, Y any](in []Y, getkey func(Y) T) map[T]Y {
 	sendmap := make(map[T]Y, len(in))
-
-	for _, val := range in {
-		sendmap[getkey(val)] = val
+	for i  := range in {
+		sendmap[getkey(in[i])] = in[i]
 	}
-
 	return sendmap
 
 }
@@ -83,10 +90,37 @@ func ExcuteMap[T comparable, Y any](in map[T]Y, excuter func(v Y, key T)) {
 }
 
 func ExcuteSlice[T any](in []T, exec func(*T)) {
+	if in == nil {
+		return
+	}
 	for i := range in {
 		exec(&in[i])
 	}
 }
+func ExcuteSliceTill[T any](in []T, exec func(*T) bool) {
+	if in == nil {
+		return
+	}
+	for i := range in {
+		if !exec(&in[i]) {
+			break
+		}
+	}
+}
+
+func SliceFromSlice[T any,Y any](in []T, exec func(T) (Y, bool) ) []Y {
+	end := []Y{}
+	for i := range in {
+		itm, ok := exec(in[i])
+		if ok {
+			end = append(end, itm)
+		}
+		
+	}
+	return end
+}
+
+
 func GetFromSlice[T any](in []T, getter func(T) bool) *T {
 	for i, ttt := range in {
 		if getter(ttt) {

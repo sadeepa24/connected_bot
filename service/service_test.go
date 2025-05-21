@@ -10,6 +10,7 @@ import (
 	"github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 
+	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/db"
 	"github.com/sadeepa24/connected_bot/service"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
@@ -21,7 +22,7 @@ var ctx = context.Background()
 
 var zLogger, _ = zap.NewDevelopment()
 
-var usethisdb = db.New(ctx, nil, "connect.db")
+var usethisdb,_ = db.New(ctx, nil, "connect.db", "usage.db")
 
 func init() {
 
@@ -29,7 +30,7 @@ func init() {
 
 func TestUsersrv(t *testing.T) {
 	usethisdb.InitDb()
-	var ctrl ,_ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "")
+	var ctrl ,_ = controller.New(ctx, usethisdb, zLogger, &C.MetadataConf{}, nil, "")
 
 	groupid := 88890
 
@@ -142,7 +143,7 @@ func TestUsersrv(t *testing.T) {
 func TestXraywiz(t *testing.T) {
 
 	usethisdb.InitDb()
-	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &controller.MetadataConf{}, nil, "option.Options{}")
+	var ctrl, _ = controller.New(ctx, usethisdb, zLogger, &C.MetadataConf{}, nil, "option.Options{}")
 
 	var callbacksrv = service.NewCallback(ctx, zLogger, nil, nil)
 	//var adminsrv *service.Adminsrv

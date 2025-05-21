@@ -10,29 +10,13 @@ import (
 	"time"
 
 	"github.com/sadeepa24/connected_bot/botapi"
+	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/parser"
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"go.uber.org/zap"
 )
 
-type ServerOption struct {
-	HttpPath          string   `json:"http_path"`
-	AllowedUpdates    []string `json:"allowed_updates,omitempty"`
-	FullUrl           string   `json:"full_url"`
-	Secret            string   `json:"secret"`
-	DisableWebhookSet bool     `json:"disable_setwebhook"`
-	Custom_Message    string   `json:"req_reject_message"`
-	ListenOption	 ListenOption `json:"listen_option"`
-}
 
-type ListenOption struct {
-	AllowdIPCidr		  []string `json:"allowd_cidr"`
-	ConnRejectMessage     string   `json:"reject_message"`
-	ServerName        string   `json:"server_name"`
-	Cert              string   `json:"cert"`
-	Key               string   `json:"key"`
-	Addr              string   `json:"addr"`
-}
 
 type Webhookserver struct {
 	listner net.Listener
@@ -57,7 +41,7 @@ type BotHandler struct {
 	CustomMessage []byte
 }
 
-func New(ctx context.Context, srvopt *ServerOption, parser parser.Parserwrap, logger *zap.Logger) *Webhookserver {
+func New(ctx context.Context, srvopt *C.ServerOption, parser parser.Parserwrap, logger *zap.Logger) *Webhookserver {
 	if srvopt == nil {
 		return nil
 	}
@@ -104,7 +88,7 @@ func (w *Webhookserver) Start(botapi botapi.BotAPI, errchan chan error) error {
 		w.logger.Debug("webhook setting succsess")
 	}
 	errchan <- nil
-	w.logger.Info("webhook listener started on " + w.Addr)
+	w.logger.Info("webhook listener started on " + w.listner.Addr().String())
 	return w.Server.Serve(w.listner)
 
 }
@@ -159,7 +143,7 @@ type webhookls struct {
 	logger *zap.Logger
 }
 
-func newwhls(lsopts ListenOption, logger *zap.Logger) (*webhookls, error) {
+func newwhls(lsopts C.ListenOption, logger *zap.Logger) (*webhookls, error) {
 	tcpAddr,err := net.ResolveTCPAddr("tcp", lsopts.Addr)
 	if err != nil {
 		return nil, errors.New("listen address fault")

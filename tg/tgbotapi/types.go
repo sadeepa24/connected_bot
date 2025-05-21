@@ -17,7 +17,7 @@ type WebhookConfig struct {
 	AllowedUpdates     []string
 	DropPendingUpdates bool
 }
-
+//TODO: remove unused types
 // APIResponse is a response from the Telegram API with the result
 // stored raw.
 type APIResponse struct {
@@ -128,9 +128,9 @@ func (u *Update) Info() string {
 		if u.Message != nil {
 			if u.Message.Command() != "" {
 				u.cachedInfo = fmt.Sprintf(u.cachedInfo + " cmd [%s]", u.Message.Command() )
-			} else {
-				u.cachedInfo = fmt.Sprintf(u.cachedInfo + " text [%s]", u.Message.Text )
-			}
+			} //else {
+			//	u.cachedInfo = fmt.Sprintf(u.cachedInfo + " text [%s]", u.Message.Text )
+			//}
 
 		}
 	}
@@ -198,17 +198,6 @@ func (u *Update) FromChat() *Chat {
 
 }
 
-// UpdatesChannel is the channel for getting updates.
-type UpdatesChannel <-chan Update
-
-// Clear discards all unprocessed incoming updates.
-func (ch UpdatesChannel) Clear() {
-	for len(ch) != 0 {
-		<-ch
-	}
-}
-
-// User represents a Telegram user or bot.
 type User struct {
 	// ID is a unique identifier for this user or bot
 	ID int64 `json:"id"`
@@ -235,6 +224,8 @@ type User struct {
 	// Returned only in getMe.
 	//
 	// optional
+	IsPremium bool `json:"is_premium,omitempty"`
+
 	CanJoinGroups bool `json:"can_join_groups,omitempty"`
 	// CanReadAllGroupMessages is true, if privacy mode is disabled for the bot.
 	// Returned only in getMe.
@@ -2017,48 +2008,15 @@ type InlineQuery struct {
 }
 
 type AnswerInlineQuery struct {
-	InlineQueryId string `json:"inline_query_id,omitempty"`
-	Results []any `json:"results,omitempty"`
-	ChacheTIme int `json:"cache_time,omitempty"`
-	Is_personal bool `json:"is_personal,omitempty"`
-	Next_offset string `json:"next_offset,omitempty"`
-	Button *InlineKeyboardButton `json:"button,omitempty"`
+	InlineQueryId string                `json:"inline_query_id,omitempty"`
+	Results       []any                 `json:"results,omitempty"`
+	ChacheTIme    int                   `json:"cache_time,omitempty"`
+	Is_personal   bool                  `json:"is_personal,omitempty"`
+	Next_offset   string                `json:"next_offset,omitempty"`
+	Button        *InlineKeyboardButton `json:"button,omitempty"`
 
-	content  []byte `json:"-"` //for Read method
-	called   bool   `json:"-"` // for Read method
 	Endpoint string `json:"-"`
-
 }
-
-
-
-func (m *AnswerInlineQuery) Read(p []byte) (int, error) {
-	var err error
-	if !m.called {
-	
-		m.content, err = json.Marshal(m)
-	
-		if err != nil {
-			return 0, err
-		}
-		m.called = true
-	}
-	n := copy(p, m.content)
-	m.content = m.content[n:]
-	
-	if len(m.content) == 0 {
-		return n, io.EOF
-	}
-	return n, nil
-}
-
-func (m *AnswerInlineQuery) Close() error {
-	return nil
-}
-
-
-
-
 
 
 
@@ -2824,46 +2782,6 @@ type InlineQueryResultVideo struct {
 	// optional
 	InputMessageContent interface{} `json:"input_message_content,omitempty"`
 }
-
-// InlineQueryResultVoice is an inline query response voice.
-type InlineQueryResultVoice struct {
-	// Type of the result, must be voice
-	Type string `json:"type"`
-	// ID unique identifier for this result, 1-64 bytes
-	ID string `json:"id"`
-	// URL a valid URL for the voice recording
-	URL string `json:"voice_url"`
-	// Title recording title
-	Title string `json:"title"`
-	// Caption 0-1024 characters after entities parsing
-	//
-	// optional
-	Caption string `json:"caption,omitempty"`
-	// ParseMode mode for parsing entities in the video caption.
-	// See formatting options for more details
-	// (https://core.telegram.org/bots/api#formatting-options).
-	//
-	// optional
-	ParseMode string `json:"parse_mode,omitempty"`
-	// CaptionEntities is a list of special entities that appear in the caption,
-	// which can be specified instead of parse_mode
-	//
-	// optional
-	CaptionEntities []MessageEntity `json:"caption_entities,omitempty"`
-	// Duration recording duration in seconds
-	//
-	// optional
-	Duration int `json:"voice_duration,omitempty"`
-	// ReplyMarkup inline keyboard attached to the message
-	//
-	// optional
-	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
-	// InputMessageContent content of the message to be sent instead of the voice recording
-	//
-	// optional
-	InputMessageContent interface{} `json:"input_message_content,omitempty"`
-}
-
 // ChosenInlineResult is an inline query result chosen by a User
 type ChosenInlineResult struct {
 	// ResultID the unique identifier for the result that was chosen
@@ -2884,86 +2802,6 @@ type ChosenInlineResult struct {
 	Query string `json:"query"`
 }
 
-// InputTextMessageContent contains text for displaying
-// as an inline query result.
-type InputTextMessageContent struct {
-	// Text of the message to be sent, 1-4096 characters
-	Text string `json:"message_text"`
-	// ParseMode mode for parsing entities in the message text.
-	// See formatting options for more details
-	// (https://core.telegram.org/bots/api#formatting-options).
-	//
-	// optional
-	ParseMode string `json:"parse_mode,omitempty"`
-	// Entities is a list of special entities that appear in message text, which
-	// can be specified instead of parse_mode
-	//
-	// optional
-	Entities []MessageEntity `json:"entities,omitempty"`
-	// DisableWebPagePreview disables link previews for links in the sent message
-	//
-	// optional
-	DisableWebPagePreview bool `json:"disable_web_page_preview,omitempty"`
-}
-
-// InputLocationMessageContent contains a location for displaying
-// as an inline query result.
-type InputLocationMessageContent struct {
-	// Latitude of the location in degrees
-	Latitude float64 `json:"latitude"`
-	// Longitude of the location in degrees
-	Longitude float64 `json:"longitude"`
-	// HorizontalAccuracy is the radius of uncertainty for the location,
-	// measured in meters; 0-1500
-	//
-	// optional
-	HorizontalAccuracy float64 `json:"horizontal_accuracy"`
-	// LivePeriod is the period in seconds for which the location can be
-	// updated, should be between 60 and 86400
-	//
-	// optional
-	LivePeriod int `json:"live_period,omitempty"`
-	// Heading is for live locations, a direction in which the user is moving,
-	// in degrees. Must be between 1 and 360 if specified.
-	//
-	// optional
-	Heading int `json:"heading"`
-	// ProximityAlertRadius is for live locations, a maximum distance for
-	// proximity alerts about approaching another chat member, in meters. Must
-	// be between 1 and 100000 if specified.
-	//
-	// optional
-	ProximityAlertRadius int `json:"proximity_alert_radius"`
-}
-
-// InputVenueMessageContent contains a venue for displaying
-// as an inline query result.
-type InputVenueMessageContent struct {
-	// Latitude of the venue in degrees
-	Latitude float64 `json:"latitude"`
-	// Longitude of the venue in degrees
-	Longitude float64 `json:"longitude"`
-	// Title name of the venue
-	Title string `json:"title"`
-	// Address of the venue
-	Address string `json:"address"`
-	// FoursquareID foursquare identifier of the venue, if known
-	//
-	// optional
-	FoursquareID string `json:"foursquare_id,omitempty"`
-	// FoursquareType Foursquare type of the venue, if known
-	//
-	// optional
-	FoursquareType string `json:"foursquare_type,omitempty"`
-	// GooglePlaceID is the Google Places identifier of the venue
-	//
-	// optional
-	GooglePlaceID string `json:"google_place_id"`
-	// GooglePlaceType is the Google Places type of the venue
-	//
-	// optional
-	GooglePlaceType string `json:"google_place_type"`
-}
 
 type MessageOrigin struct {
 	Type string `json:"type,omitempty"`

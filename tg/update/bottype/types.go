@@ -42,7 +42,7 @@ func (u *User) Info() string {
 		return u.chinfo
 	}
 	if u.User != nil {
-		u.chinfo = fmt.Sprintf("user [%s] tg_id [%d] username [%s]", u.User.Name, u.User.TgID, u.User.Username.String )
+		u.chinfo = fmt.Sprintf("user [%s] tg_id [%d] username [%s]", u.User.Name, u.User.TgID, u.User.Username )
 	}
 	return u.chinfo
 
@@ -83,9 +83,4 @@ func (f FullUsage) Today() C.Bwidth {
 	return f.Uploadtd + f.Downloadtd
 }
 
-type HelpCommandInfo struct {
-	InfoPageCount     int16 `json:"info_pages"`
-	TutorialPageCount int16 `json:"tuto_pages"`
-	CommandPageCount  int16 `json:"cmd_pages"`
-	BuilderHelp       int16 `json:"builder_pages"`
-}
+
