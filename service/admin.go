@@ -532,9 +532,9 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				btns.AddBtcommon("Remove Cap")
 			}
 			if enduserupx.User.IsDistributedUser {
-				btns.Addbutton("🔴 Distribute",  "Distribute","" )
-			} else {
 				btns.Addbutton("Remove Distribute",  "Distribute","" )
+			} else {
+				btns.Addbutton("🔴 Distribute",  "Distribute","" )
 			}
 			
 			btns.AddBtcommon("Change Point Count")
