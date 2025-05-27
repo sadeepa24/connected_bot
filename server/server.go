@@ -191,10 +191,12 @@ func (w *webhookls) Accept() (net.Conn, error) {
 	}
 	if w.allowdip != nil {
 		if !w.allowdip.Contains(GetIP(conn)) {
-			conn.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
 			w.logger.Warn("Unknow Remote Connection Rehected " + conn.RemoteAddr().String())
-			conn.Write(w.rejectMessage)
-			conn.Close()
+			go func() {
+				conn.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
+				conn.Write(w.rejectMessage)
+				conn.Close()
+			}()
 			return nil, UnknownRemote("unknown remote addr " + conn.RemoteAddr().Network(), )
 		}
 	}
