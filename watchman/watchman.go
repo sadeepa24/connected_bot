@@ -352,7 +352,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		chanmax = 100 
 	}
 
-	bufsender := controller.NewBufSender(w.ctx, w.ctrl, int(chanmax), 15 * time.Minute)
+	bufsender := controller.NewBufSender(w.ctx, w.ctrl, int(chanmax), time.Duration(w.ctrl.Overview.TotalUser * 3) * time.Second)
 	go bufsender.Start()
 	defer func ()  {
 		bufsender.Over()
