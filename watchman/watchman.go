@@ -370,7 +370,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	MainCommonUserQuota := predata.MainQuota(w.ctrl.BandwidthAvelable) // Newcalculated main quota for each user
 	// this value used to calculate the old ratio between config quota and old maincommonquota
 	// new config quota will calculate based on this ratio
-	oldCommonQuota := w.ctrl.CommonQuota.Swap(MainCommonUserQuota.Int64())
+	oldCommonQuota := w.ctrl.CommonQuota.Swap(MainCommonUserQuota)
 	
 	
 	w.ctrl.Overview.Mu.Lock()

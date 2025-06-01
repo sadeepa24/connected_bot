@@ -560,7 +560,7 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota)).Float64(),
 				GiftQuota: enduserupx.User.GiftQuota.BToString(),
 				Joined:    enduserupx.User.Joined.Format("2006-01-02 15:04:05"),
-				Dedicated: C.Bwidth(a.ctrl.CommonQuota.Load()).BToString(),
+				Dedicated: a.ctrl.CommonQuota.Load().BToString(),
 				TQuota:    (endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota).BToString(),
 				LeftQuota: endusersession.LeftQuota().BToString(),
 				TUsage:    tusage.BToString(),

@@ -377,7 +377,7 @@ func (c *Controller) Init() error {
 	c.Dbusercount.Swap(int32(dbMeta.Dbusercount))
 	c.VerifiedUserCount.Swap(int32(dbMeta.VerifiedUserCount))
 	c.Metadata.CheckCount.Swap(dbMeta.CheckCount)
-	c.CommonQuota.Swap(dbMeta.CommonQuota.Int64())
+	c.CommonQuota.Swap(dbMeta.CommonQuota)
 	
 	if err = c.db.Save(dbMeta).Error; err != nil {
 		return err

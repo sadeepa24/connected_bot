@@ -235,7 +235,7 @@ func (g *getinfo) userinfo() error {
 		UsagePercentage: float64(int(((tusage * 100)/(g.Usersession.GetUser().CalculatedQuota + g.dbuser.AdditionalQuota)) * 1000))/1000,
 		GiftQuota: g.dbuser.GiftQuota.BToString(),
 		Joined:    g.dbuser.Joined.Format("2006-01-02 15:04:05"),
-		Dedicated: C.Bwidth(g.ctrl.CommonQuota.Load()).BToString(),
+		Dedicated: g.ctrl.CommonQuota.Load().BToString(),
 		TQuota:    (g.Usersession.GetUser().CalculatedQuota + g.dbuser.AdditionalQuota).BToString(),
 		LeftQuota: g.Usersession.LeftQuota().BToString(),
 		TUsage:    tusage.BToString(),

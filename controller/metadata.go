@@ -20,7 +20,7 @@ type Metadata struct {
 	//UserQuota        *atomic.Int64 // Last calculated userquota
 
 	//UserQuota		C.Bwidth // Last calculated userquota should use with rwmutext
-	CommonQuota *atomic.Int64 // This is commonquota for all user userquota may vary to their settings
+	CommonQuota *C.AtomiCBwidth // This is commonquota for all user userquota may vary to their settings
 	//Channelusercount *atomic.Int32
 	//Groupusercount   *atomic.Int32
 	VerifiedUserCount *atomic.Int32
@@ -96,7 +96,7 @@ func (m *Metadata) Init(metaconf C.MetadataConf, logger *zap.Logger) error {
 
 	m.MaxGiftCount = metaconf.MaxGiftCount
 	m.MaxBuildConf = metaconf.MaxBuildConf
-	m.CommonQuota = new(atomic.Int64)
+	m.CommonQuota = C.NewAtomicBwidth()
 	m.VerifiedUserCount = new(atomic.Int32)
 	m.Dbusercount = new(atomic.Int32)
 	m.Maxconfigcount = metaconf.Maxconfigcount
