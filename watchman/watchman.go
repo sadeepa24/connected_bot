@@ -509,7 +509,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				var (
 					forceremove bool
 				)
-				if (newConfigQuota - user.Configs[i].Usage > 0) && userVerifycity && !user.IsDistributedUser && !user.IsMonthLimited && !user.Restricted && !user.Templimited && !user.IsPaused {
+				if (newConfigQuota - user.Configs[i].Usage > 0) && userVerifycity && user.CanUse() {
 					status, err := w.ctrl.Boxapi.AddConfigReset(&user.Configs[i])
 					if err != nil {
 						if cerr, ok := err.(C.Error); ok {
@@ -580,6 +580,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						bufsender.Send( C.GetMsg(C.MsgTemplimit), user.TgID)
 						for i := range user.Configs {
 							w.ctrl.Boxapi.RemoveConfig(&user.Configs[i])
+							user.Configs[i].Active = false
 						}
 						if user.WarnRatio == 0 {
 							bufsender.Send(C.GetMsg(C.MsgTempOver), user.TgID)
@@ -590,7 +591,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					user.EmptyCycle = 0
 				}
 			}
-			if user.UsedQuota > user.CalculatedQuota {
+			if user.UsedQuota > user.CalculatedQuota + user.AdditionalQuota {
 				w.logger.Warn("violation, usedquota > calculatedquota detected from " + user.String())
 				bufsender.Send("We have detetcted you have bigger quota than we allocated to fix this we overide you'r config's quota", user.TgID)
 				user.UsedQuota = user.CalculatedQuota
@@ -624,6 +625,9 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					user.Configs[i].Usage = 0
 					user.Configs[i].Upload = 0
 					user.Configs[i].Download = 0
+					if user.IsMonthLimited {
+						user.Configs[i].Active = false
+					}
 				}
 				
 				user.WarnRatio = w.ctrl.GetWarnRate()

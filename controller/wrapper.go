@@ -884,19 +884,13 @@ func (c *Controller) Newuser(user *tgbotapi.User, chat *tgbotapi.Chat) (*bottype
 		Name:    user.FirstName + " " + user.LastName,
 		Username: user.UserName,
 		CalculatedQuota:   C.Bwidth(c.CommonQuota.Load()),
-		DeletedConfCount:  0,
-		AddtionalConfig:   0,
 		WarnRatio: c.GetWarnRate(),
 		RecheckVerificity: recheck,
 		Lang:        c.metaconfig.DefaultLang,
 		Points:      C.DefaultPoint,
 		IsTgPremium: user.IsPremium,
 		IsInChannel:   inchan,
-		ConfigCount:   0,
 		IsInGroup:     ingroup,
-		IsBotStarted:  false,
-		GroupBanned:   false,
-		ChannelBanned: false,
 	}
 
 	dbUser, err := c.db.AddUser(newuser)

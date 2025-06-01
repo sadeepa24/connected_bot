@@ -52,7 +52,7 @@ type User struct {
 
 	MonthUsage       C.Bwidth `gorm:"index;column:month_usage"` //Usage of current Month will reset with end of month
 	AlltimeUsage     C.Bwidth `gorm:"index;column:all_time_usage"`
-	AddtionalConfig  int16    `gorm:"column:max_config_count"`
+	//AddtionalConfig  int16    `gorm:"column:max_config_count"`
 	ConfigCount      int16    `gorm:"column:config_count"`
 	DeletedConfCount int16    `gorm:"column:deleted_conf_count"`
 	EmptyCycle		 int16    `gorm:"column:empty_cycle"`
