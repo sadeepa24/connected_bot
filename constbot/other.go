@@ -17,9 +17,11 @@ type AtomiCBwidth struct {
 
 
 func NewAtomicBwidth() *AtomiCBwidth {
-	return &AtomiCBwidth{
+	v := &AtomiCBwidth{
 		val: new(atomic.Value),
 	}
+	v.Store(Bwidth(0))
+	return v
 }
 
 func (x *AtomiCBwidth) Add(delta Bwidth) (new Bwidth) {
