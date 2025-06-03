@@ -5,10 +5,42 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 // use this for bandwidth represtation
 type Bwidth float64
+
+type AtomiCBwidth struct {
+	val *atomic.Value
+}
+
+
+func NewAtomicBwidth() *AtomiCBwidth {
+	v := &AtomiCBwidth{
+		val: new(atomic.Value),
+	}
+	v.Store(Bwidth(0))
+	return v
+}
+
+func (x *AtomiCBwidth) Add(delta Bwidth) (new Bwidth) {
+	cval := x.val.Load()
+	x.val.Store(delta + cval.(Bwidth))
+	return cval.(Bwidth) + delta
+}
+func (x *AtomiCBwidth) Load() Bwidth {
+	return x.val.Load().(Bwidth)
+}
+func (x *AtomiCBwidth) Store(val Bwidth) {
+	x.val.Store(val)
+}
+func (x *AtomiCBwidth) Swap(new Bwidth) (old Bwidth) {
+	cval := x.val.Load()
+	x.val.Store(new)
+	return cval.(Bwidth)
+}
+
 
 // retuns Byte value
 // 2MB => 2 * 1024 * 1024

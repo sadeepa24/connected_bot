@@ -171,6 +171,20 @@ update:
 			}
 			w.logger.Info("db refresh done", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
 			w.logger.Sync()
+		case confid := <- w.ctrl.GetBoxCallback():
+			switch confid.Code {
+			case C.BoxCallBackTorrent:
+				ips := ""
+				for ip := range confid.Status.Online_ip {
+					ips += ip + ", "
+				}
+				err := w.ctrl.RestrictUserByConfId(confid.ConfigId, "download bittorrent time:" + time.Now().Format("2006-01-02 15:04:05") + " ip: " + ips)
+				if err != nil {
+					w.logger.Error("user restriction failed", zap.Int64("config id", confid.ConfigId))
+					continue
+				}
+				w.logger.Info("user restricted due to download torrent", zap.Int64("config id", confid.ConfigId))
+			}
 		case mg := <-w.ctrl.Getmgque():
 			switch unwrapedmg := mg.(type) {
 			case controller.RefreshSignal:
@@ -352,7 +366,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		chanmax = 100 
 	}
 
-	bufsender := controller.NewBufSender(w.ctx, w.ctrl, int(chanmax), 15 * time.Minute)
+	bufsender := controller.NewBufSender(w.ctx, w.ctrl, int(chanmax), time.Duration(w.ctrl.Overview.TotalUser * 3) * time.Second)
 	go bufsender.Start()
 	defer func ()  {
 		bufsender.Over()
@@ -370,7 +384,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	MainCommonUserQuota := predata.MainQuota(w.ctrl.BandwidthAvelable) // Newcalculated main quota for each user
 	// this value used to calculate the old ratio between config quota and old maincommonquota
 	// new config quota will calculate based on this ratio
-	oldCommonQuota := w.ctrl.CommonQuota.Swap(MainCommonUserQuota.Int64())
+	oldCommonQuota := w.ctrl.CommonQuota.Swap(MainCommonUserQuota)
 	
 	
 	w.ctrl.Overview.Mu.Lock()
@@ -509,7 +523,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				var (
 					forceremove bool
 				)
-				if (newConfigQuota - user.Configs[i].Usage > 0) && userVerifycity && !user.IsDistributedUser && !user.IsMonthLimited && !user.Restricted && !user.Templimited && !user.IsPaused {
+				if (newConfigQuota - user.Configs[i].Usage > 0) && userVerifycity && user.CanUse() {
 					status, err := w.ctrl.Boxapi.AddConfigReset(&user.Configs[i])
 					if err != nil {
 						if cerr, ok := err.(C.Error); ok {
@@ -580,6 +594,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						bufsender.Send( C.GetMsg(C.MsgTemplimit), user.TgID)
 						for i := range user.Configs {
 							w.ctrl.Boxapi.RemoveConfig(&user.Configs[i])
+							user.Configs[i].Active = false
 						}
 						if user.WarnRatio == 0 {
 							bufsender.Send(C.GetMsg(C.MsgTempOver), user.TgID)
@@ -590,7 +605,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					user.EmptyCycle = 0
 				}
 			}
-			if user.UsedQuota > user.CalculatedQuota {
+			if user.UsedQuota > user.CalculatedQuota + user.AdditionalQuota {
 				w.logger.Warn("violation, usedquota > calculatedquota detected from " + user.String())
 				bufsender.Send("We have detetcted you have bigger quota than we allocated to fix this we overide you'r config's quota", user.TgID)
 				user.UsedQuota = user.CalculatedQuota
@@ -624,6 +639,9 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					user.Configs[i].Usage = 0
 					user.Configs[i].Upload = 0
 					user.Configs[i].Download = 0
+					if user.IsMonthLimited {
+						user.Configs[i].Active = false
+					}
 				}
 				
 				user.WarnRatio = w.ctrl.GetWarnRate()
@@ -871,7 +889,7 @@ func (w *Watchman) sendDbBackup(force bool) {
 	Time: `+ time.Now().String() + `
 	`, w.ctrl.SudoAdmin)
 	if force {
-		go w.ctrl.SendFile(w.db.UsageDatabasePath(), "usage.db", `latest usage database
+		w.ctrl.SendFile(w.db.UsageDatabasePath(), "usage.db", `latest usage database
 		Time: `+ time.Now().String() + `
 	`, w.ctrl.SudoAdmin)
 	}

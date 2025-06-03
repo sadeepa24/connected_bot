@@ -34,6 +34,8 @@ type BoxApi struct {
 	outbounds map[int16]string
 	logger *zap.Logger
 	urltests sync.Map
+
+	clback sbox.Callback
 }
 
 var _ sbox.Controller = (*BoxApi)(nil)
@@ -97,7 +99,10 @@ func (s *BoxApi) Start() error {
 func (s *BoxApi) Close() error {
 	return s.box.Close()
 }
-
+func (b *BoxApi) SetCallBack(callback sbox.Callback) {
+	b.box.SetCallback(b.ReciveCallback)
+	b.clback = callback
+}
 
 func (b *BoxApi) AddConfig(dbconf *db.Config) (conf.Sboxstatus, error) {
 	if dbconf.LeftQuota() <= 0 {
@@ -193,6 +198,13 @@ func (b *BoxApi) RefreshUrlTest() {
 	}
 }
 
+func (b *BoxApi) ReciveCallback(code int16, stts opts.UserStatus) {
+	if b.clback != nil {
+		st := conf.Sboxstatus{}
+		st.Fill(stts)
+		b.clback(code, st)
+	}
+}
 
 
 

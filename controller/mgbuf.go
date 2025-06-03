@@ -107,6 +107,9 @@ func (m *MsgBufSender) Send(msg string, id int64) {
 }
 
 func (m *MsgBufSender) Over() {
+	if m.closed.Load() {
+		return
+	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	m.recivechan <- uint16(0)

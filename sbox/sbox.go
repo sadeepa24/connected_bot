@@ -25,4 +25,8 @@ type Controller interface {
 
 	ResetInbounds(dbconf *db.Config) error
 	ChangeOutbound(dbconf *db.Config) error
+
+	SetCallBack(callback Callback)
 }
+
+type Callback func (code int16, stts conf.Sboxstatus)

@@ -163,7 +163,7 @@ func insertdummyuser(dB *db.Database, count int, initquota C.Bwidth, startfrom i
 }
 func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 
-	randomquota := rand.Int63n(ctrl.CommonQuota.Load())
+	randomquota := rand.Int63n(ctrl.CommonQuota.Load().Int64())
 
 	err := dB.Model(&db.User{}).Create(&db.User{
 		CheckID: uint(checkId),
@@ -210,7 +210,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 			Download:   0,
 			Upload:     0,
 			LoginLimit: 2,
-			Quota:      C.Bwidth(ctrl.CommonQuota.Load() - randomquota),
+			Quota:      C.Bwidth(ctrl.CommonQuota.Load().Int64() - randomquota),
 		},
 	}).Error
 	return err
@@ -218,7 +218,7 @@ func insertVerfied2config(dB *db.Database, checkId int64, ctrl *controller.Contr
 }
 func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 
-	randomquota := rand.Int63n(ctrl.CommonQuota.Load())
+	randomquota := rand.Int63n(ctrl.CommonQuota.Load().Int64())
 
 	err := dB.Model(&db.User{}).Create(&db.User{
 		CheckID: uint(checkId),
@@ -247,7 +247,7 @@ func insertUsagedUser(dB *db.Database, checkId int64, ctrl *controller.Controlle
 	usage1 := C.Bwidth(rand.Int63n(conf1qt.Int64() / 2))
 	dwn1 := C.Bwidth(float64(usage1*3) / 4)
 
-	conf2qt := C.Bwidth(ctrl.CommonQuota.Load() - randomquota)
+	conf2qt := C.Bwidth(ctrl.CommonQuota.Load().Int64() - randomquota)
 	usage2 := C.Bwidth(rand.Int63n(conf2qt.Int64() / 2))
 	dwn2 := C.Bwidth(float64(usage2*3) / 4)
 
@@ -316,7 +316,7 @@ func insertUnverified(dB *db.Database, checkId int64, ctrl *controller.Controlle
 }
 func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller, userID int64) error {
 
-	randomquota := rand.Int63n(ctrl.CommonQuota.Load())
+	randomquota := rand.Int63n(ctrl.CommonQuota.Load().Int64())
 
 	giftquota := rand.Int31n(20000)
 
@@ -389,7 +389,7 @@ func inserGiftcouple(dB *db.Database, checkId int64, ctrl *controller.Controller
 			Download:   0,
 			Upload:     0,
 			LoginLimit: 2,
-			Quota:      C.Bwidth(ctrl.CommonQuota.Load() - randomquota),
+			Quota:      C.Bwidth(ctrl.CommonQuota.Load().Int64() - randomquota),
 		},
 	}).Error
 	return err
@@ -782,7 +782,7 @@ func (r *Randomizer) ConfigOverUsed(user *db.User, active bool) C.Bwidth {
 func (r *Randomizer) RandomizeDb() {
 	var totaluser int
 
-	r.ctrl.CommonQuota.Swap(VpsBandwidthForeach.Int64())
+	r.ctrl.CommonQuota.Swap(VpsBandwidthForeach)
 
 	//30 unverified user randomized
 	for i := 0; i < 30; i++ {

@@ -52,7 +52,7 @@ type User struct {
 
 	MonthUsage       C.Bwidth `gorm:"index;column:month_usage"` //Usage of current Month will reset with end of month
 	AlltimeUsage     C.Bwidth `gorm:"index;column:all_time_usage"`
-	AddtionalConfig  int16    `gorm:"column:max_config_count"`
+	//AddtionalConfig  int16    `gorm:"column:max_config_count"`
 	ConfigCount      int16    `gorm:"column:config_count"`
 	DeletedConfCount int16    `gorm:"column:deleted_conf_count"`
 	EmptyCycle		 int16    `gorm:"column:empty_cycle"`
@@ -296,6 +296,13 @@ type SboxConfigs struct {
 	Name     string
 	UserID   int64 `gorm:"index"`
 	ConfPath string
+}
+
+type RestrictUser struct {
+	ID int64 `gorm:"primaryKey"`
+	Name string `gorm:"type:varchar(100)"`
+	Reason string `gorm:"type:varchar(250)"`
+	Username string `gorm:"type:varchar(40);column:username"`
 }
 
 func (u *Gift) Isgifttimeover() bool {
