@@ -5,6 +5,8 @@ import (
 	"errors"
 	"math/rand"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
@@ -32,19 +34,21 @@ type CtrlSession struct {
 	closed bool
 
 	lowperm bool
+
+	wg         sync.WaitGroup
+	// closeOnce  sync.Once
+	done       chan struct{}
+	waitclose  atomic.Bool
 }
 
 type ForceCloser interface {
 	ForceClose() error
 }
 
-func NewCtrlByConfID(ctrl *Controller, id int64, ForceCloseOldSession bool) (*CtrlSession, error)  {
+
+func NewSessionViaUser(ctrl *Controller, user *db.User, ForceCloseOldSession bool) (*CtrlSession, error)  {
 	if ctrl == nil {
 		return nil, errors.New("ctrl objects is nil")
-	}
-	user, err := ctrl.GetUserByConfID(id)
-	if err != nil {
-		return nil, err
 	}
 	if forcecloser, loaded := ctrl.Checksession(user.TgID); loaded {
 		if ForceCloseOldSession {
@@ -61,11 +65,12 @@ func NewCtrlByConfID(ctrl *Controller, id int64, ForceCloseOldSession bool) (*Ct
 		}
 	}
 	session := &CtrlSession{
-		// ctx:       upx.Ctx,
-		// cancle:    upx.Cancle,
 		ctrl:      ctrl,
 		user:      user,
 		closed:    false,
+		waitclose: atomic.Bool{},
+		done: make(chan struct{}),
+		wg: sync.WaitGroup{},
 	}
 	if user.ConfigCount != 0 {
 		err := ctrl.db.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&session.user.Configs).Error
@@ -109,7 +114,9 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 		cancle:    upx.Cancle,
 		ctrl:      ctrl,
 		user:      user,
-		closed:    false,
+		waitclose: atomic.Bool{},
+		done: make(chan struct{}),
+		wg: sync.WaitGroup{},
 	}
 	if user.ConfigCount != 0 {
 		err := ctrl.db.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&session.user.Configs).Error
@@ -133,8 +140,10 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 
 
 func (c *CtrlSession) AddNewConfig(inboundid []int16, outboundid int16, Quota C.Bwidth, login int16, name string) (*db.Config, error) {
-	c.ctrl.IncCriticalOp()
-	defer c.ctrl.DecCriticalOp()
+	if c.addop(true) {
+		return nil, C.ErrClosedSession
+	}
+	defer c.remop(true)
 	
 	var dbconf *db.Config
 	if c.ctx.Err() != nil {
@@ -180,8 +189,10 @@ func (c *CtrlSession) DeleteConfig(confid int64) error {
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
-	c.ctrl.IncCriticalOp()
-	defer c.ctrl.DecCriticalOp()
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
 	c.DeactivateConfig(confid)
 	conf, ok := c.configmap[confid]
 	if !ok {
@@ -208,6 +219,10 @@ func (c *CtrlSession) DeleteConfig(confid int64) error {
 
 func (c *CtrlSession) activateconf(conf *db.Config) (sbConf.Sboxstatus, error) {
 	var status sbConf.Sboxstatus
+	if c.addop(false) {
+		return status, C.ErrClosedSession
+	}
+	defer c.remop(false)
 	if (conf.Quota - conf.Usage) <= 0 {
 		return status, C.CErrQuotaExceed
 	}
@@ -242,6 +257,10 @@ func (c *CtrlSession) ActivateAll() error {
 }
 func (c *CtrlSession) DeactivateConfig(confid int64) (sbConf.Sboxstatus, error) {
 	var stsatus sbConf.Sboxstatus
+	if c.addop(false) {
+		return stsatus, C.ErrClosedSession
+	}
+	defer c.remop(false)
 	if c.ctx.Err() != nil {
 		return stsatus, C.ErrContextDead
 	}
@@ -273,6 +292,10 @@ func (c *CtrlSession) DeactivateAll() error {
 }
 func (c *CtrlSession) ReActivateConfig(confid int64) (sbConf.Sboxstatus, error) {
 	var status sbConf.Sboxstatus
+	if c.addop(false) {
+		return status, C.ErrClosedSession
+	}
+	defer c.remop(false)
 	if c.updateperm() {
 		return status, C.CErrNoPerm
 	}
@@ -310,6 +333,10 @@ func (c *CtrlSession) ConfigCloseConn(confid int64) error {
 }
 func (c *CtrlSession) ChangeLoginLimit(confid int64, newlimit int16) (sbConf.Sboxstatus, error) {
 	var status sbConf.Sboxstatus
+	if c.addop(false) {
+		return status, C.ErrClosedSession
+	}
+	defer c.remop(false)
 	if c.lowperm {
 		return status, C.CErrNoPerm
 	}
@@ -491,8 +518,10 @@ func (c *CtrlSession) Reseume() error {
 	if newperm {
 		return C.CErrNoPerm
 	}
-	c.ctrl.IncCriticalOp()
-	defer c.ctrl.DecCriticalOp()
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
 	c.user.IsPaused = false
 	c.updateperm()
 	return c.ActivateAll()
@@ -504,8 +533,10 @@ func (c *CtrlSession) Pause() error {
 	if c.user.Points == 0  {
 		return C.CErrNoPoints
 	}
-	c.ctrl.IncCriticalOp()
-	defer c.ctrl.DecCriticalOp()
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
 	c.user.Points--
 	c.user.IsPaused = true
 	c.updateperm()
@@ -528,6 +559,10 @@ func(c *CtrlSession)  addorremin(op string, confid int64, inboundid int16 ) erro
 	if c.lowperm {
 		return C.CErrNoPerm
 	}
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
@@ -549,7 +584,10 @@ func(c *CtrlSession)  addorremin(op string, confid int64, inboundid int16 ) erro
 	return c.ctrl.Boxapi.ResetInbounds(conf)
 }
 func (c *CtrlSession) typeCheckConfig(conf *db.Config) error {
-	
+	if c.addop(false) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(false)
 	if conf.UUID == "" {
 		var uid uuid.UUID 
 		for {
@@ -583,6 +621,10 @@ func (c *CtrlSession) ChangeOutbound(confid int64, outboundID int16) error {
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
+	if c.addop(false) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(false)
 	conf, ok := c.configmap[confid]
 	if !ok {
 		return C.CErrConfigNotFound
@@ -611,6 +653,10 @@ func (c *CtrlSession) CreateUsagehistory(status sbConf.Sboxstatus, confid int64)
 	})
 }
 func (c *CtrlSession) Chatupdate(chat string, val bool) {
+	if c.addop(false) {
+		return
+	}
+	defer c.remop(false)
 	switch chat {
 	case C.Group:
 		c.user.IsInGroup = val
@@ -663,6 +709,10 @@ func (c *CtrlSession) CancelSentGift() {
 }
 //used by admin
 func (c *CtrlSession) Restrict(reason string) error {
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
 	if c.user.Restricted {
 		return nil
 	}
@@ -679,6 +729,10 @@ func (c *CtrlSession) Restrict(reason string) error {
 	return nil
 }
 func (c *CtrlSession) RemoveRestrict() error {
+	if c.addop(false) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(false)
 	if err :=  c.ctrl.db.Delete(&db.RestrictUser{
 		ID: c.user.TgID,
 	}).Error; err != nil {
@@ -705,6 +759,10 @@ func (c *CtrlSession) Save() error {
 	return c.save()
 }
 func (c *CtrlSession) SaveConfig(confid int64) error {
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
 	conf, ok := c.configmap[confid]
 	if !ok {
 		return C.CErrConfigNotFound
@@ -718,6 +776,10 @@ func (c *CtrlSession) SaveConfig(confid int64) error {
 	return nil
 }
 func (c *CtrlSession) SaveConfigs() error {
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
 	if c.ctx.Err() != nil {
 		return C.ErrContextDead
 	}
@@ -760,13 +822,18 @@ func (c *CtrlSession) Close() error {
 	if c.closed {
 		return nil
 	}
+	c.waitclose.Swap(true)
+	go func() {
+		c.wg.Wait()
+		close(c.done)
+	}()
+	<-c.done 
 	var err error
-	c.ctrl.RemoveSesion(c.user.TgID)
-	c.closed = true
 	if err = c.Save(); err != nil {
 		return err
 	}
-	c.configmap = nil
+	c.ctrl.RemoveSesion(c.user.TgID)
+	c.closed = true
 	return nil
 }
 func (c *CtrlSession) ForceClose() error {
@@ -775,4 +842,22 @@ func (c *CtrlSession) ForceClose() error {
 		c.cancle()
 	}
 	return err
+}
+
+//if return true, should exit current opration
+func (c *CtrlSession) addop(crit bool) (exit bool) {
+	if c.waitclose.Load() {
+		return true
+	}
+	c.wg.Add(1)
+	if crit {
+		c.ctrl.IncCriticalOp()
+	}
+	return false
+}
+func (c *CtrlSession) remop(crit bool) {
+	defer c.wg.Done()
+	if crit {
+		c.ctrl.DecCriticalOp()
+	}
 }

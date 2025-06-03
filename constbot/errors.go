@@ -54,6 +54,8 @@ var ErrTypeMissmatch = errors.New("iobound type not supported or invalid type")
 var ErrChatOrUserNofound = errors.New("chat or user not found")
 var ErrBtnClosed = errors.New("user closed btn")
 
+var ErrClosedSession = errors.New("session already closed")
+
 // Databbase
 var ErrDatabaseCreate = errors.New("cannot create record")
 var ErrDatabasefuncer = errors.New("database calling error")

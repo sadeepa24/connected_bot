@@ -1317,7 +1317,14 @@ func (c *Controller) ReciveCallback(code int16, status sbConf.Sboxstatus) {
 }
 func (c *Controller) RestrictUserByConfId(configId int64, reason string)  error {
 	c.CheckLock()
-	ctlsession, err := NewCtrlByConfID(c, configId, true)
+	user, err := c.GetUserByConfID(configId)
+	if err != nil {
+		return err
+	}
+	if user.Restricted {
+		return nil
+	}
+	ctlsession, err := NewSessionViaUser(c, user, true)
 	if err != nil {
 		return err
 	}
