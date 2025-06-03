@@ -178,7 +178,7 @@ update:
 				for ip := range confid.Status.Online_ip {
 					ips += ip
 				}
-				err := w.ctrl.RestrictUserByConfId(confid.ConfigId, "download bittorrent time:" + time.Now().Format("2006-01-02 15:04:05") + " ips: " + ips)
+				err := w.ctrl.RestrictUserByConfId(confid.ConfigId, "download bittorrent time:" + time.Now().Format("2006-01-02 15:04:05") + " ip: " + ips)
 				if err != nil {
 					w.logger.Error("user restriction failed", zap.Int64("config id", confid.ConfigId))
 					continue
