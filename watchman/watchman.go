@@ -171,6 +171,20 @@ update:
 			}
 			w.logger.Info("db refresh done", zap.String("tick", tick.String()), zap.Int32("count", w.ctrl.CheckCount.Load()))
 			w.logger.Sync()
+		case confid := <- w.ctrl.GetBoxCallback():
+			switch confid.Code {
+			case C.BoxCallBackTorrent:
+				ips := ""
+				for ip := range confid.Status.Online_ip {
+					ips += ip
+				}
+				err := w.ctrl.RestrictUserByConfId(confid.ConfigId, "download bittorrent time:" + time.Now().Format("2006-01-02 15:04:05") + " ips: " + ips)
+				if err != nil {
+					w.logger.Error("user restriction failed", zap.Int64("config id", confid.ConfigId))
+					continue
+				}
+				w.logger.Info("user restricted due to download torrent", zap.Int64("config id", confid.ConfigId))
+			}
 		case mg := <-w.ctrl.Getmgque():
 			switch unwrapedmg := mg.(type) {
 			case controller.RefreshSignal:
@@ -875,7 +889,7 @@ func (w *Watchman) sendDbBackup(force bool) {
 	Time: `+ time.Now().String() + `
 	`, w.ctrl.SudoAdmin)
 	if force {
-		go w.ctrl.SendFile(w.db.UsageDatabasePath(), "usage.db", `latest usage database
+		w.ctrl.SendFile(w.db.UsageDatabasePath(), "usage.db", `latest usage database
 		Time: `+ time.Now().String() + `
 	`, w.ctrl.SudoAdmin)
 	}

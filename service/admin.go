@@ -184,6 +184,8 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 		a.ctrl.Addquemg(controller.RefreshSignal(1))
 		upx.Cancle()
 		return nil
+	case "users":
+		return a.userLists(upx, Messagesession, calls)
 	case "vpnconfig", "editconf":
 		return a.vpnConfig(Messagesession, calls)
 	case "activeconfs":
@@ -519,6 +521,7 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 		case 1:
 			if enduserupx.User.Restricted {
 				btns.Addbutton("🟢 Remove Restrict ", "res", "")
+				btns.Addbutton("Restrict Reason", "reason", "")
 			} else {
 				btns.Addbutton("🔴 Restrict User ",  "res","" )
 			}
@@ -536,7 +539,7 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			} else {
 				btns.Addbutton("🔴 Distribute",  "Distribute","" )
 			}
-			
+
 			btns.AddBtcommon("Change Point Count")
 			if enduserupx.User.Verified() {
 				btns.AddBtcommon("Create Config")
@@ -612,14 +615,33 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			case "res":
 				if endusersession.GetUser().Restricted {
 					endusersession.RemoveRestrict()
+					if err != nil {
+						calls.Alertsender("failed: " + err.Error())
+						continue
+					}
 					endusermsg.SendAlert("✅ admin removed you'r restriction, you can use service again 🎉", nil)
 					Messagesession.SendAlert("make a db refresh to change bandiwdth, it will automatically change in next refresh cycle", nil)
 				
 				} else {
-					endusersession.Restrict()
+					reason, err := calls.Sendreciver("send reason for restriction")
+					if err != nil {
+						return err
+					}
+					err = endusersession.Restrict(reason.Text)
+					if err != nil {
+						calls.Alertsender("failed: " + err.Error())
+						continue
+					}
 					endusermsg.SendAlert("🔴 you have restricted by admin you may have to contact admin to remove this restriction ", nil)
 					Messagesession.SendAlert("make a db refresh to change bandiwdth, it will automatically change in next refresh cycle", nil)
 				}
+			case "reason":
+				restr, err := endusersession.RestrictInfo()
+				if err != nil {
+					calls.Alertsender("fetch err: " + err.Error())
+					continue
+				}
+				calls.Alertsender(restr.Reason)
 			case "Remove Monthlimit":
 				endusersession.GetUser().IsMonthLimited = false
 				err = endusersession.ActivateAll()
@@ -1096,6 +1118,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 	return err
 
 }
+//FIXME: 
 func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
 	// This Editing Does Not Affect Running Templates Due Running Template is in memory, only loads at start up 
 	// Admin need to restart after editig
@@ -1252,46 +1275,29 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 			endfile.Close()
 			file.Close()
 			state = 0
-		case 2:
-			var templatename string
-			replymg, err = calls.Sendreciver("Send Name for New template")
-			if err != nil {
-				return err
-			}
-			templatename = replymg.Text
-			if _, ok := Templates[replymg.Text]; ok {
-				calls.Alertsender("their is alredy template with this name try again")
-				continue selecttmpl
-			}
+		case 2:	
+			
 			btns.Reset([]int16{2})
 			btns.AddButtonSlice(a.ctrl.Langs)
-
 			se, err := calls.Callbackreciver("select lang tag", btns)
 			if err != nil {
 				break selecttmpl
 			}
-			treplymg, err := calls.Sendreciver("Send MSG template string")
+			treplymg, err := calls.Sendreciver("Send MSG template content as string")
 			if err != nil {
 				return err
 			}
-			Templates[replymg.Text] = map[string]*botapi.MgItem{
-				se.Data: {
-					Msgtmpl: treplymg.Text,
-				},
-			}
-			nameslice = append(nameslice, replymg.Text)
-			maxpages = len(nameslice)/btnpereach
-			
-		
+
+
 			btns.Reset([]int16{2})
 			btns.AddBtcommon("As Help Page")
 			btns.AddBtcommon("As Inline Post")
 			btns.AddBtcommon("Default")
-
 			callback, err  = calls.Callbackreciver("select option", btns)
 			if err != nil {
 				return err
 			}
+			var templatename string
 			switch callback.Data {
 			case "As Help Page":
 				btns.Reset([]int16{2})
@@ -1305,9 +1311,6 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 				if err != nil {
 					return err
 				}
-				template := Templates[templatename]
-				delete(Templates, templatename)
-
 				help := *a.ctrl.GetHelepCmdInfo()
 				
 				switch callback.Data {
@@ -1324,7 +1327,13 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					help.CommandPageCount++
 					templatename = C.TmpHelpCmPage+ strconv.Itoa(int(help.CommandPageCount))
 				}
-				Templates[templatename] = template
+
+				Templates[templatename] = map[string]*botapi.MgItem{
+					se.Data: {
+							Msgtmpl: treplymg.Text,
+						},
+				}
+
 				file, err := os.OpenFile("./config.json", os.O_RDWR, 0644)
 				if err != nil {
 					calls.Alertsender("config.json file open error " + err.Error())
@@ -1361,7 +1370,26 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 				file.Close()
 				calls.Alertsender("✅ New Help template created successfully! (need restart)")
 			case "Default":
-				break
+				replymg, err = calls.Sendreciver("Send Name for New template")
+				if err != nil {
+					return err
+				}
+				templatename = replymg.Text
+				if _, ok := Templates[replymg.Text]; ok {
+					calls.Alertsender("there is alredy template with this name try again")
+					continue selecttmpl
+				}
+				btns.Reset([]int16{2})
+				btns.AddButtonSlice(a.ctrl.Langs)
+				Templates[replymg.Text] = map[string]*botapi.MgItem{
+					se.Data: {
+						Msgtmpl: treplymg.Text,
+					},
+				}
+				if callback.Data == "Default" {
+					break
+				}
+				fallthrough
 			case "As Inline Post":
 				file, err := os.OpenFile("./config.json", os.O_RDWR, 0644)
 				if err != nil {
@@ -1382,7 +1410,7 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 					break
 				}
 				var post C.InlinePost
-				post.Name = replymg.Text
+				post.Name = templatename
 				replymg, err = calls.Sendreciver("Send Discription for the inline post")
 				if err != nil {
 					return err
@@ -1411,6 +1439,9 @@ func (a *Adminsrv) editTemplate(upx *update.Updatectx, Messagesession *botapi.Ms
 				calls.Alertsender("✅ New template created successfully! (need restart)")
 			}
 			state = 0
+
+			nameslice = append(nameslice, templatename)
+			maxpages = len(nameslice)/btnpereach		
 		case 3:
 			btns.Reset([]int16{2})
 			if currentpage < maxpages {
@@ -1705,6 +1736,91 @@ func (a *Adminsrv) botconfig(Messagesession *botapi.Msgsession,  calls common.Tg
 	}
 	file.Truncate(int64(n))
 	return nil
+}
+
+func (a *Adminsrv) userLists(upx *update.Updatectx, Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	btns := botapi.NewButtons([]int16{2})
+	for _, btname := range a.ctrl.AvailableUserList() {
+		btns.AddBtcommon(btname)
+	}
+
+	btns.AddClose(true)
+	Messagesession.Edit("select target user type", btns, "")
+	callback, err := a.callback.GetcallbackContext(upx.Ctx, btns.ID())
+	if err != nil {
+		return err
+	}
+	if callback.Data == C.BtnClose {
+		Messagesession.Edit("Canceled", nil, "")
+		return nil
+	}
+
+	var userlist = []int64{}
+	err = a.ctrl.GetUserList(callback.Data, &userlist) 
+	if err != nil {
+		Messagesession.EditText("fetching user list failed try again", nil)
+		return err
+	}
+
+	pagecount := len(userlist)/btnpereach
+	currentPage := 1
+	configs:
+	for {
+			btns.Reset([]int16{2})
+			to := currentPage*btnpereach
+			if to > len(userlist) {
+				to = (currentPage-1)*btnpereach + len(userlist)%btnpereach
+			}
+			for i := (currentPage-1)*btnpereach; i < to; i++ {
+				btns.AddBtcommon(strconv.Itoa(int(userlist[i])))
+			}
+			
+			if currentPage < pagecount || (currentPage == pagecount &&  len(userlist)%btnpereach > 0) {
+				btns.AddBtcommon(C.BtnNext)
+			}
+			if pagecount > 1 {
+				btns.AddCloseBack()
+			} else {
+				btns.Addbutton(C.BtnClose, C.BtnBack, "")
+			}
+			callback, err = calls.Callbackreciver("select config to see info", btns)
+			if err != nil {
+				return err
+			}
+			switch callback.Data {
+			case C.BtnNext:
+				currentPage++
+			case C.BtnClose:
+				break configs
+			case C.BtnBack:
+				if currentPage == 1 {
+					break configs
+				}
+				currentPage--
+			default:
+				id, err := strconv.Atoi(callback.Data)
+				if err != nil {
+					continue
+				}
+				user, err := a.ctrl.GetUserById(int64(id))
+				if err != nil {
+					calls.Alertsender("user loading failed " + err.Error())
+					continue
+				}
+				err = a.loaduserinfo(upx, Messagesession, calls, strconv.Itoa(int(user.TgID)))
+				if err != nil {
+					if errors.Is(err, C.ErrContextDead) {
+						return err
+					}
+					a.logger.Error("failed loaduser ", zap.Error(err))
+					calls.Alertsender("user loading failed " + err.Error())
+				}
+				Messagesession.ResetState()
+			}
+	}
+	Messagesession.DeleteAllMsg()
+	return nil
+	
 }
 
 func setvaluefunc(conec builder.Connector, custom walker.SetValue) walker.SetValue {

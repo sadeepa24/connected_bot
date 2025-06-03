@@ -283,6 +283,23 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 		upx.Setservice(C.Userservicename)
 
 	}
+	if upx.User.Restricted {
+		p.ctrl.Addquemg(botapi.UpMessage{
+			DestinatioID: upx.User.TgID,
+			TemplateName: "restricted",
+			Lang:         upx.User.Lang,
+			Template: struct {
+				*botapi.CommonUser
+			}{
+				CommonUser: &botapi.CommonUser{
+					Name:     upx.User.Name,
+					Username: upx.Chat.UserName,
+					TgId:     upx.User.TgID,
+				},
+			},
+		})
+		return false, nil
+	}
 	if upx.Dbuser().RecheckVerificity {
 		var (
 			err1 error
@@ -340,28 +357,9 @@ func (p *Parser) Setuser(upx *update.Updatectx) (bool, error) {
 			return false, nil
 			
 		}
-		if upx.User.Restricted {
-			p.ctrl.Addquemg(botapi.UpMessage{
-				DestinatioID: upx.User.TgID,
-				TemplateName: "restricted",
-				Lang:         upx.User.Lang,
-				Template: struct {
-					*botapi.CommonUser
-				}{
-					CommonUser: &botapi.CommonUser{
-						Name:     upx.User.Name,
-						Username: upx.Chat.UserName,
-						TgId:     upx.User.TgID,
-					},
-				},
-			})
-			return false, nil
-		}
-
 		if upx.IsCommand(C.CmdBuild)  {
 			return true, nil
 		}
-
 		if upx.User.IsMonthLimited && (upx.Update.Message != nil){
 			p.ctrl.Addquemg(&botapi.Msgcommon{
 				Infocontext: &botapi.Infocontext{

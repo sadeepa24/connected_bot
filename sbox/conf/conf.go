@@ -193,6 +193,9 @@ type Sboxstatus struct {
 	Upload    C.Bwidth
 	Online_ip map[string]int16
 	Disabled  bool
+
+	//only use with callback
+	Uid int
 }
 
 func (s *Sboxstatus) Fill(st opts.UserStatus) {
@@ -200,7 +203,9 @@ func (s *Sboxstatus) Fill(st opts.UserStatus) {
 	s.Upload = C.Bwidth(st.Upload)
 	s.Online_ip = st.Ip
 	s.Disabled = st.Disabled
+	s.Uid = st.UserID
 }
 func (s Sboxstatus) FullUsage() C.Bwidth {
 	return s.Download + s.Upload
 }
+

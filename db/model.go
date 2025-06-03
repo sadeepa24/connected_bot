@@ -298,6 +298,13 @@ type SboxConfigs struct {
 	ConfPath string
 }
 
+type RestrictUser struct {
+	ID int64 `gorm:"primaryKey"`
+	Name string `gorm:"type:varchar(100)"`
+	Reason string `gorm:"type:varchar(250)"`
+	Username string `gorm:"type:varchar(40);column:username"`
+}
+
 func (u *Gift) Isgifttimeover() bool {
 	return u.Date.AddDate(0, 0, 30).Compare(time.Now()) <= 0
 }

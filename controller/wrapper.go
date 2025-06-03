@@ -53,6 +53,7 @@ type Controller struct {
 
 	lastDbRefresh *atomic.Value // this value only changed by watchman, all other routing read it so no race condition occure,
 	signals chan any // share signals and message types to watchman (*botapi.Msgcommon, botapi.Upmessage, controller.UserCount, //TODO: forcedbrefresh signal) 
+	boxcallbacks chan CallBackInfo 
 	oprations *atomic.Int32
 	waitCritical *atomic.Bool
 	mu sync.RWMutex //mutext only use to read context I tried to create completly with out sync.bottlenext but i had to add this for small opration and it's allright
@@ -63,7 +64,7 @@ func New(ctx context.Context, cdb *db.Database, logger *zap.Logger, metaconf *C.
 		metaconf.WatchMgbuf = 100
 	}
 	var err error
-	boxapi, boxopts, err := singapi.NewsingAPI(ctx, sboxpath, logger)
+	boxapi, boxopts, err := singapi.NewsingAPI(ctx, sboxpath, logger, )
 	if err != nil {
 		return nil, errors.Join(err, errors.New("sing api creation failed"))
 	}
@@ -80,6 +81,7 @@ func New(ctx context.Context, cdb *db.Database, logger *zap.Logger, metaconf *C.
 		Boxapi: boxapi,
 		basecancle:     basecanc,
 		signals:         make(chan any, metaconf.WatchMgbuf),
+		boxcallbacks: make(chan CallBackInfo, 500),
 		Usermgrsession: &sync.Map{},
 		lockchan: make(chan struct{}),
 		Metadata: &Metadata{
@@ -117,6 +119,9 @@ type BroadcastSig string //use to send Broadcast signal with broadcast msg
 // when buffring usercount update type should be UserCount
 func (c *Controller) Getmgque() chan any {
 	return c.signals
+}
+func (c *Controller) GetBoxCallback() chan CallBackInfo {
+	return c.boxcallbacks
 }
 
 // msg should be type controller.UserCount, *botapi.Msgcommon, botapi.UpMessage:
@@ -514,7 +519,7 @@ func (c *Controller) GetUser(user *tgbotapi.User) (*bottype.User, bool, error) {
 	if user == nil {
 		return nil, false, errors.New("cannot fetch user from nil user object")
 	}
-	dbUser, err := c.db.GetUser(user)
+	dbUser, err := c.db.GetUser(user.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, false, nil
@@ -543,7 +548,7 @@ var availableuserList = []string{
 	C.UserLstVerified,    
 	C.UserLstUnVerified,   
 	C.UserLstRestricted,
-	C.UserLstOnline,
+	//C.UserLstOnline,
 }
 func (c *Controller) AvailableUserList() []string {
 	return availableuserList
@@ -600,22 +605,23 @@ func (c *Controller) GetUserList(listType string, in *[]int64) error  {
 			Pluck("tg_id", in).Error; err != nil {
 			return C.ErrDbopration
 		}
-	case C.UserLstOnline:
-		activeusrConfigs := c.Boxapi.GetAllUserStatus()
-		added := map[int]bool{} 
-		ids := []int64{}
-		for userId := range activeusrConfigs {
-			if len(activeusrConfigs[userId].Ip) > 0 && !added[userId] {
-				ids = append(ids, int64(userId))
-				added[userId] = true
-			}
-		}
-		*in = ids
-		return nil
 	default:
 		return C.ErrUnknownUserListType
 	}
 	return nil
+}
+
+func (c *Controller) GetOnlineConfList() ([]int64, error) {
+	activeusrConfigs := c.Boxapi.GetAllUserStatus()
+	added := map[int]bool{} 
+	ids := []int64{}
+	for userId := range activeusrConfigs {
+		if len(activeusrConfigs[userId].Ip) > 0 && !added[userId] {
+			ids = append(ids, int64(userId))
+			added[userId] = true
+		}
+	}
+	return ids, nil
 }
 
 func (c *Controller) GetUserById(userId int64) (*db.User, error) {
@@ -1290,11 +1296,38 @@ func (c *Controller) SendAsFile(buf io.Reader, filename string, msgcaption strin
 
 // sbox 
 func (c *Controller) startbox() error {
+	c.Boxapi.SetCallBack(c.ReciveCallback)
 	return c.Boxapi.Start()
 }
+type CallBackInfo struct {
+	Code int16
+	ConfigId int64
+	Status sbConf.Sboxstatus
+}
+
+func (c *Controller) ReciveCallback(code int16, status sbConf.Sboxstatus) {
+	select {
+		case c.boxcallbacks <- CallBackInfo{
+			Code: code,
+			ConfigId: int64(status.Uid),
+			Status: status,
+		}:
+		default:
+	}
+}
+func (c *Controller) RestrictUserByConfId(configId int64, reason string)  error {
+	c.CheckLock()
+	ctlsession, err := NewCtrlByConfID(c, configId, true)
+	if err != nil {
+		return err
+	}
+	ctlsession.ctx = c.basectx
+	ctlsession.Restrict(reason)
+	ctlsession.Close()
+	c.DirectMg("you'r are restricted. reason: " + reason, ctlsession.user.TgID, ctlsession.user.TgID)
+	return nil
+}
 func (c *Controller) Close() error { return c.Boxapi.Close() }
-
-
 
 
 

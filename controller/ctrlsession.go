@@ -38,6 +38,52 @@ type ForceCloser interface {
 	ForceClose() error
 }
 
+func NewCtrlByConfID(ctrl *Controller, id int64, ForceCloseOldSession bool) (*CtrlSession, error)  {
+	if ctrl == nil {
+		return nil, errors.New("ctrl objects is nil")
+	}
+	user, err := ctrl.GetUserByConfID(id)
+	if err != nil {
+		return nil, err
+	}
+	if forcecloser, loaded := ctrl.Checksession(user.TgID); loaded {
+		if ForceCloseOldSession {
+			var closer ForceCloser
+			var ok bool
+			if closer, ok = forcecloser.(ForceCloser); ok {
+				if err := closer.ForceClose(); err != nil {
+					return nil, C.ErrSessionExcit
+				}
+				ctrl.logger.Info("Force closed old session")
+			}
+		} else {
+			return nil, C.ErrSessionExcit
+		}
+	}
+	session := &CtrlSession{
+		// ctx:       upx.Ctx,
+		// cancle:    upx.Cancle,
+		ctrl:      ctrl,
+		user:      user,
+		closed:    false,
+	}
+	if user.ConfigCount != 0 {
+		err := ctrl.db.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&session.user.Configs).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+	session.configmap = make(map[int64]*db.Config, ctrl.Maxconfigcount+1)
+	for i, conf := range session.user.Configs {
+		session.configmap[conf.Id] = &session.user.Configs[i]
+	}
+
+	ctrl.Addsession(session, user.TgID)
+	session.olduser = *user
+	session.lowperm = user.IsDistributedUser || user.IsRemoved || user.Restricted || user.Templimited || user.IsPaused
+	return session, nil
+}
+
 func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSession bool) (*CtrlSession, error) {
 	if ctrl == nil || upx == nil {
 		return nil, errors.New("ctrl or user objects is nil")
@@ -616,13 +662,35 @@ func (c *CtrlSession) CancelSentGift() {
 	}
 }
 //used by admin
-func (c *CtrlSession) Restrict() {
+func (c *CtrlSession) Restrict(reason string) error {
+	if c.user.Restricted {
+		return nil
+	}
+	if err := c.ctrl.db.Create(&db.RestrictUser{
+		ID: c.user.TgID,
+		Reason: reason,
+		Name: c.user.Name,
+		Username: c.user.Username,
+	}).Error; err != nil {
+		return err
+	}
 	c.user.Restricted = true
 	c.DeactivateAll()
+	return nil
 }
-func (c *CtrlSession) RemoveRestrict() {
+func (c *CtrlSession) RemoveRestrict() error {
+	if err :=  c.ctrl.db.Delete(&db.RestrictUser{
+		ID: c.user.TgID,
+	}).Error; err != nil {
+		return err
+	}
 	c.user.Restricted = false
 	c.ActivateAll()
+	return nil
+}
+func (c *CtrlSession) RestrictInfo() (*db.RestrictUser, error) {
+	var res db.RestrictUser
+	return &res, c.ctrl.db.First(&res).Error
 }
 
 

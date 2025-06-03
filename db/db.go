@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 
-	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"go.uber.org/zap"
 
 	sqlite "gorm.io/driver/sqlite"
@@ -83,6 +82,7 @@ func (d *Database) InitDb() error {
 		&Gift{},
 		&Event{},
 		&SboxConfigs{},
+		&RestrictUser{},
 	); err != nil {
 		return err
 	}
@@ -121,9 +121,9 @@ func (d *Database) CreateUsageHistories(users *[]UsageHistory) error {
 	return d.usageHistor.Create(users).Error
 }
 
-func (d *Database) GetUser(user *tgbotapi.User) (*User, error) {
+func (d *Database) GetUser(id int64) (*User, error) {
 	var getuser = &User{
-		TgID: user.ID,
+		TgID: id,
 	}
 	return getuser, d.Model(&User{}).First(getuser).Error
 }
