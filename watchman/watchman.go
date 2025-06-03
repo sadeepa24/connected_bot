@@ -176,7 +176,7 @@ update:
 			case C.BoxCallBackTorrent:
 				ips := ""
 				for ip := range confid.Status.Online_ip {
-					ips += ip
+					ips += ip + ", "
 				}
 				err := w.ctrl.RestrictUserByConfId(confid.ConfigId, "download bittorrent time:" + time.Now().Format("2006-01-02 15:04:05") + " ip: " + ips)
 				if err != nil {
