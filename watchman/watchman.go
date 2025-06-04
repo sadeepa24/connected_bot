@@ -482,6 +482,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		if tx.Error != nil {
 			return tx.Error
 		}
+		w.logger.Debug("start batch ", zap.Int("batch num", batch), zap.Duration("elapsed time", time.Since(st)))
 		for i := range listUser {
 			user := &listUser[i]
 			if refreshcontext.Err() != nil {
