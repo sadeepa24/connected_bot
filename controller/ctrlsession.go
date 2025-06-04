@@ -739,7 +739,9 @@ func (c *CtrlSession) RemoveRestrict() error {
 	return nil
 }
 func (c *CtrlSession) RestrictInfo() (*db.RestrictUser, error) {
-	var res db.RestrictUser
+	res := db.RestrictUser{
+		ID: c.user.TgID,
+	}
 	return &res, c.ctrl.db.First(&res).Error
 }
 
@@ -749,9 +751,6 @@ func (c *CtrlSession) RestrictInfo() (*db.RestrictUser, error) {
 
 
 func (c *CtrlSession) Save() error {
-	if c.ctx.Err() != nil {
-		return C.ErrContextDead
-	}
 	return c.save()
 }
 func (c *CtrlSession) SaveConfig(confid int64) error {
@@ -825,10 +824,10 @@ func (c *CtrlSession) Close() error {
 	}()
 	<-c.done 
 	var err error
+	c.ctrl.RemoveSesion(c.user.TgID)
 	if err = c.Save(); err != nil {
 		return err
 	}
-	c.ctrl.RemoveSesion(c.user.TgID)
 	return nil
 }
 func (c *CtrlSession) ForceClose() error {
