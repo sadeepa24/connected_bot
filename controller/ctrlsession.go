@@ -30,13 +30,10 @@ type CtrlSession struct {
 	olduser   db.User
 
 	gift []db.Gift
-
-	closed bool
-
 	lowperm bool
 
 	wg         sync.WaitGroup
-	// closeOnce  sync.Once
+	closeOnce  sync.Once
 	done       chan struct{}
 	waitclose  atomic.Bool
 }
@@ -67,7 +64,6 @@ func NewSessionViaUser(ctrl *Controller, user *db.User, ForceCloseOldSession boo
 	session := &CtrlSession{
 		ctrl:      ctrl,
 		user:      user,
-		closed:    false,
 		waitclose: atomic.Bool{},
 		done: make(chan struct{}),
 		wg: sync.WaitGroup{},
@@ -819,13 +815,13 @@ func (c *CtrlSession) saveConfigs() error {
 	return nil
 }
 func (c *CtrlSession) Close() error {
-	if c.closed {
+	if c.waitclose.Swap(true) {
+		<- c.done
 		return nil
 	}
-	c.waitclose.Swap(true)
 	go func() {
 		c.wg.Wait()
-		close(c.done)
+		c.closeOnce.Do(func() {close(c.done)})
 	}()
 	<-c.done 
 	var err error
@@ -833,7 +829,6 @@ func (c *CtrlSession) Close() error {
 		return err
 	}
 	c.ctrl.RemoveSesion(c.user.TgID)
-	c.closed = true
 	return nil
 }
 func (c *CtrlSession) ForceClose() error {
