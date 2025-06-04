@@ -374,6 +374,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		w.ctrl.WatchmanUnlock()
 	}()
 	predata, err := w.PreprosessDb(refreshcontext, bufsender)
+	w.logger.Debug("total time elapsed preprocess db " + time.Since(st).String())
 	if err != nil {
 		bufsender.Send("Predata prosseing error Please Make Manual Refresh := " + err.Error(), w.ctrl.SudoAdmin)
 		return errors.Join(errors.New("predata prosseing failed"), err)
@@ -473,7 +474,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	)
 	allconfigs := make([]*db.Config, 0, C.Dbbatchsize)
 	usagehistr := make([]db.UsageHistory, 0, C.Dbbatchsize)
-
+ 
+	w.logger.Debug("total time elapsed before main db refresh " + time.Since(st).String())
 
 	err = w.db.Model(&db.User{}).
 	FindInBatches(&listUser, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
@@ -725,7 +727,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	}
 	// it's safe to send backup here
 	// because any other goroutine can't access this db while this function is running
-	w.logger.Info("time elspsed db refresh " + time.Since(st).String())
+	w.logger.Info("total time elapsed db refresh " + time.Since(st).String())
 	w.sendDbBackup(!docount || forceReset)
 	runtime.GC()
 	return nil
