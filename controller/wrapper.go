@@ -21,6 +21,7 @@ import (
 	tgbotapi "github.com/sadeepa24/connected_bot/tg/tgbotapi"
 	"github.com/sadeepa24/connected_bot/tg/update"
 	"github.com/sadeepa24/connected_bot/tg/update/bottype"
+	"github.com/sagernet/sing-box/connectedbot/opts"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -1302,14 +1303,17 @@ func (c *Controller) startbox() error {
 type CallBackInfo struct {
 	Code int16
 	ConfigId int64
-	Status sbConf.Sboxstatus
+	Status *opts.CallBackResult
 }
 
-func (c *Controller) ReciveCallback(code int16, status sbConf.Sboxstatus) {
+func (c *Controller) ReciveCallback(code int16, status *opts.CallBackResult) {
+	if status == nil {
+		return
+	}
 	select {
 		case c.boxcallbacks <- CallBackInfo{
 			Code: code,
-			ConfigId: int64(status.Uid),
+			ConfigId: int64(status.Status.UserID),
 			Status: status,
 		}:
 		default:

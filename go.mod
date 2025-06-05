@@ -4,24 +4,21 @@ go 1.22.5
 
 require (
 	github.com/gofrs/uuid/v5 v5.3.0
-	github.com/miekg/dns v1.1.63
 	github.com/sadeepa24/walker v0.0.0-00010101000000-000000000000
 	github.com/sagernet/sing v0.6.5
 	github.com/sagernet/sing-box v1.11.6
-	github.com/sagernet/sing-dns v0.4.0
 	go.uber.org/zap v1.27.0
-	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.12
 )
 
 require (
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.5.5 // indirect
-	github.com/jackc/puddle/v2 v2.2.1 // indirect
-	gorm.io/driver/postgres v1.5.11 // indirect
+	github.com/kr/pretty v0.3.0 // indirect
+	github.com/miekg/dns v1.1.63 // indirect
+	github.com/sagernet/sing-dns v0.4.0 // indirect
+	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
 //replaceing custom box for connectedBot
@@ -60,7 +57,7 @@ require (
 	github.com/libdns/cloudflare v0.1.1 // indirect
 	github.com/libdns/libdns v0.2.2 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
-	github.com/mattn/go-sqlite3 v1.14.24 // indirect
+	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/metacubex/tfo-go v0.0.0-20241231083714-66613d49c422 // indirect

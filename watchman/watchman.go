@@ -174,11 +174,15 @@ update:
 		case confid := <- w.ctrl.GetBoxCallback():
 			switch confid.Code {
 			case C.BoxCallBackTorrent:
+				if confid.Status == nil {
+					w.logger.Error("torrent callback status is nil", zap.Int64("config id", confid.ConfigId))
+					continue
+				}
 				ips := ""
-				for ip := range confid.Status.Online_ip {
+				for ip := range confid.Status.Status.Ip {
 					ips += ip + ", "
 				}
-				err := w.ctrl.RestrictUserByConfId(confid.ConfigId, "download bittorrent time:" + time.Now().Format("2006-01-02 15:04:05") + " ip: " + ips)
+				err := w.ctrl.RestrictUserByConfId(confid.ConfigId, "download bittorrent time:" + time.Now().Format("2006-01-02 15:04:05") + " ip: " + ips +" more info " + confid.Status.String())
 				if err != nil {
 					w.logger.Error("user restriction failed", zap.Int64("config id", confid.ConfigId))
 					continue

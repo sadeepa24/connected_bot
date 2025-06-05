@@ -29,4 +29,4 @@ type Controller interface {
 	SetCallBack(callback Callback)
 }
 
-type Callback func (code int16, stts conf.Sboxstatus)
+type Callback func (code int16, stts *opts.CallBackResult)

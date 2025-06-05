@@ -198,11 +198,9 @@ func (b *BoxApi) RefreshUrlTest() {
 	}
 }
 
-func (b *BoxApi) ReciveCallback(code int16, stts opts.UserStatus) {
+func (b *BoxApi) ReciveCallback(code int16, stts *opts.CallBackResult) {
 	if b.clback != nil {
-		st := conf.Sboxstatus{}
-		st.Fill(stts)
-		b.clback(code, st)
+		b.clback(code, stts)
 	}
 }
 
