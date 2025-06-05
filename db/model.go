@@ -62,7 +62,10 @@ type User struct {
 
 	//WebToken sql.NullString `gorm:"type:varchar(200);column:web_token"`
 	Configs  []Config       `gorm:"foreignKey:UserID"`
-	//Gifts 		[]Gift 			`gorm:"foreignKey:UserID"`
+	SentGifts     []Gift `gorm:"foreignKey:Sender"`
+	ReceivedGifts []Gift `gorm:"foreignKey:Reciver"`
+	
+	// Gifts 		[]Gift 			`gorm:"foreignKey:UserID"`
 
 	Captime time.Time
 	//Gifttime  time.Time

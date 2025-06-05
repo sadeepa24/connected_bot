@@ -262,13 +262,15 @@ type preprosessd struct {
 	templimiteduser   int64
 
 	captotal          C.Bwidth //total bandwidth capped
-	totaladdtional    C.Bwidth
-	userdbyTemplimitedUser C.Bwidth
-	
+	totaladdtional    C.Bwidth // total additional bandwidth from users who can really use it
 	UsedByLimitedUsers C.Bwidth
+	savings C.Bwidth
+	
 	unUsedUser 		  int64 //to calculate mainquota
 
 	configCount int64
+
+
 
 
 }
@@ -284,7 +286,7 @@ type preprosessd struct {
 //MainCommonUserQuota = ((w.ctrl.BandwidthAvelable) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
 func (p *preprosessd) MainQuota(total C.Bwidth) C.Bwidth {
 	if p.verifiedusercount-p.unUsedUser > 0 {
-		return (total - (p.captotal + p.totaladdtional + p.userdbyTemplimitedUser)) / C.Bwidth(p.verifiedusercount-p.unUsedUser)
+		return ((total + p.savings) - (p.captotal + p.totaladdtional + p.UsedByLimitedUsers)) / C.Bwidth(p.verifiedusercount-p.unUsedUser)
 	}
 	return total
 }
@@ -394,38 +396,55 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 
 	if oldCommonQuota > 0 {
 		var glistUser []db.User
-		tosave := make([]db.Gift, 0, C.Dbbatchsize)
 		todel := make([]db.Gift, 0, C.Dbbatchsize)
 		tosaveuser :=  make([]db.User, 0, C.Dbbatchsize)
-		var chnged bool
-		err := w.db.Model(&db.User{}).Where("gift_quota != ? OR is_capped = ?", 0, true).FindInBatches(&glistUser, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
+		
+		loadedgift := make(map[int64]bool, C.Dbbatchsize)
+	
+		var (
+			chnged bool
+			send[]db.Gift
+			recive []db.Gift
+		)
+		err := w.db.Model(&db.User{}).
+		Preload("SentGifts").Preload("ReceivedGifts").
+		Where("gift_quota != ? OR is_capped = ?", 0, true).
+		FindInBatches(&glistUser, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
 			for i := range glistUser {
 				chnged = false
 				if glistUser[i].GiftQuota != 0 {
-					allgifts := []db.Gift{}
-					tx.Model(&db.Gift{}).Where("recive_valid = ? OR send_valid = ?", true, true).Where("sender = ? OR reciver = ?", glistUser[i].TgID, glistUser[i].TgID).Find(&allgifts)
-					for j := range allgifts {
-						if allgifts[j].Isgifttimeover() {
+
+					send = glistUser[i].SentGifts
+					recive = glistUser[i].ReceivedGifts
+
+					for s := range glistUser[i].SentGifts {
+						if send[s].SendValid && send[s].Isgifttimeover() {							
 							chnged = true
-							presentGift := ((C.Bwidth(oldCommonQuota) / allgifts[j].ComQuota) * allgifts[j].Bandwidth)
-							switch glistUser[i].TgID {
-							case allgifts[j].Sender:
-								glistUser[i].GiftQuota = glistUser[i].GiftQuota + C.Bwidth(presentGift)
-								allgifts[j].SendValid = false
-							case allgifts[j].Reciver:
-								glistUser[i].GiftQuota = glistUser[i].GiftQuota - C.Bwidth(presentGift)
-								allgifts[j].ReciveValid = false
-								if glistUser[i].Verified() && (!glistUser[i].CanUse() || glistUser[i].ConfigCount == 0) {
-									predata.UsedByLimitedUsers += C.Bwidth(presentGift)
-								}
+							glistUser[i].GiftQuota += ((oldCommonQuota / send[s].ComQuota) * send[s].Bandwidth)
+							send[s].SendValid = false
+							if loadedgift[send[s].ID] {
+								send[s].ReciveValid = false
+								todel = append(todel, send[s])
 							}
-							if !(allgifts[j].ReciveValid && allgifts[j].SendValid) {
-								todel = append(todel, allgifts[j])
-							}
-							tosave = append(tosave, allgifts[j])
+							loadedgift[send[s].ID] = true
 						}
 					}
-					allgifts = allgifts[:0]
+					for r := range recive {
+						if recive[r].ReciveValid && recive[r].Isgifttimeover() {
+							chnged = true
+							gift := ((oldCommonQuota / recive[r].ComQuota) * recive[r].Bandwidth)
+							glistUser[i].GiftQuota -= gift
+							recive[r].ReciveValid = false
+							if glistUser[i].Verified() && (!glistUser[i].CanUse() || glistUser[i].ConfigCount == 0) {
+								predata.UsedByLimitedUsers += gift
+							}
+							if loadedgift[recive[r].ID] {
+								recive[r].SendValid = false
+								todel = append(todel, recive[r])
+							}
+							loadedgift[recive[r].ID] = true
+						}
+					}
 				}
 				if glistUser[i].IsCapped && glistUser[i].CappedQuota > MainCommonUserQuota  {
 					if glistUser[i].Verified() {
@@ -444,9 +463,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					tosaveuser  = append(tosaveuser, glistUser[i])
 				}
 			}
-			if len(tosave) > 0 {
-				tx.Save(&tosave)
-			}
 			if len(todel) > 0 {
 				tx.Delete(&todel)
 			}
@@ -454,7 +470,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				tx.Save(tosaveuser)
 			}
 			todel = todel[:0]
-			tosave = tosave[:0]
 			tosaveuser = tosaveuser[:0]
 			return nil
 
@@ -464,7 +479,6 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		}
 		glistUser = nil
 		todel = nil
-		tosave = nil
 		tosaveuser = nil
 	}
 	MainCommonUserQuota = predata.MainQuota(w.ctrl.BandwidthAvelable)
@@ -478,6 +492,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	w.logger.Debug("total time elapsed before main db refresh " + time.Since(st).String())
 
 	err = w.db.Model(&db.User{}).
+	Preload("Configs").
 	FindInBatches(&listUser, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
 		if tx.Error != nil {
 			return tx.Error
@@ -490,7 +505,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				bufsender.Send("🔴🔴🔴 force stopped when db refresh, you may need to start bot with last backup. see logs for more info", w.ctrl.SudoAdmin )
 				return fmt.Errorf("context cancled db refresh stops from record id %v, err %v ", user.TgID, refreshcontext.Err())
 			}
-			tx.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&user.Configs)
+			//tx.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&user.Configs)
 			// storing old quota for calculating
 			oldQuota := user.CalculatedQuota
 			
@@ -788,6 +803,13 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 					preData.cappeduser++
 					preData.unUsedUser++
 					preData.captotal += user.CappedQuota
+					if user.GiftQuota > 0 {
+						if user.CappedQuota > (user.CalculatedQuota-user.GiftQuota) {
+							preData.savings = (user.CalculatedQuota - user.CappedQuota)
+						} else {
+							preData.savings = user.GiftQuota
+						}
+					}
 				}
 			}
 			// for overview
@@ -817,11 +839,17 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 				}
 				preData.unUsedUser++
 				preData.UsedByLimitedUsers += user.MonthUsage
+			} else if !user.Verified() {
+				preData.UsedByLimitedUsers += user.MonthUsage
+				if user.GiftQuota > 0 {
+					preData.UsedByLimitedUsers -= user.GiftQuota // also adding because they can't use what the recive as gift
+				}
 			} else {
 				activeConfCount += int64(user.ConfigCount)
+				preData.totaladdtional += user.AdditionalQuota
 			}
 			preData.configCount += int64(user.ConfigCount)
-			preData.totaladdtional += user.AdditionalQuota
+			
 			//preData.savings += user.SavedQuota
 		}
 
