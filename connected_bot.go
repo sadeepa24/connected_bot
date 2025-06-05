@@ -123,8 +123,8 @@ func (c *ConnectedBot) Close() error {
 	err = errors.Join(c.Webhookserver.Close(), err)  // close webhookserver so that new update does not recive
 	err = errors.Join(c.Parser.Stop(), err)          // stops all ongoing updatectx
 	err = errors.Join(c.Watchman.Close(), err) // close watchman
-	err = errors.Join(c.Ctrl.Close(), err)
 	err = errors.Join(c.db.Close(), err)
+	err = errors.Join(c.Ctrl.Close(), err)
 
 	if err != nil {
 		c.logger.Error("closing error detected ", zap.Error(err))

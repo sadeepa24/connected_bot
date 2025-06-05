@@ -1252,7 +1252,6 @@ func (c *Controller) RemoveAllRestriction() error {
 	c.IncCriticalOp()
 	lst := []int64{}
 	c.GetUserList(C.UserLstRestricted, &lst)
-	fmt.Println(lst)
 	tx := c.db.Begin()
 	err := tx.Model(&db.User{}).Where("restricted = ?", true).Update("restricted", false).Error
 	if err != nil {
@@ -1275,7 +1274,7 @@ func (c *Controller) RemoveAllRestriction() error {
 
 	if len(lst) > 0 {
 		bufsnd := NewBufSender(c.ctx, c, len(lst), 5 * time.Minute)
-		bufsnd.Start()
+		go bufsnd.Start()
 		for _, user := range lst {
 			bufsnd.Send("✅ admin removed you'r restriction, you can use service again 🎉", user)
 		}

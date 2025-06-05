@@ -2,7 +2,9 @@ package singapi_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/gofrs/uuid/v5"
 	"github.com/sadeepa24/connected_bot/db"
@@ -51,7 +53,7 @@ func TestSingApi(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
-	
+	st := time.Now()
 	testUsers := []testItem[db.Config]{
 		{
 			item: db.Config{
@@ -241,8 +243,6 @@ func TestSingApi(t *testing.T) {
 			t.Log("error expected but got no error")
 		}
 	}
-
-
 	for i, user := range testUsers {
 
 		_, err = boxapi.GetStatusConfig(&user.item)
@@ -277,5 +277,6 @@ func TestSingApi(t *testing.T) {
 
 	}
 
+	fmt.Println(time.Since(st).String())
 
 }
