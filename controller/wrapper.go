@@ -810,11 +810,12 @@ func (c *Controller) CancelGift(gift db.Gift, sender *db.User) error {
 
 // user struct should have been preloaded configs
 // this method does not save to db, caller should 
+//TODO: to add addtional quota
 func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 	oldQuota := user.CalculatedQuota
-	user.CalculatedQuota = C.Bwidth(c.CommonQuota.Load()) + user.GiftQuota
+	user.CalculatedQuota = c.CommonQuota.Load() + user.GiftQuota + user.AdditionalQuota
 
-	if user.IsCapped && user.CappedQuota <= user.CalculatedQuota {
+	if user.IsCapped && user.CappedQuota <= (user.CalculatedQuota - user.AdditionalQuota) {
 		user.CalculatedQuota = user.CappedQuota
 	}
 
@@ -832,7 +833,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 		user.Configs[i].UpdateUsages(status)
 		user.MonthUsage += (status.Download + status.Upload)
 
-		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || user.IsDistributedUser || (user.IsCapped && user.CappedQuota > C.Bwidth(c.CommonQuota.Load())) || (user.MonthUsage >= user.CalculatedQuota) {
+		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || (user.MonthUsage >= user.CalculatedQuota) || !user.CanUse() || !user.Verified() {
 			c.Boxapi.RemoveConfig(&user.Configs[i])
 		}
 		if err == nil && !user.IsDistributedUser && status.FullUsage() > 0 {

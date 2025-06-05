@@ -450,7 +450,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						}
 					}
 				}
-				if glistUser[i].IsCapped && glistUser[i].CappedQuota > MainCommonUserQuota  {
+				if glistUser[i].IsCapped && glistUser[i].CappedQuota > MainCommonUserQuota + glistUser[i].GiftQuota {
 					if glistUser[i].Verified() {
 						predata.cappeduser--
 						predata.captotal -= glistUser[i].CappedQuota
@@ -517,7 +517,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				user.GiftQuota  = (MainCommonUserQuota/C.Bwidth(oldCommonQuota)) *  user.GiftQuota
 			}
 			
-			user.CalculatedQuota = MainCommonUserQuota + user.GiftQuota
+			user.CalculatedQuota = MainCommonUserQuota + user.GiftQuota + user.AdditionalQuota
 			userVerifycity := user.IsInChannel && user.IsInGroup
 			user.ConfigCount = int16(len(user.Configs))
 			if user.IsCapped {
@@ -627,7 +627,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 					user.EmptyCycle = 0
 				}
 			}
-			if user.UsedQuota > user.CalculatedQuota + user.AdditionalQuota {
+			if user.UsedQuota > user.CalculatedQuota {
 				w.logger.Warn("violation, usedquota > calculatedquota detected from " + user.String())
 				bufsender.Send("We have detetcted you have bigger quota than we allocated to fix this we overide you'r config's quota", user.TgID)
 				user.UsedQuota = user.CalculatedQuota
@@ -850,7 +850,9 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 				}
 			} else {
 				activeConfCount += int64(user.ConfigCount)
-				preData.totaladdtional += user.AdditionalQuota
+				if !user.IsCapped {
+					preData.totaladdtional += user.AdditionalQuota
+				}
 			}
 			preData.configCount += int64(user.ConfigCount)
 			
@@ -903,6 +905,7 @@ func (w *Watchman) PreprosessDb(refreshcontext context.Context, bufsender *contr
 	overview.MonthLimitedUser = preData.monthlimiteduser
 	overview.AllTime = alltime+month_usage
 	overview.BandwidthAvailable = w.ctrl.BandwidthAvelable
+	overview.BandwidthAddtional = preData.totaladdtional
 	overview.Restricte = preData.restricted
 	overview.CUser = preData.verifiedusercount + preData.cappeduser - preData.unUsedUser
 	overview.QuotaForEach = C.Bwidth(w.ctrl.CommonQuota.Load())

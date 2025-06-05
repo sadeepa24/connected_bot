@@ -106,7 +106,7 @@ func (c *ConnectedBot) Start() error {
 	if err = c.Parser.Init(); err != nil {
 		return err
 	}
-	c.logger.Debug("parser inited")
+	c.logger.Debug("parser initialized")
 	if c.Webhookserver == nil {
 		return errors.New("webhook server not found")
 	}

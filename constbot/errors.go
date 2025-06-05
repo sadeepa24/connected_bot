@@ -89,6 +89,7 @@ var ErrNotsupported = errors.New("type not supporte yet")
 
 // Gift
 var ErrUserCanootReciveUserCapped = errors.New("user cannot recive gifts")
+var ErrUserCappedUser = errors.New("user is capped")
 var ErrUserGiftAlready = errors.New("user already recived or send a gift")
 
 // Parser

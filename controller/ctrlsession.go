@@ -475,16 +475,23 @@ func (c *CtrlSession) LeftQuota() C.Bwidth {
 		return c.user.CappedQuota - dedicated
 	}
 
-	return (c.user.CalculatedQuota + c.user.AdditionalQuota) - dedicated
+	return c.user.CalculatedQuota - dedicated
 }
 func (c *CtrlSession) FullQuota() C.Bwidth {
 	if c.user.IsCapped {
 		return c.user.CappedQuota
 	}
-	return (c.user.CalculatedQuota + c.user.AdditionalQuota)
+	return c.user.CalculatedQuota 
 }
+
+//TODO: to add addtional quota
+func (c *CtrlSession) CapMax() C.Bwidth {
+	return c.user.CalculatedQuota - c.user.AdditionalQuota
+}
+
+
 // this is special for gift command
-func (c *CtrlSession) LeftQuotaFromOrigin() C.Bwidth {
+func (c *CtrlSession) LeftFOrGift() C.Bwidth {
 	var dedicated C.Bwidth = 0
 	for _, conf := range c.configmap {
 		dedicated += conf.Quota
@@ -502,12 +509,37 @@ func (c *CtrlSession) LeftQuotaFromOrigin() C.Bwidth {
 		dedicated += (c.TotalUsage() - c.GetFullUsage().Full()) //hidden usage from deleted config
 	}
 
-	return C.Bwidth(c.ctrl.CommonQuota.Load()) - dedicated
+	return c.ctrl.CommonQuota.Load() - (dedicated + c.user.AdditionalQuota)
 }
 func (c *CtrlSession) LeftUsage() C.Bwidth {
-	return c.user.CalculatedQuota + c.user.AdditionalQuota - c.TotalUsage()
+	return c.user.CalculatedQuota - c.TotalUsage()
 }
 
+//bw should be bytes
+func (c *CtrlSession) Addadditional(bw C.Bwidth) error {
+	if c.user.IsCapped {
+		return C.ErrUserCappedUser
+	}
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
+	c.user.AdditionalQuota += bw
+	c.ctrl.RecalculateConfigquotas(c.user)
+	return c.save()
+}
+func (c *CtrlSession) Removeadditional() error {
+	if c.user.AdditionalQuota == 0 {
+		return nil
+	}
+	if c.addop(true) {
+		return C.ErrClosedSession
+	}
+	defer c.remop(true)
+	c.user.AdditionalQuota = 0
+	c.ctrl.RecalculateConfigquotas(c.user)
+	return c.save()
+}
 
 func (c *CtrlSession) Reseume() error {
 	newperm := c.user.IsDistributedUser || c.user.IsRemoved || c.user.Restricted || c.user.Templimited
@@ -749,7 +781,9 @@ func (c *CtrlSession) RestrictInfo() (*db.RestrictUser, error) {
 
 
 
-
+func (c *CtrlSession) RecalculateConfigquotas()  {
+	c.ctrl.RecalculateConfigquotas(c.user)
+}
 func (c *CtrlSession) Save() error {
 	return c.save()
 }
@@ -783,21 +817,20 @@ func (c *CtrlSession) SaveConfigs() error {
 
 
 func (c *CtrlSession) save() error {
-	var errs error
-	if err := c.ctrl.db.Save(c.user).Error; err != nil {
-		errs = errors.Join(errs, err)
+	tx := c.ctrl.db.Begin()
+	if err := tx.Save(c.user).Error; err != nil {
+		tx.Rollback()
+		return NewDbErr(err, "Failed to save user data. Some changes might not have been saved. Please verify and try again.", false)
 	}
-
 	if len(c.user.Configs) > 0 {
-		if err := c.ctrl.db.Save(c.user.Configs).Error; err != nil {
-			errs = errors.Join(errs, err)
+		if err := tx.Save(c.user.Configs).Error; err != nil {
+			tx.Rollback()
+			return NewDbErr(err, "Failed to save user data. Some changes might not have been saved. Please verify and try again.", false)
 		}
 	}
-	if errs != nil {
-		return DbError{
-			error: errs,
-			msg:   "Database save operation failed. Some changes might not have been saved. Please verify and try again.",
-		}
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return NewDbErr(err, "Failed to save user data. Some changes might not have been saved. Please verify and try again.", false)
 	}
 	return nil
 }

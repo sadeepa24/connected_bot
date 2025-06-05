@@ -539,7 +539,10 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			} else {
 				btns.Addbutton("🔴 Distribute",  "Distribute","" )
 			}
-
+			btns.Addbutton("Add Additional Bandwidth", "addbw", "")
+			if enduserupx.User.AdditionalQuota > 0 {
+				btns.Addbutton("Remove Additional Bandwidth", "rembw", "")
+			}
 			btns.AddBtcommon("Change Point Count")
 			if enduserupx.User.Verified() {
 				btns.AddBtcommon("Create Config")
@@ -560,11 +563,11 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 					Username: enduserupx.User.User.Username,
 				},
 				NonUseCycle: upx.User.EmptyCycle,
-				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota)).Float64(),
+				UsagePercentage: ((tusage * 100)/(endusersession.GetUser().CalculatedQuota)).Float64(),
 				GiftQuota: enduserupx.User.GiftQuota.BToString(),
 				Joined:    enduserupx.User.Joined.Format("2006-01-02 15:04:05"),
 				Dedicated: a.ctrl.CommonQuota.Load().BToString(),
-				TQuota:    (endusersession.GetUser().CalculatedQuota + enduserupx.User.AdditionalQuota).BToString(),
+				TQuota:    (endusersession.GetUser().CalculatedQuota).BToString(),
 				LeftQuota: endusersession.LeftQuota().BToString(),
 				TUsage:    tusage.BToString(),
 				ConfCount: endusersession.GetUser().ConfigCount,
@@ -729,12 +732,54 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 					Messagesession.SendAlert("field change got err: " + err.Error(), nil)
 					return err
 				}
+				endusersession.RecalculateConfigquotas()
 				endusersession.Save()
 				endusersession.DeactivateAll()
 				err = endusersession.ActivateAll()
 				if err != nil {
 					Messagesession.SendAlert("config reactivate failed: "+ err.Error(), nil)
 				}
+			case "addbw":
+				btns.Reset([]int16{1})
+				btns.Addbutton("Add Bandwidth", "addbw", "")
+				btns.AddCloseBack()
+				Messagesession.Edit("send additional bandwidth", btns, "")
+				callback, err = a.callback.GetcallbackContext(upx.Ctx, btns.ID())
+				if err != nil {
+					return err
+				}
+				if callback.Data == C.BtnClose {
+					Messagesession.SendAlert("add bandwidth canceled", nil)
+					continue main
+				}
+				if callback.Data == C.BtnBack {
+					state = 1
+					continue main
+				}
+				Messagesession.Edit("send additional bandwidth", nil, "")
+				bw, err := common.ReciveBandwidth(calls, a.ctrl.BandwidthAvelable, 0)
+				if err != nil {
+					Messagesession.SendAlert("bandwidth recive failed: " + err.Error(), nil)
+					continue main
+				}
+				if bw <= 0 {
+					Messagesession.SendAlert("bandwidth must be greater than 0", nil)
+					continue main
+				}
+				if err = endusersession.Addadditional(bw.GbtoByte()); err != nil {
+					Messagesession.SendAlert("bandwidth add failed: " + err.Error(), nil)
+					continue main
+				}
+				endusermsg.SendAlert("admin added additional bandwidth of " + bw.GbtoByte().BToString() + " to you'r account", nil)
+				Messagesession.SendAlert("make a db refresh to change bandiwdth, it will automatically change in next refresh cycle", nil)
+			case "rembw":
+				if err = endusersession.Removeadditional(); err != nil {
+					Messagesession.SendAlert("bandwidth remove failed: " + err.Error(), nil)
+					continue main
+				}
+				Messagesession.SendAlert("done", nil) 
+				endusermsg.SendAlert("admin removed you'r additional bandwidth", nil)
+				Messagesession.SendAlert("make a db refresh to change bandiwdth, it will automatically change in next refresh cycle", nil)
 			}
 		case 4:
 			Messagesession.ResetState()

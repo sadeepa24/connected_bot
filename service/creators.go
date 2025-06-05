@@ -194,7 +194,7 @@ func CreateConfig(opts common.OptionExcutors) error {
 	}
 	opts.Ctrl.IncCriticalOp()
 	defer opts.Ctrl.DecCriticalOp()
-	newconfig, err := Usersession.AddNewConfig(C.MapToSliceKey(cuurentIns), int16(outID), C.Bwidth(quotafroconfig).GbtoByte(), int16(LoginLimit), confName)
+	newconfig, err := Usersession.AddNewConfig(C.MapToSliceKey(cuurentIns), int16(outID), quotafroconfig.GbtoByte(), int16(LoginLimit), confName)
 	if err != nil {
 		Messagesession.SendError(err, C.GetMsg(C.MsgCrFailed))
 		return err

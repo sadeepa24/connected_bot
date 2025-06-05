@@ -380,6 +380,7 @@ type Overview struct {
 	BandwidthAvailable C.Bwidth
 	MonthTotal C.Bwidth
 	AllTime C.Bwidth
+	BandwidthAddtional C.Bwidth
 
 	VerifiedUserCount int64
 	TotalUser int32
@@ -410,6 +411,7 @@ func (o *Overview) String() string {
 			"Server Bandwidth: %s\n"+
 			"Month Total Usage: %s\n"+
 			"All Time Usage: %s\n"+
+			"For Addtional Quota: %s\n"+
 			"Quota For Each: %s\n\n"+
 			"User Who Can Acctualy Use The Config: %d\n"+
 			"Verified User Count: %d\n"+
@@ -428,6 +430,7 @@ func (o *Overview) String() string {
 		o.BandwidthAvailable.BToString(),
 		o.MonthTotal.BToString(),
 		o.AllTime.BToString(),
+		o.BandwidthAddtional.BToString(),
 		o.QuotaForEach.BToString(),
 		o.CUser,
 		o.VerifiedUserCount,

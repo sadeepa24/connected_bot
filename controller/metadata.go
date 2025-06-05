@@ -243,6 +243,13 @@ type DbError struct {
 	exit bool
 	msg string
 }
+func NewDbErr(err error, msg string, exit bool) DbError {
+	return DbError{
+		error: err,
+		msg: msg,
+		exit: exit,
+	}
+}
 
 func (c DbError) UserMsg() string { return c.msg }
 func (c DbError) Exit() bool { return c.exit }

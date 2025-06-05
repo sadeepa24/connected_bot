@@ -78,7 +78,7 @@ func (u *Usersrv) Exec(upx *update.Updatectx) error {
 }
 
 func (u *Usersrv) Init() error {
-	u.logger.Debug("User service inilized")
+	u.logger.Debug("User service initialized")
 	var err error
 	u.AllEvents = events.GetallAvblkEvent(u.ctrl)
 	u.adminchat, err = u.ctrl.Getadminchat()
@@ -654,7 +654,7 @@ func (u *Usersrv) commandGift(upx *update.Updatectx, Messagesession *botapi.Msgs
 		return nil
 	}
 
-	leftquotatogift := Usersession.LeftQuotaFromOrigin()
+	leftquotatogift := Usersession.LeftFOrGift()
 
 	if leftquotatogift <= 0 {
 		Messagesession.SendAlert(C.GetMsg(C.MsgGiftNoQuota), nil)
@@ -879,7 +879,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	btns.AddClose(false)
 
 	fullUsage := Usersession.TotalUsage()
-	if (Usersession.GetUser().CalculatedQuota - fullUsage) <= 0 {
+	if (Usersession.CapMax() - fullUsage) <= 0 {
 		Messagesession.SendAlert(C.GetMsg(C.MsgCannotCap), nil)
 		return nil
 	}
@@ -891,7 +891,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	}{
 		LeftQuota:    Usersession.LeftQuota().BToString(),
 		MinCap: fullUsage.BToString(),
-		CapRange:     fullUsage.BToString() + " -- " + upx.User.CalculatedQuota.BToString(),
+		CapRange:     fullUsage.BToString() + " -- " + Usersession.CapMax().BToString(),
 	}, btns, C.TmpcapWarn)
 
 	answer, err := u.callback.GetcallbackContext(upx.Ctx, btns.ID())
@@ -914,7 +914,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 	}{
 		LeftQuota:    Usersession.LeftQuota().BToString(),
 		MinCap: fullUsage.BToString(),
-		CapRange: fullUsage.BToString() + " -- " + upx.User.CalculatedQuota.BToString(),
+		CapRange: fullUsage.BToString() + " -- " + Usersession.CapMax().BToString(),
 	}, nil, C.Tmpcapreply)
 
 
@@ -944,7 +944,7 @@ func (u *Usersrv) commandCap(upx *update.Updatectx, Messagesession *botapi.Msgse
 		},
 	}
 
-	Newcap, err := common.ReciveBandwidth(cls, upx.User.CalculatedQuota, fullUsage)
+	Newcap, err := common.ReciveBandwidth(cls, Usersession.CapMax(), fullUsage)
 	if err != nil {
 		cls.Alertsender("cap setting canceld")
 		return nil
