@@ -1017,6 +1017,7 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 		btns.Addbutton("🔴 Reset Usage", "reset-usage", "")
 		btns.Addbutton("🔴 Restart", "Restart", "")
 		btns.Addbutton("🔴 Remove MonthLimitations", "remlimit", "")
+		btns.Addbutton("🔴 Remove All Restriction", "remrestriction", "")
 		btns.Addbutton("Reset Lang Codes", "langchg", "")
 		btns.Addbutton("Refresh Config", "refconf", "")
 		btns.AddClose(true)
@@ -1105,6 +1106,32 @@ func (a *Adminsrv) manage(Messagesession *botapi.Msgsession,  calls common.Tgcal
 				Messagesession.SendAlert("config refresh err: " +  err.Error(), nil)
 			}
 			return err
+		case "remrestriction":
+				btns.Reset([]int16{2})
+				calls.Alertsender("🔴 Please be cautious! These are critical changes and should be performed with utmost care. 🔴 do thease if you realy want")
+				btns.Addcancle()
+				btns.AddBtcommon("proceed")
+				if callback, err = callbackreciver("this will remove all user restriction do you want to continue ?", btns); err != nil {
+					break mainloop
+				}
+
+				if callback.Data != "proceed" {
+					continue
+				}
+				Messagesession.DeleteAllMsg()
+				err = a.ctrl.RemoveAllRestriction()
+				if err != nil {
+					Messagesession.SendAlert("db update err "+ err.Error(), nil)
+					continue
+				}
+				a.ctrl.Addquemg( &botapi.Msgcommon{
+					Infocontext: &botapi.Infocontext{
+						User_id: a.ctrl.SudoAdmin,
+						ChatId: a.ctrl.SudoAdmin,
+					},
+					Text: "Restrictiones Removed And Db Refreshed",
+				})
+				return nil
 		case C.BtnClose:
 				Messagesession.DeleteAllMsg()
 				alertsender("manager closed")

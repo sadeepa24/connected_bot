@@ -1228,13 +1228,18 @@ func (c *Controller) SendMsgContext(ctx context.Context, msg any) (*tgbotapi.Mes
 func (c *Controller) RemoveAllLimits() error {
 	c.IncCriticalOp()
 	tx := c.db.Begin()
-	err := tx.Model(&db.User{}).Where("1 = 1").Update("is_month_limited", "false").Error
+	err := tx.Model(&db.User{}).Where("1 = 1").Update("is_month_limited", false).Error
 	if err != nil {
 		tx.Rollback()
 		c.DecCriticalOp()
 		return err
 	}
-	tx.Commit()
+	err = tx.Commit().Error
+	if err != nil {
+		tx.Rollback()
+		c.DecCriticalOp()
+		return err
+	}
 	c.DecCriticalOp()
 	if c.CheckLock() {
 		return nil
@@ -1242,6 +1247,47 @@ func (c *Controller) RemoveAllLimits() error {
 	c.signals <- RefreshSignal(1)
 	return nil
 }
+func (c *Controller) RemoveAllRestriction() error {
+	c.IncCriticalOp()
+	lst := []int64{}
+	c.GetUserList(C.UserLstRestricted, &lst)
+	fmt.Println(lst)
+	tx := c.db.Begin()
+	err := tx.Model(&db.User{}).Where("restricted = ?", true).Update("restricted", false).Error
+	if err != nil {
+		tx.Rollback()
+		c.DecCriticalOp()
+		return err
+	}
+	err = tx.Exec("DELETE FROM restrict_users").Error
+	if err != nil {
+		tx.Rollback()
+		c.DecCriticalOp()
+		return err
+	}
+	err = tx.Commit().Error
+	if err != nil {
+		tx.Rollback()
+		c.DecCriticalOp()
+		return err
+	}
+
+	if len(lst) > 0 {
+		bufsnd := NewBufSender(c.ctx, c, len(lst), 5 * time.Minute)
+		bufsnd.Start()
+		for _, user := range lst {
+			bufsnd.Send("✅ admin removed you'r restriction, you can use service again 🎉", user)
+		}
+		bufsnd.Over()
+	}
+	c.DecCriticalOp()
+	if c.CheckLock() {
+		return nil
+	}
+	c.signals <- RefreshSignal(1)
+	return nil
+}
+
 
 func (c *Controller) ResetLangCode() error {
 	c.IncCriticalOp()
