@@ -163,7 +163,7 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 		}
 	}
 	if upx.FromUser().ID == p.ctrl.SudoAdmin {
-		if upx.Update.Message.Command() == C.CmdSwitch {
+		if upx.Update.Message != nil && upx.Update.Message.Command() == C.CmdSwitch {
 			p.AdminSrc.SwapMode()
 			var mode string 
 			if p.AdminSrc.AdminMode() {
