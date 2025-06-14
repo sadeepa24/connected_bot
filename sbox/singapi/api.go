@@ -123,6 +123,7 @@ func (b *BoxApi) GetStatusConfig(dbconf *db.Config) (conf.Sboxstatus, error) {
 }
 
 func (b *BoxApi) RemoveConfig(dbconf *db.Config) (conf.Sboxstatus, error) {
+	dbconf.Active = false
 	return b.common(dbconf, b.box.RemoveUser)
 }
 

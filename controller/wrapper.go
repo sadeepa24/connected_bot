@@ -835,6 +835,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 
 		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || (user.MonthUsage >= user.CalculatedQuota) || !user.CanUse() || !user.Verified() {
 			c.Boxapi.RemoveConfig(&user.Configs[i])
+			user.Configs[i].Active = false
 		}
 		if err == nil && !user.IsDistributedUser && status.FullUsage() > 0 {
 			c.db.CreateUsageHistory(&db.UsageHistory{
