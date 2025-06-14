@@ -547,6 +547,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						if cerr, ok := err.(C.Error); ok {
 							bufsender.Send("config " +user.Configs[i].Name + " got error while adding to singbox, msg = " + cerr.UserMsg() , user.TgID)
 						}
+						w.logger.Error("config add failed: config " +user.Configs[i].Name , zap.Error(err))
 						status = conf.Sboxstatus{
 							Download: 0,
 							Upload: 0,

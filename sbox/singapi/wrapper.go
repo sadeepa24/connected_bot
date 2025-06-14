@@ -36,7 +36,7 @@ func (c *Comconf) Vmess() (option.VMessUser, bool) {
 }
 
 func (c *Comconf) Trojan() (option.TrojanUser, bool) {
-	if _, ok := c.inboundtypes[C.TypeVMess]; ok {
+	if _, ok := c.inboundtypes[C.TypeTrojan]; ok {
 		return option.TrojanUser{
 			Name: c.dbconf.GetuniqName(),
 			Password: c.dbconf.Password,
