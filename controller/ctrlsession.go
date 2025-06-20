@@ -701,7 +701,7 @@ func (c *CtrlSession) AllGifts(force bool) ([]db.Gift, error) {
 		return c.gift, nil
 	}
 	gifts := []db.Gift{} 
-	err := c.ctrl.db.Model(&db.Gift{}).Where("send_valid = ? OR recive_valid = ?", true, true).Where("sender = ? OR reciver = ?", c.user.TgID, c.user.TgID).Find(&gifts).Error
+	err := c.ctrl.db.Model(&db.Gift{}).Where("sender = ? OR reciver = ?", c.user.TgID, c.user.TgID).Find(&gifts).Error
 	c.gift = gifts
 	return c.gift, err
 }

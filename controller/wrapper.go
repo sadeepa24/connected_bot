@@ -549,6 +549,7 @@ var availableuserList = []string{
 	C.UserLstVerified,    
 	C.UserLstUnVerified,   
 	C.UserLstRestricted,
+	C.UserLstAddtional,
 	//C.UserLstOnline,
 }
 func (c *Controller) AvailableUserList() []string {
@@ -603,6 +604,12 @@ func (c *Controller) GetUserList(listType string, in *[]int64) error  {
 	case C.UserLstRestricted:
 		if err := c.db.Model(&db.User{}).
 			Where("restricted = ?", true).
+			Pluck("tg_id", in).Error; err != nil {
+			return C.ErrDbopration
+		}
+	case C.UserLstAddtional:
+		if err := c.db.Model(&db.User{}).
+			Where("additional_quota > ?", 0).
 			Pluck("tg_id", in).Error; err != nil {
 			return C.ErrDbopration
 		}
@@ -696,7 +703,7 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 	}
 
 	var giftcount int64 
-	c.db.Model(&db.Gift{}).Where("recive_valid = ? OR send_valid = ?", true, true).Where("reciver = ?", touser.TgID).Count(&giftcount)
+	c.db.Model(&db.Gift{}).Where("reciver = ?", touser.TgID).Count(&giftcount)
 
 	if giftcount >= c.MaxGiftCount {
 		return nil, C.WrapError(errors.New("user gift limit exceed"), "gift limit exceed")
@@ -751,9 +758,6 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 	//record
 	tx.Model(&db.Gift{}).Create(&db.Gift{
 		Date:        time.Now(),
-		ComQuota:    C.Bwidth(c.CommonQuota.Load()),
-		SendValid:   true,
-		ReciveValid: true,
 		Sender:      fromuser.TgID,
 		Reciver:     touser.TgID,
 		Bandwidth:   quota,
@@ -771,20 +775,19 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 func (c *Controller) CancelGift(gift db.Gift, sender *db.User) error {
 	c.IncCriticalOp()
 	defer c.DecCriticalOp()
-	if !(gift.SendValid && gift.ReciveValid) {
-		return nil
-	}
 	var touser = &db.User{
 		TgID: gift.Reciver,
 	}
-	err := c.db.Model(&db.User{}).First(touser).Error
+	err := c.db.Model(&db.User{}).Preload("Configs").First(touser).Error
 	if err != nil {
 		return err
 	}
-	
-	presentGift := ((C.Bwidth(c.CommonQuota.Load()) / gift.ComQuota) * gift.Bandwidth)
-	touser.GiftQuota -= presentGift
-	sender.GiftQuota += presentGift
+	err = c.db.Model(&db.User{}).Preload("Configs").First(sender).Error
+	if err != nil {
+		return err
+	}
+	touser.GiftQuota -=  gift.Bandwidth
+	sender.GiftQuota +=  gift.Bandwidth
 	c.RecalculateConfigquotas(touser)
 	c.RecalculateConfigquotas(sender)
 	tx := c.db.Begin()
@@ -800,6 +803,8 @@ func (c *Controller) CancelGift(gift db.Gift, sender *db.User) error {
 		tx.Rollback()
 		return err
 	}
+	tx.Save(sender.Configs)
+	tx.Save(touser.Configs)
 	err = tx.Commit().Error
 	if err == nil {
 		c.DirectMg(fmt.Sprintf("gift bandwidth %s recived from %d was canceled", gift.Bandwidth.BToString(), gift.Sender), gift.Reciver, gift.Reciver)
@@ -810,7 +815,6 @@ func (c *Controller) CancelGift(gift db.Gift, sender *db.User) error {
 
 // user struct should have been preloaded configs
 // this method does not save to db, caller should 
-//TODO: to add addtional quota
 func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 	oldQuota := user.CalculatedQuota
 	user.CalculatedQuota = c.CommonQuota.Load() + user.GiftQuota + user.AdditionalQuota
@@ -824,7 +828,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 			continue
 		}
 		k := oldQuota / user.Configs[i].Quota      // findig ratio between oldquota and old configs quota
-		user.Configs[i].Quota = C.Bwidth(user.CalculatedQuota / k) // subpressing quota according to ratio, k is the constant
+		user.Configs[i].Quota = user.CalculatedQuota / k // subpressing quota according to ratio, k is the constant
 		
 		status, err := c.Boxapi.AddConfigReset(&user.Configs[i])
 		

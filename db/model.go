@@ -286,11 +286,11 @@ type Gift struct {
 	ID          int64    `gorm:"primaryKey"`
 	Sender      int64    `gorm:"index:idx_sender_reciver"`
 	Reciver     int64    `gorm:"index:idx_sender_reciver"`
-	SendValid   bool     `gorm:"index:idx_valid_flags"`
-	ReciveValid bool     `gorm:"index:idx_valid_flags"`
+	// SendValid   bool     `gorm:"index:idx_valid_flags"`
+	// ReciveValid bool     `gorm:"index:idx_valid_flags"`
 	Bandwidth   C.Bwidth
 	Date        time.Time
-	ComQuota    C.Bwidth // Main common quota which was exist when gift was created
+	//ComQuota    C.Bwidth // Main common quota which was exist when gift was created
 	//DeletedAt  gorm.DeletedAt `gorm:"index"`
 }
 

@@ -288,9 +288,13 @@ type preprosessd struct {
 //removed
 // overused user can't just use their whole quota (due adding usage rollback from lastmonth,  this month initial usage = lastmonth excess usage - last month his quota  ),  so it's like increase of bandwidth but finnaly it's same
 //MainCommonUserQuota = ((w.ctrl.BandwidthAvelable) - (predata.captotal + predata.usedbyrestricted + predata.totaladdtional + predata.usedbydisuser)) / C.Bwidth(predata.verifiedusercount-(predata.cappeduser+predata.distributeduser+predata.monthlimiteduser+predata.restricted))
-func (p *preprosessd) MainQuota(total C.Bwidth) C.Bwidth {
+func (p *preprosessd) MainQuota(total C.Bwidth, AddtionalQuotaType uint8) C.Bwidth {
+	var aadtional = p.totaladdtional
+	if AddtionalQuotaType != 0 {
+		aadtional = 0
+	}
 	if p.verifiedusercount-p.unUsedUser > 0 {
-		return ((total + p.savings) - (p.captotal + p.totaladdtional + p.UsedByLimitedUsers)) / C.Bwidth(p.verifiedusercount-p.unUsedUser)
+		return ((total + p.savings) - (p.captotal + aadtional + p.UsedByLimitedUsers)) / C.Bwidth(p.verifiedusercount-p.unUsedUser)
 	}
 	return total
 }
@@ -387,7 +391,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 	w.ctrl.VerifiedUserCount.Swap(int32(predata.verifiedusercount))
 
 
-	MainCommonUserQuota := predata.MainQuota(w.ctrl.BandwidthAvelable) // Newcalculated main quota for each user
+	MainCommonUserQuota := predata.MainQuota(w.ctrl.BandwidthAvelable, w.config.AddtionalQuotaType) // Newcalculated main quota for each user
 	// this value used to calculate the old ratio between config quota and old maincommonquota
 	// new config quota will calculate based on this ratio
 	oldCommonQuota := w.ctrl.CommonQuota.Swap(MainCommonUserQuota)
@@ -401,8 +405,9 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		var glistUser []db.User
 		todel := make([]db.Gift, 0, C.Dbbatchsize)
 		tosaveuser :=  make([]db.User, 0, C.Dbbatchsize)
-		
-		loadedgift := make(map[int64]bool, C.Dbbatchsize)
+		tosavegift := make([]db.Gift, 0, C.Dbbatchsize)
+		giftsaved := make(map[int64]struct{}, C.Dbbatchsize)
+		loadedgift := make(map[int64]struct{}, C.Dbbatchsize)
 	
 		var (
 			chnged bool
@@ -416,37 +421,49 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			for i := range glistUser {
 				chnged = false
 				if glistUser[i].GiftQuota != 0 {
-
+					glistUser[i].GiftQuota = 0
+					chnged = true
 					send = glistUser[i].SentGifts
 					recive = glistUser[i].ReceivedGifts
 
 					for s := range glistUser[i].SentGifts {
-						if send[s].SendValid && send[s].Isgifttimeover() {							
-							chnged = true
-							glistUser[i].GiftQuota += ((oldCommonQuota / send[s].ComQuota) * send[s].Bandwidth)
-							send[s].SendValid = false
-							if loadedgift[send[s].ID] {
-								send[s].ReciveValid = false
+						send[s].Bandwidth = (MainCommonUserQuota/oldCommonQuota) *  send[s].Bandwidth
+						if send[s].Isgifttimeover() {							
+							if  _, loaded := loadedgift[send[s].ID]; loaded {
+								delete(loadedgift, send[s].ID)
 								todel = append(todel, send[s])
 							}
-							loadedgift[send[s].ID] = true
+							loadedgift[send[s].ID] = struct{}{}
+							continue
 						}
+						if _, alsaved := giftsaved[send[s].ID]; alsaved {
+							delete(giftsaved, send[s].ID)
+							tosavegift  = append(tosavegift, send[s])
+						} else {
+							giftsaved[send[s].ID] = struct{}{}
+						}
+						glistUser[i].GiftQuota -= send[s].Bandwidth
 					}
 					for r := range recive {
-						if recive[r].ReciveValid && recive[r].Isgifttimeover() {
-							chnged = true
-							gift := ((oldCommonQuota / recive[r].ComQuota) * recive[r].Bandwidth)
-							glistUser[i].GiftQuota -= gift
-							recive[r].ReciveValid = false
+						recive[r].Bandwidth = (MainCommonUserQuota/oldCommonQuota) *  recive[r].Bandwidth
+						if recive[r].Isgifttimeover() {
 							if glistUser[i].Verified() && (!glistUser[i].CanUse() || glistUser[i].ConfigCount == 0) {
-								predata.UsedByLimitedUsers += gift
+								predata.UsedByLimitedUsers += recive[r].Bandwidth
 							}
-							if loadedgift[recive[r].ID] {
-								recive[r].SendValid = false
+							if _, loaded := loadedgift[recive[r].ID]; loaded {
+								delete(loadedgift, recive[r].ID)
 								todel = append(todel, recive[r])
 							}
-							loadedgift[recive[r].ID] = true
+							loadedgift[recive[r].ID] = struct{}{}
+							continue
 						}
+						if _, alsaved := giftsaved[recive[r].ID]; alsaved {
+							delete(giftsaved, recive[r].ID)
+							tosavegift  = append(tosavegift, recive[r])
+						} else {
+							giftsaved[recive[r].ID] = struct{}{}
+						}
+						glistUser[i].GiftQuota += recive[r].Bandwidth
 					}
 				}
 				if glistUser[i].IsCapped && glistUser[i].CappedQuota > MainCommonUserQuota + glistUser[i].GiftQuota {
@@ -470,10 +487,14 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 				tx.Delete(&todel)
 			}
 			if len(tosaveuser) > 0 {
-				tx.Save(tosaveuser)
+				tx.Save(&tosaveuser)
 			}
-			todel = todel[:0]
-			tosaveuser = tosaveuser[:0]
+			if len(tosavegift) > 0 {
+				tx.Save(&tosavegift)
+			}
+			todel = todel[:0:C.Dbbatchsize]
+			tosaveuser = tosaveuser[:0:C.Dbbatchsize]
+			tosavegift = tosavegift[:0:C.Dbbatchsize]
 			return nil
 
 		},).Error
@@ -484,7 +505,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 		todel = nil
 		tosaveuser = nil
 	}
-	MainCommonUserQuota = predata.MainQuota(w.ctrl.BandwidthAvelable)
+	MainCommonUserQuota = predata.MainQuota(w.ctrl.BandwidthAvelable, w.config.AddtionalQuotaType)
 	
 	var (
 		listUser []db.User
@@ -508,11 +529,7 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 			//tx.Model(&db.Config{}).Where("user_id = ?", user.TgID).Find(&user.Configs)
 			// storing old quota for calculating
 			oldQuota := user.CalculatedQuota
-			
-			if user.GiftQuota != 0 {
-				user.GiftQuota  = (MainCommonUserQuota/C.Bwidth(oldCommonQuota)) *  user.GiftQuota
-			}
-			
+		
 			user.CalculatedQuota = MainCommonUserQuota + user.GiftQuota + user.AdditionalQuota
 			userVerifycity := user.IsInChannel && user.IsInGroup
 			user.ConfigCount = int16(len(user.Configs))
