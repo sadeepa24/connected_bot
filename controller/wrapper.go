@@ -701,7 +701,7 @@ func (c *Controller) Gift(upx *update.Updatectx, to any, quota C.Bwidth) (*db.Us
 	} else {
 		return nil, errors.New("invalid reciver")
 	}
-
+	c.CloseSession(touser.TgID)
 	var giftcount int64 
 	c.db.Model(&db.Gift{}).Where("reciver = ?", touser.TgID).Count(&giftcount)
 
@@ -782,6 +782,7 @@ func (c *Controller) CancelGift(gift db.Gift, sender *db.User) error {
 	if err != nil {
 		return err
 	}
+	c.CloseSession(touser.TgID)
 	err = c.db.Model(&db.User{}).Preload("Configs").First(sender).Error
 	if err != nil {
 		return err
@@ -933,6 +934,18 @@ func (c *Controller) Addsession(closefunc ForceCloser, UserId int64) {
 }
 func (c *Controller) RemoveSesion(UserId int64) {
 	c.Usermgrsession.Delete(UserId)
+}
+func (c *Controller) CloseSession(UserId int64) (bool, error) {
+	if forcecloser, loaded := c.Checksession(UserId); loaded {
+			if closer, ok := forcecloser.(ForceCloser); ok {
+				if err := closer.ForceClose(); err != nil {
+					return false, err
+				}
+			}
+			return true, nil
+	}
+	c.Usermgrsession.Delete(UserId)
+	return false, nil
 }
 func (c *Controller) CloseAllUserSession() {
 	c.Usermgrsession.Range(func(key, value any) bool {
