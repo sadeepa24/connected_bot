@@ -11,4 +11,5 @@ const (
 	UserLstUnVerified   string = "unverified"
 	UserLstRestricted   string = "restricted_user"
 	UserLstOnline       string = "online_user"
+	UserLstAddtional    string = "user_with_additional_quota"
 )

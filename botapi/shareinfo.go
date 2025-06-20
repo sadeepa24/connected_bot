@@ -21,7 +21,6 @@ type Error struct {
 const (
 	ErrJsonOp = iota
 	ErrReqFail
-	ErrInvalidRes
 	ErrReqCreate
 	ErrBadReq
 	ErrMsgDisable
@@ -195,6 +194,11 @@ type Msgcommon struct {
 }
 
 var comcont = []byte(`"}`)
+
+func (m *Msgcommon) Reset() {
+	m.inite = false
+	m.rover = false
+}
 
 func (m *Msgcommon) Read(p []byte) (int, error) {
 	if !m.inite {

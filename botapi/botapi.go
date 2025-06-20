@@ -147,7 +147,7 @@ func (b *Botapi) SendRawReq(req *http.Request) (*tgbotapi.APIResponse, error) {
 		return nil, Error{error: err, code: ErrJsonOp}
     }
 	if !apires.Ok {
-		return nil, Error{error: fmt.Errorf("tgerrcode %d Discription %s", apires.ErrorCode, apires.Description), code: ErrInvalidRes}
+		return nil, Error{error: fmt.Errorf("tgerrcode %d Discription %s", apires.ErrorCode, apires.Description), code: ErrBadReq}
 	}
 	return apires, nil
 }
@@ -448,25 +448,9 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 	if m.MessageID != 0 {
 		sendmsg.Message_id = int64(m.MessageID)
 	}
-	replymsg, err := m.api.SendContext(m.mainctx, sendmsg)
+	replymsg, err := m.sendContext(m.mainctx, sendmsg)
 	if err != nil {
-		if berr, ok := err.(Error); ok {
-			switch berr.code {
-			case ErrReqFail:
-				if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
-					return nil, err
-				}
-			case ErrBadReq:
-				if sendmsg.Parse_mode == C.ParseHtml {
-					sendmsg.Parse_mode = ""
-					if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry changing parse mode
-						return nil, err
-					}
-				}
-			default:
-				return nil, err
-			}
-		}
+		return  nil, err
 	}
 	if m.MessageID == 0 {
 		m.sentmsg = append(m.sentmsg, int64(replymsg.MessageID))
@@ -478,6 +462,33 @@ func (m *Msgsession) Edit(msg any, buttons *Buttons, name string) (*tgbotapi.Mes
 	m.sendfirst = false
 	return replymsg, err
 }
+
+func (m *Msgsession) sendContext(ctx context.Context, sendmsg *Msgcommon) (*tgbotapi.Message, error) {
+	replymsg, err := m.api.SendContext(ctx, sendmsg)
+	if err != nil {
+		if berr, ok := err.(Error); ok {
+			switch berr.code {
+			case ErrReqFail:
+				if replymsg, err = m.api.SendContext(ctx, sendmsg); err != nil { //retry
+					return nil, err
+				}
+			case ErrBadReq:
+				if sendmsg.Parse_mode == C.ParseHtml {
+					sendmsg.Reset()
+					sendmsg.Parse_mode = ""
+					if replymsg, err = m.api.SendContext(ctx, sendmsg); err != nil { //retry changing parse mode
+						return nil, err
+					}
+				}
+			default:
+				return nil, err
+			}
+		} else {
+			return  nil, err
+		}
+	}
+	return  replymsg, err
+}  
 
 func (m *Msgsession) ResetState() {
 	if m.lastsendmeadia {
@@ -610,32 +621,15 @@ func (m *Msgsession) SendExtranal(msg any, buttons *Buttons, name string, nodel 
 		sendmsg.Reply_markup = buttons.Getkeyboard()
 	}
 
-	replymg, err := m.api.SendContext(m.mainctx, sendmsg)
-	
+	replymsg, err := m.sendContext(m.mainctx, sendmsg)
 	if err != nil {
-		if berr, ok := err.(Error); ok {
-			switch berr.code {
-			case ErrReqFail:
-				if replymg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
-					return nil, err
-				}
-			case ErrBadReq:
-				if sendmsg.Parse_mode == C.ParseHtml {
-					sendmsg.Parse_mode = ""
-					if replymg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry changing parse mode
-						return nil, err
-					}
-				}
-			default:
-				return nil, err
-			}
-		}
+		return  nil, err
 	}
 	if !nodel {
-		m.sentmsg = append([]int64{int64(replymg.MessageID)}, m.sentmsg...)
+		m.sentmsg = append([]int64{int64(replymsg.MessageID)}, m.sentmsg...)
 	}
 	m.alertsent = true
-	return replymg, err
+	return replymsg, err
 }
 
 // Will send a compleatly new msg not relvent edititn msgs
@@ -664,25 +658,9 @@ func (m *Msgsession) SendAlert(msg any, buttons *Buttons) (*tgbotapi.Message, er
 	if buttons != nil {
 		sendmsg.Reply_markup = buttons.Getkeyboard()
 	}
-	replymsg, err := m.api.SendContext(m.mainctx, sendmsg)
+	replymsg, err := m.sendContext(m.mainctx, sendmsg)
 	if err != nil {
-		if berr, ok := err.(Error); ok {
-			switch berr.code {
-			case ErrReqFail:
-				if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry
-					return nil, err
-				}
-			case ErrBadReq:
-				if sendmsg.Parse_mode == C.ParseHtml {
-					sendmsg.Parse_mode = ""
-					if replymsg, err = m.api.SendContext(m.mainctx, sendmsg); err != nil { //retry changing parse mode
-						return nil, err
-					}
-				}
-			default:
-				return nil, err
-			}
-		}
+		return  nil, err
 	}
 	m.sentmsg = append([]int64{int64(replymsg.MessageID)}, m.sentmsg...)
 	m.alertsent = true

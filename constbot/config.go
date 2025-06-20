@@ -25,6 +25,8 @@ type Botoptions struct {
 }
 type Watchmanconfig struct {
 	Delbuffer  int   `json:"del_buffer"` //msg count to buffer before delete
+	AddtionalQuotaType uint8 `json:"-"`
+	AddtionalQuotaProcessType string  `json:"addtional_process,omitempty"`
 }
 
 type MetadataConf struct {
