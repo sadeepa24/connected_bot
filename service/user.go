@@ -528,9 +528,7 @@ func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msg
 	case upx.User.Isverified():
 
 		btns.ResetNoOveride([]int16{1})
-
-
-		Messagesession.Edit(struct {
+		_, err := Messagesession.Edit(struct {
 			*botapi.CommonUser
 			*botapi.CommonUsage
 		}{
@@ -546,6 +544,9 @@ func (u *Usersrv) commandStart(upx *update.Updatectx, Messagesession *botapi.Msg
 				MUsage:          upx.User.MonthUsage.BToString(),
 			},
 		}, btns, C.TmpregularVerified)
+		if err != nil {
+			u.logger.Error("msg send error ", zap.Error(err))
+		}
 
 	case upx.User.IsremovedUser() && !upx.User.IsBannedAny():
 

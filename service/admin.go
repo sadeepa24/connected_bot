@@ -84,7 +84,7 @@ func (a *Adminsrv) Exec(upx *update.Updatectx) error {
 	if upx.Update == nil {
 		return nil
 	}
-	upx.Ctx, upx.Cancle  = context.WithTimeout(a.ctx, 30 * time.Minute) //admin has more time to deal with things
+	upx.Ctx, upx.Cancle  = context.WithTimeout(a.ctrl.GetBaseContext(), 30 * time.Minute) //admin has more time to deal with things
 	switch {
 	case upx.Update.Message != nil:
 		return a.handleMessage(upx)
@@ -184,6 +184,8 @@ func (a *Adminsrv) Commandhandler(upx *update.Updatectx, Messagesession *botapi.
 		a.ctrl.Addquemg(controller.RefreshSignal(1))
 		upx.Cancle()
 		return nil
+	case C.CmdFClose:
+		return a.fclose(Messagesession, calls)
 	case "users":
 		return a.userLists(upx, Messagesession, calls)
 	case "vpnconfig", "editconf":
@@ -517,7 +519,6 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 			case C.BtnClose:
 				break main
 			}
-
 		case 1:
 			if enduserupx.User.Restricted {
 				btns.Addbutton("🟢 Remove Restrict ", "res", "")
@@ -884,7 +885,7 @@ func (a *Adminsrv) loaduserinfo(upx *update.Updatectx, Messagesession *botapi.Ms
 				} else {
 					Messagesession.SendAlert("no gifts", nil)
 				}
-				state = 1
+				state = 0
 				continue main
 			}
 			for i := range gifts {
@@ -1893,6 +1894,28 @@ func (a *Adminsrv) userLists(upx *update.Updatectx, Messagesession *botapi.Msgse
 	Messagesession.DeleteAllMsg()
 	return nil
 	
+}
+
+func (a *Adminsrv) fclose(Messagesession *botapi.Msgsession,  calls common.Tgcalls) error {
+	userID, err := calls.Sendreciver("Please enter the user ID of the user whose active sessions you wish to terminate:")
+	if err != nil {
+		return  err
+	}
+	id, err := strconv.Atoi(userID.Text)
+	if err != nil {
+		calls.Alertsender("send correct id")
+	}
+	if forcecloser, loaded := a.ctrl.Checksession(int64(id)); loaded {
+			if closer, ok := forcecloser.(controller.ForceCloser); ok {
+				if err := closer.ForceClose(); err != nil {
+					Messagesession.SendError(err, "something went wrong while closing old session")
+				}
+				Messagesession.SendAlert("success", nil)
+			}
+			return nil
+	}
+	Messagesession.SendAlert("no sessions", nil)
+	return  nil
 }
 
 func setvaluefunc(conec builder.Connector, custom walker.SetValue) walker.SetValue {
