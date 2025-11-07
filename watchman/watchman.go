@@ -594,12 +594,12 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 						user.Configs[i].Active = true
 					}
 				}
-				if user.Configs[i].Active  && (forceremove || newConfigQuota - user.Configs[i].Usage <= 0) {
+				if user.Configs[i].Active  && (!user.CanUse() || forceremove || (newConfigQuota - user.Configs[i].Usage <= 0)) {
 					if (user.Configs[i].Quota - user.Configs[i].Usage) <= 0 {
 						bufsender.Send("⚠️ Your configuration "+user.Configs[i].Name+" has exceeded its usage limit. The config will not function until it is renewed. 🔄", user.TgID)
 					}
 					status, err := w.ctrl.Boxapi.RemoveConfig(&user.Configs[i])
-					if err == nil && status.Download + status.Upload > 0 && !forceremove {
+					if err == nil && status.FullUsage() > 0 && !forceremove {
 						
 						if status.FullUsage() > 0 {
 							user.Configs[i].UpdateUsages(status)

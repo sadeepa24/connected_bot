@@ -158,6 +158,9 @@ func (c *CtrlSession) AddNewConfig(inboundid []int16, outboundid int16, Quota C.
 		LoginLimit: int16(login),
 		CreatedAt: time.Now(),
 	}
+	if c.lowperm {
+		dbconf.Active = false
+	}
 	c.typeCheckConfig(dbconf)
 	if c.ctrl.db.Create(dbconf).Error != nil {
 		return dbconf, C.WrapError(C.ErrDatabaseCreate, "Config Did n't create: DB opration failed try again later")
