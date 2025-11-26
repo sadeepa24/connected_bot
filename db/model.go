@@ -118,6 +118,7 @@ type Config struct {
 	UUID       string `gorm:"not null;uniqueIndex"` //common for all vless & vmess inbound
 	Password   string // common for all trojan, tuic, shadowsocks (everything which use a password)
 	Active     bool
+	UserOff    bool
 	UserID     int64 `gorm:"index;not null;column:user_id"`
 	
 	//InboundID  int16 `gorm:"not null"`
@@ -167,7 +168,9 @@ func (s *InIds) Scan(value interface{}) error {
 }
 
 
-
+func (c *Config) Canuse() bool {
+	return !c.UserOff || c.LeftQuota() > 0
+}
 
 func (c *Config) LeftQuota() C.Bwidth {
 	return (c.Quota - c.Usage)

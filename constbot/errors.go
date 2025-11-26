@@ -29,7 +29,8 @@ func WrapError(err error, usermsg string) error {
 
 var (
 	CErrConfigNotFound =  WrapError(ErrConfigNotFound, "Can't Find Config Please Try Again")
-	CErrQuotaExceed  = WrapError(ErrQuotaExceed, "Cannot Activate Config: Config's Quota Already Exceed")
+	CErrQuotaExceed  = WrapError(ErrConfigActive, "Cannot Activate Config: Config's Quota Already Exceed")
+	CErrUserOff  = WrapError(ErrConfigActive, "Cannot Activate Config: User manualy disabled the config")
 	CErrContextDead = WrapError(ErrContextDead, "Context DeadLine: Maybe Session Timeout")
 	CErrRetryFailed = WrapError(ErrRetryFailed, "Don't Be idiot :(")
 	CErrNoPerm = WrapError(ErrNoPerm, "Operation not permitted. Please check your account status.")
@@ -47,7 +48,7 @@ var ErrOutboundNotFound = errors.New("outbound Notfound")
 var ErrResultMalformed = errors.New("status result malformed")
 var ErrNotMsgType = errors.New("type is not valid messagetype")
 var ErrRetryFailed = errors.New("retry attemps failed")
-
+var ErrConfigActive = errors.New("config activate failed")
 
 var ErrTypeMissmatch = errors.New("iobound type not supported or invalid type")
 

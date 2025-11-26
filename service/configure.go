@@ -128,8 +128,15 @@ func (c *configState) action() error {
 	c.btns.Addbutton(C.BtnChangeLogin, C.BtnChangeLogin, "")
 	c.btns.Addbutton(C.BtnDelete, C.BtnDelete, "")
 
+	if c.dbuser.CanUse() && c.lastconfig.Canuse() {
+		c.btns.PassButtons(1)
+		if c.lastconfig.UserOff {
+			c.btns.AddBtcommon(C.BtnEnable)
+		} else {
+			c.btns.AddBtcommon(C.BtnDisable)
+		}
+	}
 	c.btns.AddCloseBack()
-
 	if _, err = c.Messagesession.Edit(configinfo{
 		ConfigName: c.lastconfig.Name,
 		CrDate: c.lastconfig.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -257,6 +264,18 @@ func (c *configState) action() error {
 			c.Messagesession.SendError(err, "")
 		}
 
+	case C.BtnEnable:
+		err = c.Usersession.UserOn(c.lastconfig.Id)
+		if err != nil {
+			c.Messagesession.SendError(err, "")
+			return nil
+		}
+	case C.BtnDisable:
+		err = c.Usersession.UserOff(c.lastconfig.Id)
+		if err != nil {
+			c.Messagesession.SendError(err, "")
+			return nil
+		}
 	}
 
 	return nil

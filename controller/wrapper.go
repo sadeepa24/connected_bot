@@ -838,7 +838,7 @@ func (c *Controller) RecalculateConfigquotas(user *db.User) error {
 		user.Configs[i].UpdateUsages(status)
 		user.MonthUsage += (status.Download + status.Upload)
 
-		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || (user.MonthUsage >= user.CalculatedQuota) || !user.CanUse() || !user.Verified() {
+		if (user.Configs[i].Quota-user.Configs[i].Usage) <= 0 || (user.MonthUsage >= user.CalculatedQuota) || !user.CanUse() || !user.Verified() || user.Configs[i].UserOff {
 			c.Boxapi.RemoveConfig(&user.Configs[i])
 			user.Configs[i].Active = false
 		}

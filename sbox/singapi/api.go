@@ -130,6 +130,9 @@ func (b *BoxApi) RemoveConfig(dbconf *db.Config) (conf.Sboxstatus, error) {
 func (b *BoxApi) common(dbconf *db.Config , exec func(u opts.User) (opts.UserStatus, error) )(conf.Sboxstatus, error) {
 	var stbox conf.Sboxstatus
 
+	// if !dbconf.Canuse() {
+	// 	return 
+	// }
 	out, ok  := b.outbounds[dbconf.OutboundID]
 	if !ok {
 		return stbox, ErrOutboundNotFound

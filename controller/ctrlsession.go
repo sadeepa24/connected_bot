@@ -222,6 +222,9 @@ func (c *CtrlSession) activateconf(conf *db.Config) (sbConf.Sboxstatus, error) {
 		return status, C.ErrClosedSession
 	}
 	defer c.remop(false)
+	if conf.UserOff {
+		return status, C.WrapError(C.ErrConfigActive, "Cannot Activate Config:"+ conf.Name+ " User manualy disabled the config")
+	}
 	if (conf.Quota - conf.Usage) <= 0 {
 		return status, C.CErrQuotaExceed
 	}
@@ -235,7 +238,7 @@ func (c *CtrlSession) ActivateConfig(confid int64) (sbConf.Sboxstatus, error) {
 	}
 	conf, ok := c.configmap[confid]
 	if !ok {
-		return status, C.WrapError(errors.New(strconv.Itoa(int(confid))+ " config cannot found"), "config cannot dound for activation")
+		return status, C.WrapError(errors.New(strconv.Itoa(int(confid))+ " config cannot found"), "config cannot fdound for activation")
 	}
 	return c.activateconf(conf)
 }
@@ -305,6 +308,9 @@ func (c *CtrlSession) ReActivateConfig(confid int64) (sbConf.Sboxstatus, error) 
 	if (conf.Quota - conf.Usage) <= 0 {
 		return status, C.CErrQuotaExceed
 	}
+	if conf.UserOff {
+		return status, C.CErrUserOff
+	}
 	conf.Active = true
 	status, err := c.ctrl.Boxapi.AddConfigReset(conf)
 	if err != nil {
@@ -320,6 +326,24 @@ func (c *CtrlSession) ReActivateConfig(confid int64) (sbConf.Sboxstatus, error) 
 func (c *CtrlSession) IsLowPerm() bool {
 	return c.lowperm
 }
+
+func (c *CtrlSession) UserOn(confid int64) error {
+	conf, err := c.GetConfig(confid) 
+	if err != nil {return  err}
+	conf.UserOff = false
+	_, err = c.ActivateConfig(confid)
+	if err != nil {return err}
+	return nil
+}
+func (c *CtrlSession) UserOff(confid int64) error {
+	conf, err := c.GetConfig(confid) 
+	if err != nil {return  err}
+	conf.UserOff = true
+	_, err = c.DeactivateConfig(confid)
+	if err != nil {return err}
+	return nil
+}
+
 
 
 

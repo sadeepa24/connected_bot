@@ -20,6 +20,8 @@ const (
 	BtnUsageHistory string = "Ful Usage History"
 	BtnChangeQuota  string = "Change Quota"
 	BtnChangeLogin  string = "Change Login"
+	BtnEnable		string = "Enable"
+	BtnDisable		string = "Disable"
 )
 
 // Info
