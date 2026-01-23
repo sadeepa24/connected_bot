@@ -258,7 +258,7 @@ func (c *configState) action() error {
 			c.Messagesession.SendError(err, "")
 			return nil
 		}
-		_, err = c.Usersession.ChangeLoginLimit(c.lastconfig.Id, int16(limit))
+		_, err = c.Usersession.ChangeLoginLimit(c.lastconfig.Id, (uint16(limit)))
 		if err != nil {
 			c.Alertsender("login limit change failed")
 			c.Messagesession.SendError(err, "")
@@ -284,13 +284,13 @@ func (c *configState) action() error {
 func (c *configState) changeIn() error {
 	var err error
 	var callback *tgbotapi.CallbackQuery
-	inIdasMap := make(map[int16]int16, len(c.lastconfig.InboundIds)) //FIXME: removing always allocations
+	inIdasMap := make(map[uint16]uint16, len(c.lastconfig.InboundIds)) //FIXME: removing always allocations
 	for _, s := range c.lastconfig.InboundIds {
 		inIdasMap[s] = s
 	}
 	c.btns.Reset([]int16{2})
 	for _, in := range c.wiz.ctrl.Getinbounds() {
-		if _, ok := inIdasMap[int16(in.Id)]; ok {
+		if _, ok := inIdasMap[uint16(in.Id)]; ok {
 			c.btns.Addbutton(in.Type+"_"+in.Tag+" "+C.GetMsg(C.ButtonSelectEmjoi), strconv.Itoa(int(in.Id)), "")
 			continue
 		}
@@ -309,19 +309,19 @@ func (c *configState) changeIn() error {
 	case C.BtnBack:
 		c.State = stconfaction
 	default:
-		var inid int16
+		var inid uint16
 		var ss int
 		if ss, err = strconv.Atoi(callback.Data); err != nil {
 			return c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.Msgwrong), true)
 		}
-		inid = int16(ss)
+		inid = uint16(ss)
 
 		sboxin, loader := c.wiz.ctrl.Getinbound(inid)
 		if !loader {
 			return c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.Msgwrong), true)
 		}
 		
-		_, actionRemove :=  inIdasMap[int16(inid)]
+		_, actionRemove :=  inIdasMap[inid]
 
 		if actionRemove && len(inIdasMap) == 1 {
 			c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.MsgAtleas1In), true)
@@ -368,7 +368,7 @@ func (c *configState) changeOut() error {
 
 	c.btns.Reset([]int16{2})
 	for _, out := range c.wiz.ctrl.Getoutbounds() {
-		if c.lastconfig.OutboundID == int16(out.Id) {
+		if c.lastconfig.OutboundID == uint16(out.Id) {
 			c.btns.Addbutton(out.Type+"_"+out.Tag+" "+C.GetMsg(C.ButtonSelectEmjoi), strconv.Itoa(int(out.Id)), "")
 			continue
 		}
@@ -387,12 +387,12 @@ func (c *configState) changeOut() error {
 	case C.BtnBack:
 		c.State = stconfaction
 	default:
-		var outid int16
+		var outid uint16
 		var ss int
 		if ss, err = strconv.Atoi(callback.Data); err != nil {
 			return c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.Msgwrong), true)
 		}
-		outid = int16(ss)
+		outid = uint16(ss)
 
 		if outid == c.lastconfig.OutboundID {
 			c.Messagesession.Callbackanswere(callback.ID, C.GetMsg(C.MsgInAlredSelected), true)

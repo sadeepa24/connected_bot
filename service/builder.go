@@ -35,7 +35,7 @@ type confBuilder struct {
 	Builder        *builder.Builder
 
 	dbconfs 	[]db.Config
-	allin 		map[int16]conf.Inboud
+	allin 		map[uint16]conf.Inboud
 	sboxconfs 	[]db.SboxConfigs
 	userId 		int64 //config owner
 
@@ -498,7 +498,7 @@ func (c *confBuilder) loadconf() error {
 		c.Alertsender("something wrong selected in bound id")
 		return nil
 	}
-	inbound := c.allin[int16(idint)]
+	inbound := c.allin[uint16(idint)]
 	c.Messagesession.DeleteLast()
 	expinf, err := common.ReciveExpInfo(c.Tgcalls)
 	if err != nil {

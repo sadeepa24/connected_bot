@@ -12,7 +12,6 @@ import (
 	C "github.com/sadeepa24/connected_bot/constbot"
 	"github.com/sadeepa24/connected_bot/controller"
 	"github.com/sadeepa24/connected_bot/db"
-	"github.com/sadeepa24/connected_bot/sbox/conf"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -565,10 +564,8 @@ func (w *Watchman) RefreshDb(refreshcontext context.Context, docount bool, force
 							bufsender.Send("config " +user.Configs[i].Name + " got error while adding to singbox, msg = " + cerr.UserMsg() , user.TgID)
 						}
 						w.logger.Error("config add failed: config " +user.Configs[i].Name , zap.Error(err))
-						status = conf.Sboxstatus{
-							Download: 0,
-							Upload: 0,
-						}
+						status, _ = w.ctrl.Boxapi.RemoveConfig(&user.Configs[i])
+						user.Configs[i].Active = false
 						err = nil
 					}
 					user.Configs[i].UpdateUsages(status)

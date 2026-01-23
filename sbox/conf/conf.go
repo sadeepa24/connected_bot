@@ -12,7 +12,7 @@ import (
 )
 
 type Inboud struct {
-	Id              int16 //ID from json file
+	Id              uint16 //ID from json file
 	Name            string
 	Tag             string
 	Type            string
@@ -153,7 +153,7 @@ func (in *Inboud) TlsIsEnabled() bool {
 
 
 type Outbound struct {
-	Id   int16
+	Id   uint16
 	Name string
 	Tag  string
 	Type string

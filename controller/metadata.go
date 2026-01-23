@@ -33,8 +33,8 @@ type Metadata struct {
 	Inbounds  []conf.Inboud
 	Outbounds []conf.Outbound
 
-	inboundasMap  map[int16]conf.Inboud
-	outboundasMap map[int16]conf.Outbound
+	inboundasMap  map[uint16]conf.Inboud
+	outboundasMap map[uint16]conf.Outbound
 
 	rawoptions option.Options
 
@@ -137,7 +137,7 @@ func (m *Metadata) SboxConfPath() string {
 
 func (m *Metadata) DefaultInboud() (conf.Inboud, db.Inbound) {
 	return m.defaultinbound, db.Inbound{
-		ID:   int16(m.defaultinbound.Id),
+		ID:   (m.defaultinbound.Id),
 		Tag:  m.defaultinbound.Tag,
 		Type: m.defaultinbound.Type,
 		Name: m.defaultinbound.Name,
@@ -147,7 +147,7 @@ func (m *Metadata) DefaultInboud() (conf.Inboud, db.Inbound) {
 
 func (m *Metadata) Defaultoutboud() (conf.Outbound, db.Outbound) {
 	return m.defaultoutbound, db.Outbound{
-		ID:   int16(m.defaultoutbound.Id),
+		ID:   (m.defaultoutbound.Id),
 		Tag:  m.defaultoutbound.Tag,
 		Type: m.defaultoutbound.Type,
 		Name: m.defaultoutbound.Name,
@@ -170,17 +170,17 @@ func (m *Metadata) Getoutbounds() []conf.Outbound {
 	return m.Outbounds
 }
 
-func (m *Metadata) Getinbound(id int16) (conf.Inboud, bool) {
+func (m *Metadata) Getinbound(id uint16) (conf.Inboud, bool) {
 	in, ok := m.inboundasMap[id]
 	return in, ok
 }
-func (m *Metadata) GetAllinbound() map[int16]conf.Inboud {
+func (m *Metadata) GetAllinbound() map[uint16]conf.Inboud {
 	return m.inboundasMap
 }
 
 
-func (m *Metadata) GetinboundList(ids []int16) (map[int16]conf.Inboud) {
-	inlist := make(map[int16]conf.Inboud, len(ids))
+func (m *Metadata) GetinboundList(ids []uint16) (map[uint16]conf.Inboud) {
+	inlist := make(map[uint16]conf.Inboud, len(ids))
 	for _, id := range ids {
 		ins, ok := m.Getinbound(id)
 		if !ok {
@@ -192,19 +192,19 @@ func (m *Metadata) GetinboundList(ids []int16) (map[int16]conf.Inboud) {
 }
 
 
-func (m *Metadata) Getoutbound(id int16) (conf.Outbound, bool) {
+func (m *Metadata) Getoutbound(id uint16) (conf.Outbound, bool) {
 
 	in, ok := m.outboundasMap[id]
 	return in, ok
 }
 
-func (m *Metadata) GetdbInbound(id int16) (db.Inbound, error) {
+func (m *Metadata) GetdbInbound(id uint16) (db.Inbound, error) {
 	inbound, ok := m.inboundasMap[id]
 	if !ok {
 		return db.Inbound{}, C.ErrInboundNotFound
 	}
 	return db.Inbound{
-		ID:   int16(inbound.Id),
+		ID:   (inbound.Id),
 		Tag:  inbound.Tag,
 		Type: inbound.Type,
 		Name: inbound.Name,
@@ -212,13 +212,13 @@ func (m *Metadata) GetdbInbound(id int16) (db.Inbound, error) {
 	}, nil
 }
 
-func (m *Metadata) GetdbOutbound(id int16) (db.Outbound, error) {
+func (m *Metadata) GetdbOutbound(id uint16) (db.Outbound, error) {
 	outbound, ok := m.outboundasMap[id]
 	if !ok {
 		return db.Outbound{}, C.ErrOutboundNotFound
 	}
 	return db.Outbound{
-		ID:   int16(outbound.Id),
+		ID:   (outbound.Id),
 		Tag:  outbound.Tag,
 		Type: outbound.Type,
 		Name: outbound.Name,

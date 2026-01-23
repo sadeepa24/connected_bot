@@ -135,7 +135,7 @@ func NewctrlSession(ctrl *Controller, upx *update.Updatectx, ForceCloseOldSessio
 
 
 
-func (c *CtrlSession) AddNewConfig(inboundid []int16, outboundid int16, Quota C.Bwidth, login int16, name string) (*db.Config, error) {
+func (c *CtrlSession) AddNewConfig(inboundid []uint16, outboundid uint16, Quota C.Bwidth, login uint16, name string) (*db.Config, error) {
 	if c.addop(true) {
 		return nil, C.ErrClosedSession
 	}
@@ -155,7 +155,7 @@ func (c *CtrlSession) AddNewConfig(inboundid []int16, outboundid int16, Quota C.
 		Upload:     0,
 		Usage:      0,
 		Quota:      Quota,
-		LoginLimit: int16(login),
+		LoginLimit: login,
 		CreatedAt: time.Now(),
 	}
 	if c.lowperm {
@@ -354,7 +354,7 @@ func (c *CtrlSession) ConfigCloseConn(confid int64) error {
 	}
 	return c.ctrl.Boxapi.CloseConns(conf)
 }
-func (c *CtrlSession) ChangeLoginLimit(confid int64, newlimit int16) (sbConf.Sboxstatus, error) {
+func (c *CtrlSession) ChangeLoginLimit(confid int64, newlimit uint16) (sbConf.Sboxstatus, error) {
 	var status sbConf.Sboxstatus
 	if c.addop(false) {
 		return status, C.ErrClosedSession
@@ -604,13 +604,13 @@ func (c *CtrlSession) updateperm() bool  {
 
 
 
-func (c *CtrlSession) AddInboundConf(confid int64, inboundid int16) error {
+func (c *CtrlSession) AddInboundConf(confid int64, inboundid uint16) error {
 	return c.addorremin("add", confid, inboundid)
 }
-func (c *CtrlSession) RemoveInboudConf(confid int64, inboundid int16) error {
+func (c *CtrlSession) RemoveInboudConf(confid int64, inboundid uint16) error {
 	return c.addorremin("rem", confid, inboundid)
 }
-func(c *CtrlSession)  addorremin(op string, confid int64, inboundid int16 ) error {
+func(c *CtrlSession)  addorremin(op string, confid int64, inboundid uint16 ) error {
 	if c.lowperm {
 		return C.CErrNoPerm
 	}
@@ -628,13 +628,13 @@ func(c *CtrlSession)  addorremin(op string, confid int64, inboundid int16 ) erro
 	switch op {
 	case "rem":
 		for i, id := range conf.InboundIds {
-			if id == int16(inboundid) {
+			if id == (inboundid) {
 				conf.InboundIds = append(conf.InboundIds[:i], conf.InboundIds[i+1:]...)
 				break
 			}
 		}
 	case "add":
-		conf.InboundIds = append(conf.InboundIds, int16(inboundid))
+		conf.InboundIds = append(conf.InboundIds, (inboundid))
 	}
 	return c.ctrl.Boxapi.ResetInbounds(conf)
 }
@@ -669,7 +669,7 @@ func (c *CtrlSession) typeCheckConfig(conf *db.Config) error {
 	return nil
 	
 }
-func (c *CtrlSession) ChangeOutbound(confid int64, outboundID int16) error {
+func (c *CtrlSession) ChangeOutbound(confid int64, outboundID uint16) error {
 	if c.lowperm {
 		return C.CErrNoPerm
 	}
@@ -688,7 +688,7 @@ func (c *CtrlSession) ChangeOutbound(confid int64, outboundID int16) error {
 	if !ok {
 		return C.ErrOutboundNotFound
 	}
-	conf.OutboundID = int16(out.Id)
+	conf.OutboundID = out.Id
 	return c.ctrl.Boxapi.ChangeOutbound(conf)
 }
 

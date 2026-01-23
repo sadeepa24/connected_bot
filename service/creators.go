@@ -21,13 +21,13 @@ func CreateConfig(opts common.OptionExcutors) error {
 		callback *tgbotapi.CallbackQuery
 	)
 
-	cuurentIns := make(map[int16]string, len(opts.Ctrl.Inbounds))
+	cuurentIns := make(map[uint16]string, len(opts.Ctrl.Inbounds))
 	//select inbound for new config
 	inselectloop:
 	for {
 		btns.Reset([]int16{})
 		for _, inbound := range opts.Ctrl.Getinbounds() {
-			if _, ok := cuurentIns[int16(inbound.Id)]; ok {
+			if _, ok := cuurentIns[(inbound.Id)]; ok {
 				btns.Addbutton(inbound.Type +"_"+ strconv.Itoa(inbound.Port()) + C.GetMsg(C.ButtonSelectEmjoi), strconv.Itoa(int(inbound.Id)), "")
 				continue
 			}
@@ -56,7 +56,7 @@ func CreateConfig(opts common.OptionExcutors) error {
 			return err
 		}
 
-		sboxin, loaded := opts.Ctrl.Getinbound(int16(inID))
+		sboxin, loaded := opts.Ctrl.Getinbound(uint16(inID))
 		if !loaded {
 			Messagesession.SendAlert(C.GetMsg(C.MsgCrInerr), nil)
 			return nil
@@ -75,11 +75,11 @@ func CreateConfig(opts common.OptionExcutors) error {
 		if callback.Data == C.BtnCancle {
 			continue
 		}
-		if _, ok := cuurentIns[int16(inID)]; ok {
-			delete(cuurentIns, int16(inID))
+		if _, ok := cuurentIns[uint16(inID)]; ok {
+			delete(cuurentIns, uint16(inID))
 			continue
 		}
-		cuurentIns[int16(inID)] = sboxin.Tag 
+		cuurentIns[uint16(inID)] = sboxin.Tag 
 	}
 	if len(cuurentIns) == 0 {
 		Messagesession.SendExtranal("you have to select at least 1 inbound before presing done", nil, "", true)
@@ -106,7 +106,7 @@ func CreateConfig(opts common.OptionExcutors) error {
 	if outID, err = strconv.Atoi(callback.Data); err != nil {
 		return err
 	}
-	sboxout, loaded := opts.Ctrl.Getoutbound(int16(outID))
+	sboxout, loaded := opts.Ctrl.Getoutbound(uint16(outID))
 	if !loaded {
 		Messagesession.SendAlert(C.GetMsg(C.MsgselectOut), nil)
 		return nil
@@ -194,7 +194,7 @@ func CreateConfig(opts common.OptionExcutors) error {
 	}
 	opts.Ctrl.IncCriticalOp()
 	defer opts.Ctrl.DecCriticalOp()
-	newconfig, err := Usersession.AddNewConfig(C.MapToSliceKey(cuurentIns), int16(outID), quotafroconfig.GbtoByte(), int16(LoginLimit), confName)
+	newconfig, err := Usersession.AddNewConfig(C.MapToSliceKey(cuurentIns), uint16(outID), quotafroconfig.GbtoByte(), uint16(LoginLimit), confName)
 	if err != nil {
 		Messagesession.SendError(err, C.GetMsg(C.MsgCrFailed))
 		return err

@@ -121,7 +121,7 @@ func (g *getinfo) allininfo() error {
 		if err != nil {
 			return nil
 		}
-		in, ok := g.ctrl.Getinbound(int16(id))
+		in, ok := g.ctrl.Getinbound(uint16(id))
 		if !ok {
 			g.Messagesession.Callbackanswere(callback.ID, "inbound not found", true)
 			return nil 
@@ -169,7 +169,7 @@ func (g *getinfo) alloutinfo() error {
 		if err != nil {
 			return nil
 		}
-		out, ok := g.ctrl.Getoutbound(int16(id))
+		out, ok := g.ctrl.Getoutbound(uint16(id))
 		if !ok {
 			g.Messagesession.Callbackanswere(callback.ID, "outbound not found", true)
 			return nil
@@ -554,7 +554,7 @@ func (g *getinfo) confallin() error {
 		return nil
 	}
 	var ok bool
-	g.lastselectInbn, ok = g.ctrl.Getinbound(int16(sin))
+	g.lastselectInbn, ok = g.ctrl.Getinbound(uint16(sin))
 	if !ok {
 		g.Messagesession.SendAlert("inbound not found", nil)
 		return nil

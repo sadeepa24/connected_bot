@@ -89,8 +89,8 @@ func New(ctx context.Context, cdb *db.Database, logger *zap.Logger, metaconf *C.
 			Inbounds:      []sbConf.Inboud{},
 			Outbounds:     []sbConf.Outbound{},
 			rawoptions: boxopts,
-			inboundasMap:  make(map[int16]sbConf.Inboud, len(boxopts.Inbounds)),
-			outboundasMap: make(map[int16]sbConf.Outbound, len(boxopts.Outbounds)),
+			inboundasMap:  make(map[uint16]sbConf.Inboud, len(boxopts.Inbounds)),
+			outboundasMap: make(map[uint16]sbConf.Outbound, len(boxopts.Outbounds)),
 			Botlink:       metaconf.Botlink,
 			GroupLink:     metaconf.GroupLink,
 			Channelink:    metaconf.Channelink,
@@ -267,7 +267,7 @@ func (c *Controller) Init() error {
 	//replacing all inbounds according to new data
 	for _, in := range c.Metadata.Inbounds {
 		if err := c.db.Save(&db.Inbound{
-			ID:   int16(in.Id),
+			ID:   (in.Id),
 			Tag:  in.Tag,
 			Name: in.Name,
 			Type: in.Type,
@@ -280,7 +280,7 @@ func (c *Controller) Init() error {
 	//replacing all outbound according to new outbounds
 	for _, out := range c.Metadata.Outbounds {
 		if err := c.db.Model(&db.Outbound{}).Where("id = ?", out.Id).Save(&db.Outbound{
-			ID:   int16(out.Id),
+			ID:   (out.Id),
 			Tag:  out.Tag,
 			Name: out.Name,
 			Type: out.Type,
@@ -426,7 +426,7 @@ func (c *Controller) initallconfigs(totalConfig int64, force bool) error {
 			return err
 		}
 	}
-	changedID := map[int16]bool{} //ids which is not available with new sbox config 
+	changedID := map[uint16]bool{} //ids which is not available with new sbox config 
 	for _, in := range infromdb {
 		_, ok := c.inboundasMap[(in.ID)]
 		if !ok {
@@ -458,7 +458,7 @@ func (c *Controller) initallconfigs(totalConfig int64, force bool) error {
 	var listConfig []db.Config
 	save := make([]*db.Config, 0, C.Dbbatchsize)
 	c.db.Model(&db.Config{}).FindInBatches(&listConfig, C.Dbbatchsize, func(tx *gorm.DB, batch int) error {
-		var newinbounds []int16
+		var newinbounds []uint16
 		for i := range listConfig {
 			if listConfig[i].Password == "" {
 				listConfig[i].Password = strconv.Itoa(int(listConfig[i].UserID)) + strconv.Itoa(int(rand.Int63()))

@@ -69,7 +69,7 @@ type configinfo struct {
 	// InInfo         string
 	// TranstPortType string
 	// TransPortPath string
-	Loginlimit int16
+	Loginlimit uint16
 	// TlsEnabled     bool
 	// SupportInfo    []string
 

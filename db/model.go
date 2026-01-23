@@ -123,20 +123,20 @@ type Config struct {
 	
 	//InboundID  int16 `gorm:"not null"`
 	
-	OutboundID int16 `gorm:"not null"`
+	OutboundID uint16 `gorm:"not null"`
 	InboundIds InIds `gorm:"type:blob"`
 	Usage    C.Bwidth // total usage for this month as byte
 	Download C.Bwidth // total download for this month as byte
 	Upload   C.Bwidth // total uploads for this month as byte
 	Quota    C.Bwidth // changes every day when according to groups user
 
-	LoginLimit int16
+	LoginLimit uint16
 	CreatedAt time.Time
 	//DeletedAt 		gorm.DeletedAt `gorm:"index"`
 
 }
 
-type InIds []int16 
+type InIds []uint16 
 
 func (s InIds) Value() (driver.Value, error) {
 	val := make([]byte, len(s)*2)
@@ -148,7 +148,7 @@ func (s InIds) Value() (driver.Value, error) {
 
 func (s *InIds) Scan(value interface{}) error {
 	if value == nil {
-		*s = []int16{}
+		*s = []uint16{}
 		return nil
 	}
 	bytes, ok := value.([]byte)
@@ -158,9 +158,9 @@ func (s *InIds) Scan(value interface{}) error {
 	if len(bytes)%2 != 0 {
 		return errors.New("invalid byte slice length: must be a multiple of 2")
 	}
-	var ids []int16
+	var ids []uint16
 	for i := 0; i < len(bytes); i += 2 {
-		id := int16(binary.LittleEndian.Uint16(bytes[i:]))
+		id := binary.LittleEndian.Uint16(bytes[i:])
 		ids = append(ids, id)
 	}
 	*s = ids
@@ -318,7 +318,7 @@ func (u *Gift) Isgifttimeover() bool {
 // All thinsgs Downthere will store in ram until program kill
 
 type Inbound struct {
-	ID   int16  `gorm:"primaryKey"`
+	ID   uint16  `gorm:"primaryKey"`
 	Tag  string `gorm:"type:varchar(100)"`
 	Name string
 	Type string
@@ -328,7 +328,7 @@ type Inbound struct {
 }
 
 type Outbound struct {
-	ID   int16  `gorm:"primaryKey"`
+	ID   uint16  `gorm:"primaryKey"`
 	Tag  string `gorm:"type:varchar(100)"`
 	Id   int64
 	Name string

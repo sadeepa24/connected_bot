@@ -30,8 +30,8 @@ import (
 
 type BoxApi struct {
 	box *box.Box
-	inbounds map[int16]option.Inbound
-	outbounds map[int16]string
+	inbounds map[uint16]option.Inbound
+	outbounds map[uint16]string
 	logger *zap.Logger
 	urltests sync.Map
 
@@ -61,12 +61,12 @@ func NewsingAPI(ctx context.Context, optpath string, logger *zap.Logger) (*BoxAp
 	}
 	logger.Debug("sing box instance created successfully")
 	
-	outbounds := make(map[int16]string, len(opts.Outbounds))
+	outbounds := make(map[uint16]string, len(opts.Outbounds))
 	for _, out := range opts.Outbounds {
 		outbounds[*out.Id] = out.Tag
 	}
 
-	inbounds := make(map[int16]option.Inbound, len(opts.Inbounds))
+	inbounds := make(map[uint16]option.Inbound, len(opts.Inbounds))
 	
 	for _, in := range opts.Inbounds {
 		switch in.Type {
@@ -158,7 +158,7 @@ func (b *BoxApi) common(dbconf *db.Config , exec func(u opts.User) (opts.UserSta
 }
 
 func (b *BoxApi) ResetInbounds(dbconf *db.Config) error {
-	return b.commonNoError(dbconf, b.box.ResetInbound)
+	return b.commonError(dbconf, b.box.ResetInbound)
 }
 
 func (b *BoxApi) ChangeOutbound(dbconf *db.Config) error {
@@ -210,7 +210,7 @@ func (b *BoxApi) ReciveCallback(code int16, stts *opts.CallBackResult) {
 
 
 
-func (b *BoxApi) getinlist(inids []int16) ([]string, map[string]string) {
+func (b *BoxApi) getinlist(inids []uint16) ([]string, map[string]string) {
 	var ins []string
 	inimap := make(map[string]string, len(inids))
 	for _, inid := range inids {
@@ -247,6 +247,34 @@ func (b *BoxApi) commonNoError(dbconf *db.Config , exec func(u opts.User) ) (err
 	})
 	return nil
 }
+
+func (b *BoxApi) commonError(dbconf *db.Config , exec func(u opts.User) error ) (error) {
+	out, ok  := b.outbounds[dbconf.OutboundID]
+	if !ok {
+		return ErrOutboundNotFound
+	}
+	ins, mp := b.getinlist(dbconf.InboundIds)
+	if len(ins) == 0 {
+		return ErrInboundNotFound
+	}
+	exec(opts.User{
+		MaxLogin: dbconf.LoginLimit,
+		Bandwidth:  dbconf.LeftQuota().Int64(),
+		UserStr: dbconf.GetuniqName(),
+		Outbound: out,
+		Uid: int(dbconf.Id),
+		InboundList: ins,
+		Proto: &Comconf{
+			dbconf: dbconf,
+			inboundtypes: mp,
+		},
+	})
+	return nil
+}
+
+
+
+
 
 func (b *BoxApi) createopts(dbconf *db.Config) (opts.User, error)  {
 	out, ok  := b.outbounds[dbconf.OutboundID]
