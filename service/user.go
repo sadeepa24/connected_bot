@@ -1155,13 +1155,20 @@ func (u *Usersrv) commandContact(upx *update.Updatectx , Messagesession *botapi.
 	timeovermg := C.GetMsg(C.GetMsg(C.MsgContactTimeover))
 	alltime := new(atomic.Int32)
 	alltime.Add(2)
+	
+	ticks := time.NewTicker(30 * time.Second)
 	go func() {
+		lp:
 		for {
-			time.Sleep(30 * time.Second)
-			alltime.Add(-1)
+			select {
+			case <- ticks.C:
+				alltime.Add(-1)
+			case <- upx.Ctx.Done():
+				break lp
+			}
 			if upx.Ctx.Err() != nil || alltime.Load() == 0 {
 				upx.Cancle()
-				break
+				break lp
 			}
 		}
 	}()

@@ -142,10 +142,10 @@ func (p *Parser) Parse(tgbotapimsg *tgbotapi.Update) error {
 	}
 	defer func ()  {
 		if upx != nil{
-			p.uctxPool.Put(upx)
-			if  upx.Cancle != nil {
+			if upx.Cancle != nil {
 				upx.Cancle()
 			}
+			p.uctxPool.Put(upx)
 		}
 	}()
 	

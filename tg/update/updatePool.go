@@ -21,7 +21,6 @@ func NewupdatePool() *UpdatePool {
 	}
 }
 
-
 func (u *UpdatePool) Newupdate(origin *tgbotapi.Update) *Updatectx {
 	
 	if origin.Message != nil {}
